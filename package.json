@@ -1,0 +1,69 @@
+{
+  "name": "proxy-chain",
+  "version": "0.0.1",
+  "description": "Enables creation of HTTP proxy-to-proxy chains",
+  "main": "build/index.js",
+  "keywords": [
+    "apify",
+    "apifier",
+    "proxy",
+    "chain"
+  ],
+  "author": {
+    "name": "Apify",
+    "email": "support@apify.com",
+    "url": "https://www.apify.com"
+  },
+  "contributors": [
+    "Jan Curn <jan@apify.com>"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/apifier/proxy-chain"
+  },
+  "bugs": {
+    "url": "https://github.com/apifier/proxy-chain/issues"
+  },
+  "homepage": "https://github.com/apifier/proxy-chain",
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "rm -rf ./build && babel src --out-dir build",
+    "mytest": "npm run build && node ./build/index.js",
+    "test": "npm run build && mocha --compilers js:babel-core/register --recursive",
+    "test-cov": "npm run build && babel-node node_modules/isparta/bin/isparta cover --report html --report text node_modules/.bin/_mocha",
+    "prepare": "npm run build",
+    "prepublishOnly": "(test $RUNNING_FROM_SCRIPT || (echo \"You must use publish.sh instead of 'npm publish' directly!\"; exit 1)) && npm test && npm run lint",
+    "clean": "rm -rf build",
+    "lint": "npm run build && eslint src test"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "underscore": "^1.8.3"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.6.5",
+    "babel-core": "^6.1.21",
+    "babel-eslint": "^7.2.2",
+    "babel-preset-es2015": "^6.1.18",
+    "babel-preset-stage-0": "^6.1.18",
+    "basic-auth-parser": "^0.0.2",
+    "chai": "^4.0.2",
+    "eslint": "^3.19.0",
+    "eslint-config-airbnb": "^15.0.1",
+    "eslint-config-airbnb-base": "^11.1.0",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-jsx-a11y": "^5.0.3",
+    "eslint-plugin-promise": "^3.4.2",
+    "eslint-plugin-react": "^7.0.1",
+    "isparta": "^4.0.0",
+    "mocha": "^3.2.0",
+    "proxy": "^0.2.4",
+    "request": "^2.81.0",
+    "sinon": "^2.2.0",
+    "sinon-stub-promise": "^4.0.0"
+  },
+  "optionalDependencies": {}
+}

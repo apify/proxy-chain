@@ -1,0 +1,12 @@
+dist: trusty
+sudo: required
+addons:
+before_install:
+language: node_js
+node_js:
+  - "8"
+  - "7"
+  - "6"
+script:
+  - npm run lint
+  - npm test
