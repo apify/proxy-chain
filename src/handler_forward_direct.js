@@ -7,7 +7,7 @@ import { isHopByHopHeader, tee } from './tools';
 /**
  * Represents a proxied request to a HTTP server.
  */
-export default class HandlerProxyDirect {
+export default class HandlerForwardDirect {
 
     constructor({ srcRequest, srcResponse, verbose }) {
         this.srcRequest = srcRequest;
@@ -36,7 +36,7 @@ export default class HandlerProxyDirect {
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerProxyDirect[${this.srcRequest.method} ${this.srcRequest.url}]: ${str}`);
+        if (this.verbose) console.log(`HandlerForwardDirect[${this.srcRequest.method} ${this.srcRequest.url}]: ${str}`);
     }
 
     run() {
