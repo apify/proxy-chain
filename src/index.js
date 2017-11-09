@@ -40,8 +40,8 @@ new Promise((resolve, reject) => {
     });
 })
 .then(() => {
-    //const server = new ProxyServer({ port: 8000, verbose: true, targetProxyUrl: 'http://username:password@localhost:8001' });
-    const server = new ProxyServer({ port: 8000, verbose: true });
+    const server = new ProxyServer({ port: 8000, verbose: true, targetProxyUrl: 'http://username:password@localhost:8001' });
+    //const server = new ProxyServer({ port: 8000, verbose: true });
 
     server.listen();
 })

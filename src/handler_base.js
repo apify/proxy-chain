@@ -1,5 +1,5 @@
 import http from 'http';
-import { parseUrl } from './tools';
+import { parseUrl, redactParsedUrl } from './tools';
 
 
 /**
@@ -12,29 +12,24 @@ export default class HandlerBase {
 
         this.srcRequest = srcRequest;
         this.srcResponse = srcResponse;
+        this.srcSocket = srcRequest.socket;
 
+        this.trgRequest = null;
+        this.trgResponse = null;
+        this.trgSocket = null;
         this.trgHost = trgHost;
         this.trgPort = trgPort;
 
         this.verbose = !!verbose;
         this.proxyUrl = proxyUrl;
 
-        console.log('heree');
-
         this.proxyUrlParsed = proxyUrl ? parseUrl(proxyUrl) : null;
-
-        //this.trgHost = trgHost;
-        //this.trgPort = trgPort;
-
-        this.srcSocket = srcRequest.socket; // TODO: this used to be passed from outside
-        this.trgSocket = null;
+        this.proxyUrlRedacted = proxyUrl ? redactParsedUrl(this.proxyUrlParsed) : null;
 
         // Indicates that source socket might have received some data already
         this.srcGotResponse = false;
 
         this.isDestroyed = false;
-
-        this.trgRequest = null;
 
         if (proxyUrl) {
             if (!this.proxyUrlParsed.host || !this.proxyUrlParsed.port) throw new Error('Invalid "proxyUrl" option: URL must have host and port');
@@ -61,9 +56,9 @@ export default class HandlerBase {
         // never gets hooked up, so we must manually close the socket...
         this.srcResponse.once('finish', this.onSrcResponseFinish);
 
-        this.srcSocket.on('close', this.onSrcSocketClose);
-        this.srcSocket.on('end', this.onSrcSocketEnd);
-        this.srcSocket.on('error', this.onSrcSocketError);
+        this.srcSocket.once('close', this.onSrcSocketClose);
+        this.srcSocket.once('end', this.onSrcSocketEnd);
+        this.srcSocket.once('error', this.onSrcSocketError);
 
         // XXX: pause the socket during authentication so no data is lost
         this.srcSocket.pause();
@@ -142,21 +137,29 @@ export default class HandlerBase {
     destroy() {
         if (!this.isDestroyed) {
             this.log('Destroying');
-
             this.removeListeners();
+
+            if (this.srcRequest) {
+                this.srcRequest.destroy();
+                this.srcRequest = null;
+            }
 
             if (this.srcSocket) {
                 this.srcSocket.destroy();
                 this.srcSocket = null;
             }
 
-            // TODO: this.trgRequest.abort();
+            if (this.trgRequest) {
+                this.trgRequest.abort();
+                this.trgRequest = null;
+            }
+
+            if (this.trgSocket) {
+                this.trgSocket.destroy();
+                this.trgSocket = null;
+            }
 
             this.isDestroyed = true;
-
-            return true;
         }
-
-        return false;
     }
 }

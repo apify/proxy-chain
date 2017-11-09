@@ -60,7 +60,7 @@ export default class ProxyServer {
             const handler = new HandlerTunnelChain({
                 srcRequest: request,
                 srcSocket: socket,
-                trgProxyUrl: this.targetProxyUrl,
+                proxyUrl: this.targetProxyUrl,
                 trgHost: host,
                 trgPort: port,
                 verbose: this.verbose,
