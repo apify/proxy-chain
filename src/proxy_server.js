@@ -3,6 +3,7 @@ import { parseHostHeader } from './tools';
 import Promise from 'bluebird';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerProxyDirect from './handler_proxy_direct';
+import HandlerTunnelChain from './handler_tunnel_chain';
 
 
 export default class ProxyServer {
@@ -55,7 +56,16 @@ export default class ProxyServer {
                 verbose: this.verbose,
             });
             handler.run();
-            return;
+        } else {
+            const handler = new HandlerTunnelChain({
+                srcRequest: request,
+                srcSocket: socket,
+                trgProxyUrl: this.targetProxyUrl,
+                trgHost: host,
+                trgPort: port,
+                verbose: this.verbose,
+            });
+            handler.run();
         }
     }
 

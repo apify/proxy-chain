@@ -1,7 +1,7 @@
 import http from 'http';
 import url from 'url';
 import _ from 'underscore';
-import { isHopByHopHeader } from './tools';
+import { isHopByHopHeader, tee } from './tools';
 
 
 /**
@@ -18,7 +18,6 @@ export default class HandlerProxyDirect {
         // Indicates that source connection might have received some data already
         this.srcGotResponse = false;
 
-        // Bind all event handlers to 'this'
         // Bind all event handlers to 'this'
         ['onSrcEnd', 'onSrcError', 'onSrcClose', 'onSrcResponseFinish', 'onTrgResponse', 'onTrgError'].forEach((evt) => {
             this[evt] = this[evt].bind(this);
@@ -120,7 +119,8 @@ export default class HandlerProxyDirect {
         this.trgRequest.on('response', this.onTrgResponse);
         this.trgRequest.on('error', this.onTrgError);
 
-        this.srcRequest.pipe(this.trgRequest);
+        this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
+        //this.srcRequest.pipe(this.trgRequest);
     }
 
     onSrcEnd() {

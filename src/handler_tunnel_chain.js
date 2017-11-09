@@ -1,15 +1,15 @@
 import http from 'http';
 import net from 'net';
 import _ from 'underscore';
-import { tee } from './tools';
+import { parseUrl, tee } from './tools';
 
 
 /**
- * Represents a proxied connection from source to the target HTTPS server.
+ * Represents a proxied connection from source to another external proxy using HTTP CONNECT.
  */
-export default class HandlerTunnelDirect {
+export default class HandlerTunnelChain {
 
-    constructor({ srcRequest, srcSocket, trgHost, trgPort, verbose }) {
+    constructor({ srcRequest, srcSocket, trgProxyUrl, trgHost, trgPort, verbose }) {
         this.srcRequest = srcRequest;
         this.srcSocket = srcSocket;
         this.verbose = verbose;
@@ -17,13 +17,18 @@ export default class HandlerTunnelDirect {
         // Indicates that source connection might have received some data already
         this.srcGotResponse = false;
 
+        this.trgProxyUrl = trgProxyUrl;
+        this.trgProxyUrlParsed = parseUrl(trgProxyUrl);
         this.trgHost = trgHost;
         this.trgPort = trgPort;
         this.trgSocket = null;
 
+        if (!this.trgProxyUrlParsed.host || !this.trgProxyUrlParsed.port) throw new Error('trgProxyUrl is invalid');
+        if (this.trgProxyUrlParsed.scheme !== 'http') throw new Error('trgProxyUrl must have "http" protocol');
+
         // Bind all event handlers to 'this'
         ['onSrcClose', 'onSrcEnd', 'onSrcError', 'onTrgConnect', 'onTrgClose', 'onTrgEnd',
-         'onTrgError', 'onSrcResponseFinish'].forEach((evt) => {
+         'onTrgError', 'onSrcResponseFinish', 'onTrgAbort'].forEach((evt) => {
             this[evt] = this[evt].bind(this);
         });
 
@@ -32,7 +37,7 @@ export default class HandlerTunnelDirect {
         this.srcSocket.on('error', this.onSrcError);
 
         // Create ServerResponse for the client request, since Node.js doesn't create one
-        // NOTE: This is undocummented API, it might break in the future
+        // NOTE: This is undocumented API, it might break in the future
         this.srcResponse = new http.ServerResponse(srcRequest);
         this.srcResponse.shouldKeepAlive = false;
         this.srcResponse.chunkedEncoding = false;
@@ -51,16 +56,59 @@ export default class HandlerTunnelDirect {
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerTunnelDirect[${this.trgHost}:${this.trgPort}]: ${str}`);
+        if (this.verbose) console.log(`HandlerTunnelChain[${this.trgProxyUrl} -> ${this.trgHost}:${this.trgPort}]: ${str}`);
     }
 
     run() {
-        this.log('Connecting to target...');
-        this.trgSocket = net.createConnection(this.trgPort, this.trgHost);
+        this.log('Connecting to target proxy...');
+
+        let options = {
+            method: 'CONNECT',
+            host: this.trgProxyUrlParsed.hostname,
+            port: this.trgProxyUrlParsed.port,
+            path: `${this.trgHost}:${this.trgPort}`,
+            headers: {},
+        };
+
+        if (this.trgProxyUrlParsed.username) {
+            let auth = this.trgProxyUrlParsed.username;
+            if (this.trgProxyUrlParsed.password) auth += ':' + this.trgProxyUrlParsed.password;
+            options.headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
+        }
+
+        console.dir(options);
+        this.trgRequest = http.request(options);
+
+        this.trgRequest.on('connect', this.onTrgConnect);
+        this.trgRequest.on('abort', this.onTrgAbort);
+        this.trgRequest.on('error', this.onTrgError);
+
+        this.trgRequest.on('continue', () => {
+            this.log('Target continue');
+        });
+
+        this.trgRequest.on('socket', () => {
+            this.log('Target socket');
+        });
+
+        this.trgRequest.on('timeout', () => {
+            this.log('Target timeout');
+        });
+
+        // Send the data
+        this.trgRequest.end();
+
+
+
+/*
+        this.trgSocket = net.createConnection(this.trgProxyUrlParsed.port, this.trgProxyUrlParsed.hostname);
+
+
         this.trgSocket.on('connect', this.onTrgConnect);
+
         this.trgSocket.on('close', this.onTrgClose);
         this.trgSocket.on('end', this.onTrgEnd);
-        this.trgSocket.on('error', this.onTrgError);
+        this.trgSocket.on('error', this.onTrgError); */
     }
 
     onSrcResponseFinish() {
@@ -82,12 +130,32 @@ export default class HandlerTunnelDirect {
         this.log(`Source socket failed: ${err.stack || err}`);
     }
 
-    onTrgConnect () {
-        this.log('Target connected');
+    generateHttpConnect() {
+        let str = `CONNECT ${this.trgProxyUrlParsed.hostname}:${this.trgProxyUrlParsed.port} HTTP/1.1\r\n`
+            + `Host: ${this.trgHost}:${this.trgPort}\r\n`;
+
+        if (this.trgProxyUrlParsed.username) {
+            let auth = this.trgProxyUrlParsed.username;
+            if (this.trgProxyUrlParsed.password) auth += ':' + this.trgProxyUrlParsed.password;
+            str += `Proxy-Authorization: basic ${Buffer.from(auth).toString('base64')}\r\n`;
+        }
+        str += '\r\n';
+
+        console.log(str);
+
+        return str;
+    }
+
+    onTrgConnect (response, socket, head) {
+        this.log(`Connected to target proxy`);
 
         this.srcGotResponse = true;
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
         this.srcResponse.writeHead(200, 'Connection established');
+
+        //this.response.writeHead(response.statusCode, response.statusMessage);
+
+        this.trgSocket = socket;
 
         // HACK: force a flush of the HTTP header
         this.srcResponse._send('');
@@ -101,12 +169,36 @@ export default class HandlerTunnelDirect {
 
         this.srcSocket.resume();
 
-        // Setup bi-directional tunnel
-        //this.trgSocket.pipe(this.srcSocket);
-        //this.srcSocket.pipe(this.trgSocket);
+        // TODO: attach handlers to trgSocket
 
+
+        // Setup bi-directional tunnel
         this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
         this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
+
+
+        console.log('got connected!');
+
+
+
+
+/*
+        this.trgSocket.write(this.generateHttpConnect(), (err) => {
+
+            if (err) {
+                this.onTrgError(err);
+                return;
+            }
+
+            console.log('piping...');
+
+            // create tunnel
+
+
+            // Setup bi-directional tunnel
+            this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
+            this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
+        }); */
     }
 
     /**
@@ -115,6 +207,12 @@ export default class HandlerTunnelDirect {
      */
     onTrgClose() {
         this.log('Target connection closed');
+        this.removeListeners();
+        this.srcSocket.destroy();
+    }
+
+    onTrgAbort() {
+        this.log('Target aborted');
         this.removeListeners();
         this.srcSocket.destroy();
     }
@@ -158,6 +256,10 @@ export default class HandlerTunnelDirect {
             this.trgSocket.removeListener('close', this.onTrgClose);
             this.trgSocket.removeListener('end', this.onTrgEnd);
             this.trgSocket.removeListener('error', this.onTrgError);
+        }
+
+        if (this.trgRequest) {
+            this.trgRequest.removeAllListeners();
         }
     }
 
