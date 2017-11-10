@@ -12,13 +12,13 @@ export default class HandlerTunnelChain extends HandlerBase {
         super(options);
 
         if (!this.trgHost || !this.trgPort) throw new Error('The "trgHost" and "trgPort" options are required');
-        if (!this.proxyUrl) throw new Error('The "proxyUrl" option is required');
+        if (!this.proxyChainUrl) throw new Error('The "proxyChainUrl" option is required');
 
         this.bindHandlersToThis(['onTrgRequestConnect', 'onTrgRequestAbort', 'onTrgRequestError']);
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerTunnelChain[${this.proxyUrlRedacted} -> ${this.trgHost}:${this.trgPort}]: ${str}`);
+        if (this.verbose) console.log(`HandlerTunnelChain[${this.proxyChainUrlRedacted} -> ${this.trgHost}:${this.trgPort}]: ${str}`);
     }
 
     run() {
@@ -26,8 +26,8 @@ export default class HandlerTunnelChain extends HandlerBase {
 
         let options = {
             method: 'CONNECT',
-            host: this.proxyUrlParsed.hostname,
-            port: this.proxyUrlParsed.port,
+            host: this.proxyChainUrlParsed.hostname,
+            port: this.proxyChainUrlParsed.port,
             path: `${this.trgHost}:${this.trgPort}`,
             headers: {},
         };
@@ -77,8 +77,6 @@ export default class HandlerTunnelChain extends HandlerBase {
         // nullify the ServerResponse object, so that it can be cleaned
         // up before this socket proxying is completed
         this.srcResponse = null;
-
-        this.srcSocket.resume();
 
         // Setup bi-directional tunnel
         this.trgSocket.pipe(this.srcSocket);

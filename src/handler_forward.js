@@ -19,7 +19,7 @@ export default class HandlerForward extends HandlerBase {
         if (this.verbose) {
             const srcReq = this.srcRequest || {};
             if (!srcReq.method) console.log('WARNING: no method ???');
-            console.log(`HandlerForward[${this.proxyUrlRedacted ? this.proxyUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
+            console.log(`HandlerForward[${this.proxyChainUrlRedacted ? this.proxyChainUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
         }
     }
 
@@ -95,9 +95,9 @@ export default class HandlerForward extends HandlerBase {
 
 
         // If desired, send the request via proxy
-        if (this.proxyUrlParsed) {
-            requestOptions.hostname = requestOptions.host = this.proxyUrlParsed.hostname;
-            requestOptions.port = this.proxyUrlParsed.port;
+        if (this.proxyChainUrlParsed) {
+            requestOptions.hostname = requestOptions.host = this.proxyChainUrlParsed.hostname;
+            requestOptions.port = this.proxyChainUrlParsed.port;
 
             // HTTP requests to proxy contain the full URL in path, for example:
             // "GET http://www.example.com HTTP/1.1\r\n"
@@ -107,8 +107,6 @@ export default class HandlerForward extends HandlerBase {
             this.maybeAddProxyAuthorizationHeader(requestOptions.headers);
         }
 
-        this.srcSocket.resume();
-
         if (requestOptions.protocol !== 'http:') {
             // only "http://" is supported, "https://" should use CONNECT method
             this.fail(`Only HTTP protocol is supported (was ${requestOptions.protocol})`, 400);
@@ -117,7 +115,7 @@ export default class HandlerForward extends HandlerBase {
 
         this.log('Connecting...');
 
-        console.dir(requestOptions);
+        //console.dir(requestOptions);
 
         this.trgRequest = http.request(requestOptions);
         this.trgRequest.on('response', this.onTrgResponse);

@@ -10,7 +10,7 @@ import { parseUrl, redactParsedUrl, DEFAULT_PORT } from './tools';
  */
 export default class HandlerBase extends EventEmitter {
 
-    constructor({ srcRequest, srcResponse, trgHost, trgPort, verbose, proxyUrl }) {
+    constructor({ srcRequest, srcResponse, trgHost, trgPort, verbose, proxyChainUrl }) {
         super();
 
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
@@ -25,19 +25,19 @@ export default class HandlerBase extends EventEmitter {
         this.trgPort = trgPort || DEFAULT_PORT;
 
         this.verbose = !!verbose;
-        this.proxyUrl = proxyUrl;
+        this.proxyChainUrl = proxyChainUrl;
 
-        this.proxyUrlParsed = proxyUrl ? parseUrl(proxyUrl) : null;
-        this.proxyUrlRedacted = proxyUrl ? redactParsedUrl(this.proxyUrlParsed) : null;
+        this.proxyChainUrlParsed = proxyChainUrl ? parseUrl(proxyChainUrl) : null;
+        this.proxyChainUrlRedacted = proxyChainUrl ? redactParsedUrl(this.proxyChainUrlParsed) : null;
 
         // Indicates that source socket might have received some data already
         this.srcGotResponse = false;
 
         this.isDestroyed = false;
 
-        if (proxyUrl) {
-            if (!this.proxyUrlParsed.host || !this.proxyUrlParsed.port) throw new Error('Invalid "proxyUrl" option: URL must have host and port');
-            if (this.proxyUrlParsed.scheme !== 'http') throw new Error('Invalid "proxyUrl" option: URL must have "http" scheme');
+        if (proxyChainUrl) {
+            if (!this.proxyChainUrlParsed.host || !this.proxyChainUrlParsed.port) throw new Error('Invalid "proxyChainUrl" option: URL must have host and port');
+            if (this.proxyChainUrlParsed.scheme !== 'http') throw new Error('Invalid "proxyChainUrl" option: URL must have "http" scheme');
         }
 
         // Create ServerResponse for the client HTTP request if it doesn't exist
@@ -63,9 +63,6 @@ export default class HandlerBase extends EventEmitter {
         this.srcSocket.once('close', this.onSrcSocketClose);
         this.srcSocket.once('end', this.onSrcSocketEnd);
         this.srcSocket.once('error', this.onSrcSocketError);
-
-        // XXX: pause the socket during authentication so no data is lost
-        this.srcSocket.pause();
     }
 
     bindHandlersToThis(handlerNames) {
@@ -103,7 +100,7 @@ export default class HandlerBase extends EventEmitter {
     }
 
     maybeAddProxyAuthorizationHeader(headers) {
-        const parsed = this.proxyUrlParsed;
+        const parsed = this.proxyChainUrlParsed;
         if (parsed && parsed.username) {
             let auth = parsed.username;
             if (parsed.password) auth += ':' + parsed.password;

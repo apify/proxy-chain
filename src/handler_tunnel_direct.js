@@ -44,14 +44,11 @@ export default class HandlerTunnelDirect extends HandlerBase {
         // ServerResponse is no longer needed
         this.srcResponse = null;
 
-        this.srcSocket.resume();
-
         // Setup bi-directional tunnel
         this.trgSocket.pipe(this.srcSocket);
         this.srcSocket.pipe(this.trgSocket);
-
-        //this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
-        //this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
+        // this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
+        // this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
     }
 
     onTrgSocketClose() {

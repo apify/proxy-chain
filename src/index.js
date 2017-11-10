@@ -4,7 +4,7 @@
 import http from 'http';
 import proxy from 'proxy';
 import _ from 'underscore';
-import ProxyServer from './proxy_server';
+import { ProxyServer } from './proxy_server';
 import basicAuthParser from 'basic-auth-parser';
 
 let proxyServer;

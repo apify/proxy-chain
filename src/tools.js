@@ -109,6 +109,27 @@ export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') =
 };
 
 
+const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9\-]+) ([a-z0-9+\/=]+)$/i;
+
+export const parseProxyAuthorizationHeader = (header) => {
+    const matches = PROXY_AUTH_HEADER_REGEX.exec(header);
+    if (!matches) return null;
+
+    const auth = Buffer.from(matches[2], 'base64').toString();
+    if (!auth) return null;
+
+    // NOTE: don't allow empty username because authenticate() function in server returns username
+    const index = auth.indexOf(':');
+    if (index===0) return null;
+
+    return {
+        type: matches[1],
+        username: index >= 0 ? auth.substr(0, index) : auth,
+        password: index >= 0 ? auth.substr(index+1) : null,
+    };
+};
+
+
 /**
  * Works like Bash tee, but instead of passing output to file,
  * passes output to log

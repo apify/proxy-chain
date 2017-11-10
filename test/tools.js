@@ -1,7 +1,7 @@
 import _ from 'underscore';
 import urlModule from 'url';
 import { expect } from 'chai';
-import { parseUrl, redactUrl, parseHostHeader, isHopByHopHeader} from '../build/tools';
+import { parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, parseProxyAuthorizationHeader } from '../build/tools';
 
 /* global process, describe, it */
 
@@ -88,7 +88,7 @@ describe('tools.parseHostHeader()', () => {
         expect(parseHostHeader('a.b.c.d.e.f.g:1')).to.eql({ host: 'a.b.c.d.e.f.g', port: 1 });
     });
 
-    it('handles invalid input', () => {
+    it('works with invalid input', () => {
         expect(parseHostHeader(null)).to.eql(null);
         expect(parseHostHeader('')).to.eql(null);
         expect(parseHostHeader('bla bla')).to.eql(null);
@@ -108,8 +108,6 @@ describe('tools.parseHostHeader()', () => {
     });
 });
 
-
-
 describe('tools.isHopByHopHeader()', () => {
     it('works', () => {
         expect(isHopByHopHeader('Connection')).to.eql(true);
@@ -120,5 +118,36 @@ describe('tools.isHopByHopHeader()', () => {
         expect(isHopByHopHeader('Host')).to.eql(false);
         expect(isHopByHopHeader('Whatever')).to.eql(false);
         expect(isHopByHopHeader('')).to.eql(false);
+    });
+});
+
+
+const authStr = (type, usernameAndPassword) => {
+    return `${type} ${Buffer.from(usernameAndPassword).toString('base64')}`;
+};
+
+describe('tools.parseProxyAuthorizationHeader()', () => {
+    it('works with valid input', () => {
+        const parse = parseProxyAuthorizationHeader;
+
+        expect(parse(authStr('Basic', 'username:password'))).to.eql({ type: 'Basic', username: 'username', password: 'password' });
+        expect(parse(authStr('Basic', 'user1234:password567'))).to.eql({ type: 'Basic', username: 'user1234', password: 'password567' });
+        expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({ type: 'Basic', username: 'username', password: 'pass:with:many:colons' });
+        expect(parse(authStr('Basic', 'username:'))).to.eql({ type: 'Basic', username: 'username', password: '' });
+        expect(parse(authStr('Basic', 'username'))).to.eql({ type: 'Basic', username: 'username', password: null });
+        expect(parse(authStr('SCRAM-SHA-256', 'something:else'))).to.eql({ type: 'SCRAM-SHA-256', username: 'something', password: 'else' });
+    });
+
+    it('works with invalid input', () => {
+        const parse = parseProxyAuthorizationHeader;
+
+        expect(parse(null)).to.eql(null);
+        expect(parse('')).to.eql(null);
+        expect(parse('    ')).to.eql(null);
+        expect(parse('whatever')).to.eql(null);
+        expect(parse('bla bla bla')).to.eql(null);
+        expect(parse(authStr('Basic', ':'))).to.eql(null);
+        expect(parse(authStr('Basic', ':password'))).to.eql(null);
+        expect(parse('123124')).to.eql(null);
     });
 });

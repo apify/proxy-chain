@@ -42,7 +42,8 @@
   "dependencies": {
     "bluebird": "^3.5.1",
     "through": "^2.3.8",
-    "underscore": "^1.8.3"
+    "underscore": "^1.8.3",
+    "portastic": "^1.0.1"
   },
   "devDependencies": {
     "babel-cli": "^6.6.5",
