@@ -2,47 +2,31 @@ import http from 'http';
 import url from 'url';
 import _ from 'underscore';
 import { isHopByHopHeader, tee } from './tools';
+import HandlerBase from './handler_base';
 
+
+const DEFAULT_PORT = 80;
 
 /**
- * Represents a proxied request to a HTTP server.
+ * Represents a proxied request to a HTTP server, either direct or chained via another proxy.
  */
-export default class HandlerForwardDirect {
+export default class HandlerForward extends HandlerBase {
+    constructor(options) {
+        super(options);
 
-    constructor({ srcRequest, srcResponse, verbose }) {
-        this.srcRequest = srcRequest;
-        this.srcResponse = srcResponse;
-        this.srcSocket = srcRequest.socket;
-        this.verbose = verbose;
-
-        // Indicates that source connection might have received some data already
-        this.srcGotResponse = false;
-
-        // Bind all event handlers to 'this'
-        ['onSrcEnd', 'onSrcError', 'onSrcClose', 'onSrcResponseFinish', 'onTrgResponse', 'onTrgError'].forEach((evt) => {
-            this[evt] = this[evt].bind(this);
-        });
-
-        this.srcSocket.on('close', this.onSrcClose);
-        this.srcSocket.on('end', this.onSrcEnd);
-        this.srcSocket.on('error', this.onSrcError);
-
-        this.trgRequest = null;
-
-        this.srcResponse.on('finish', this.onSrcResponseFinish);
-
-        // XXX: pause the socket during authentication so no data is lost
-        this.srcSocket.pause();
+        this.bindHandlersToThis(['onTrgResponse', 'onTrgError']);
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerForwardDirect[${this.srcRequest.method} ${this.srcRequest.url}]: ${str}`);
+        if (this.verbose) {
+            const srcReq = this.srcRequest || {};
+            if (!srcReq.method) console.log('WARNING: no method ???');
+            console.log(`HandlerForward[${this.proxyUrlRedacted ? this.proxyUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
+        }
     }
 
     run() {
-        this.log('Connecting to target...');
-
-        this.srcSocket.resume();
+        this.log('Connecting...');
 
         const requestOptions = url.parse(this.srcRequest.url);
         requestOptions.method = this.srcRequest.method;
@@ -104,47 +88,40 @@ export default class HandlerForwardDirect {
          */
 
 
-        if (!requestOptions.port) requestOptions.port = 80;
+        if (!requestOptions.port) requestOptions.port = DEFAULT_PORT;
+
+
+        // If desired, send the request via proxy
+        if (this.proxyUrlParsed) {
+            requestOptions.hostname = requestOptions.host = this.proxyUrlParsed.hostname;
+            requestOptions.port = this.proxyUrlParsed.port;
+
+            if (this.proxyUrlParsed.username) {
+                let auth = this.proxyUrlParsed.username;
+                if (this.proxyUrlParsed.password) auth += ':' + this.proxyUrlParsed.password;
+                requestOptions.headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
+            }
+        }
+
+        this.srcSocket.resume();
 
         if (requestOptions.protocol !== 'http:') {
             // only "http://" is supported, "https://" should use CONNECT method
-            this.srcResponse.writeHead(400);
-            this.srcResponse.end('Only "http:" protocol prefix is supported\n');
+            this.fail(`Only HTTP protocol is supported (was ${requestOptions.protocol})`, 400);
             return;
         }
 
-        this.log('Proxying HTTP request');
+        this.log('Connecting...');
+
+        console.dir(requestOptions);
 
         this.trgRequest = http.request(requestOptions);
         this.trgRequest.on('response', this.onTrgResponse);
         this.trgRequest.on('error', this.onTrgError);
 
-        this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
-        //this.srcRequest.pipe(this.trgRequest);
+        //this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
+        this.srcRequest.pipe(this.trgRequest);
     }
-
-    onSrcEnd() {
-        this.log(`Source socket ended`);
-        this.removeListeners();
-    }
-
-    onSrcError(err) {
-        this.log(`Source socket failed: ${err.stack || err}`);
-    }
-
-    // if the client closes the connection prematurely,
-    // then close the upstream socket
-    onSrcClose() {
-        this.log('Source socket closed');
-        this.trgRequest.abort();
-        this.removeListeners();
-    }
-
-    onSrcResponseFinish () {
-        this.log('Source response finished');
-        this.removeListeners();
-    }
-
 
     onTrgResponse(response) {
         this.log(`Received response from target (${response.statusCode})`);
@@ -168,30 +145,16 @@ export default class HandlerForwardDirect {
 
 
     onTrgError(err) {
-        debug.proxyResponse('proxy HTTP request "error" event\n%s', err.stack || err);
-
-        this.removeListeners();
-
-        if (this.srcGotResponse) {
-            this.log('already sent a response, just destroying the socket...');
-            this.srcSocket.destroy();
-        } else if (err.code === 'ENOTFOUND') {
-            this.log('Target server not found, sending 404 to source');
-            this.srcResponse.writeHead(404);
-            this.srcResponse.end();
-        } else {
-            this.log('Unknown error, sending 500 to source');
-            this.srcResponse.writeHead(500);
-            this.srcResponse.end();
-        }
+        this.log(`Target socket failed: ${err.stack || err}`);
+        this.fail(err);
     };
 
-
     removeListeners() {
-        this.log('Removing listeners');
-        this.srcSocket.removeListener('close', this.onSrcClose);
-        this.srcSocket.removeListener('end', this.onSrcEnd);
-        this.srcSocket.removeListener('error', this.onSrcError);
-        this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
+        super.removeListeners();
+
+        if (this.trgRequest) {
+            this.trgRequest.on('response', this.onTrgResponse);
+            this.trgRequest.on('error', this.onTrgError);
+        }
     }
 }

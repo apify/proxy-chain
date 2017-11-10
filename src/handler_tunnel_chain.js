@@ -32,11 +32,7 @@ export default class HandlerTunnelChain extends HandlerBase {
             headers: {},
         };
 
-        if (this.proxyUrlParsed.username) {
-            let auth = this.proxyUrlParsed.username;
-            if (this.proxyUrlParsed.password) auth += ':' + this.proxyUrlParsed.password;
-            options.headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
-        }
+        this.maybeAddProxyAuthorizationHeader(options.headers);
 
         this.trgRequest = http.request(options);
 
@@ -98,7 +94,7 @@ export default class HandlerTunnelChain extends HandlerBase {
 
     onTrgRequestError(err) {
         this.log(`Target request failed: ${err.stack || err}`);
-        super.handleTargetError(err);
+        this.fail(err);
     }
 
     removeListeners() {

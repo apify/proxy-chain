@@ -1,8 +1,8 @@
 import http from 'http';
 import { parseHostHeader, parseUrl } from './tools';
 import Promise from 'bluebird';
+import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
-import HandlerForwardDirect from './handler_forward_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
 
 
@@ -72,45 +72,16 @@ export default class ProxyServer {
     onRequest(request, response) {
         this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
-        if (!this.targetProxyUrl) {
-            const handler = new HandlerForwardDirect({
-                srcRequest: request,
-                srcResponse: response,
-                verbose: this.verbose,
-            });
-            handler.run();
-            return;
-        } else {
-            const handler = new HandlerForwardChain({
-                srcRequest: request,
-                srcResponse: response,
-                trgProxyUrl: this.targetProxyUrl,
-                verbose: this.verbose,
-            });
-            handler.run();
-            return;
+        console.dir(request.headers);
 
-
-            /*
-            const host = request.headers['host'];
-            console.log('HOST');
-            console.dir(host);
-            const xxx = parseUrl(`http://${host}`);
-            console.dir(xxx);
-
-            const socket = request.socket;
-            //request.detachSocket(socket);
-
-            const handler = new HandlerTunnelChain({
-                srcRequest: request,
-                srcSocket: request.socket,
-                trgProxyUrl: this.targetProxyUrl,
-                trgHost: xxx.hostname,
-                trgPort: xxx.port || 80,
-                verbose: this.verbose,
-            });
-            handler.run(); */
-        }
+        const handler = new HandlerForward({
+            srcRequest: request,
+            srcResponse: response,
+            proxyUrl: this.targetProxyUrl,
+            verbose: this.verbose,
+        });
+        handler.run();
+        return;
     }
 
     /**

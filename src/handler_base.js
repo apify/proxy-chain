@@ -1,13 +1,17 @@
 import http from 'http';
+import EventEmitter from 'events';
 import { parseUrl, redactParsedUrl } from './tools';
 
 
 /**
- * Base class for proxy connection handlers.
+ * Base class for proxy connection handlers. It emits the `destroyed` event
+ * when the handler is no longer used.
  */
-export default class HandlerBase {
+export default class HandlerBase extends EventEmitter {
 
     constructor({ srcRequest, srcResponse, trgHost, trgPort, verbose, proxyUrl }) {
+        super();
+
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
 
         this.srcRequest = srcRequest;
@@ -15,7 +19,6 @@ export default class HandlerBase {
         this.srcSocket = srcRequest.socket;
 
         this.trgRequest = null;
-        this.trgResponse = null;
         this.trgSocket = null;
         this.trgHost = trgHost;
         this.trgPort = trgPort;
@@ -71,12 +74,10 @@ export default class HandlerBase {
     }
 
     // Abstract method, needs to be overridden
-    log() {
-    }
+    log() {}
 
     // Abstract method, needs to be overridden
-    run() {
-    }
+    run() {}
 
     // if the client closes the connection prematurely,
     // then close the upstream socket
@@ -100,23 +101,26 @@ export default class HandlerBase {
         this.removeListeners();
     }
 
-    handleTargetError(err) {
+    fail(err, statusCode) {
         this.removeListeners();
 
         if (this.srcGotResponse) {
             this.log('Source already received a response, just destroying the socket...');
             this.destroy();
+        } else if (statusCode) {
+            this.log(`${err}, responding with custom status code ${statusCode} to client`);
+            this.srcResponse.writeHead(statusCode);
+            this.srcResponse.end(`${err}`);
         } else if (err.code === 'ENOTFOUND') {
             this.log('Target server not found, sending 404 to source');
             this.srcResponse.writeHead(404);
-            this.srcResponse.end();
+            this.srcResponse.end('Target server not found');
         } else {
             this.log('Unknown error, sending 500 to source');
             this.srcResponse.writeHead(500);
-            this.srcResponse.end();
+            this.srcResponse.end('Internal server error');
         }
     };
-
 
     removeListeners() {
         this.log('Removing listeners');
@@ -160,6 +164,8 @@ export default class HandlerBase {
             }
 
             this.isDestroyed = true;
+
+            this.emit('destroyed');
         }
     }
 }

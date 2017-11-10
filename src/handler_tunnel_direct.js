@@ -68,7 +68,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
 
     onTrgSocketError(err) {
         this.log(`Target socket failed: ${err.stack || err}`);
-        super.handleTargetError(err);
+        super.fail(err);
     }
 
     removeListeners() {
