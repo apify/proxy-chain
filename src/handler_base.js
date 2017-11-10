@@ -1,6 +1,6 @@
 import http from 'http';
 import EventEmitter from 'events';
-import { parseUrl, redactParsedUrl } from './tools';
+import { parseUrl, redactParsedUrl, DEFAULT_PORT } from './tools';
 
 /* globals Buffer */
 
@@ -22,7 +22,7 @@ export default class HandlerBase extends EventEmitter {
         this.trgRequest = null;
         this.trgSocket = null;
         this.trgHost = trgHost;
-        this.trgPort = trgPort;
+        this.trgPort = trgPort || DEFAULT_PORT;
 
         this.verbose = !!verbose;
         this.proxyUrl = proxyUrl;

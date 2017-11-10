@@ -60,7 +60,7 @@ export default class ProxyServer {
         //console.dir(request.headers);
 
         const { host, port } = parseHostHeader(request.headers['host']);
-        if (!host || !port) {
+        if (!host) {
             socket.end('HTTP/1.1 400 Bad Request\r\n\r\nInvalid Host header!');
         }
 

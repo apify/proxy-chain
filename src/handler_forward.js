@@ -1,11 +1,9 @@
 import http from 'http';
 import url from 'url';
 import _ from 'underscore';
-import { isHopByHopHeader, tee } from './tools';
+import { isHopByHopHeader, tee, DEFAULT_PORT } from './tools';
 import HandlerBase from './handler_base';
 
-
-const DEFAULT_PORT = 80;
 
 /**
  * Represents a proxied request to a HTTP server, either direct or chained via another proxy.

@@ -1,7 +1,6 @@
 import net from 'net';
 import HandlerBase from './handler_base';
 
-
 /**
  * Represents a proxied connection from source to the target HTTPS server.
  */
@@ -9,7 +8,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
     constructor(options) {
         super(options);
 
-        if (!this.trgHost || !this.trgPort) throw new Error('The "trgHost" and "trgPort" options are required');
+        if (!this.trgHost)  throw new Error('The "trgHost" option is required');
 
         this.bindHandlersToThis(['onTrgSocketConnect', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError']);
     }
