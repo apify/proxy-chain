@@ -2,6 +2,7 @@ import http from 'http';
 import EventEmitter from 'events';
 import { parseUrl, redactParsedUrl } from './tools';
 
+/* globals Buffer */
 
 /**
  * Base class for proxy connection handlers. It emits the `destroyed` event
@@ -99,6 +100,15 @@ export default class HandlerBase extends EventEmitter {
     onSrcResponseFinish () {
         this.log('Source response finished');
         this.removeListeners();
+    }
+
+    maybeAddProxyAuthorizationHeader(headers) {
+        const parsed = this.proxyUrlParsed;
+        if (parsed && parsed.username) {
+            let auth = parsed.username;
+            if (parsed.password) auth += ':' + parsed.password;
+            headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
+        }
     }
 
     fail(err, statusCode) {

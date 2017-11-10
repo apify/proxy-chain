@@ -41,7 +41,12 @@ export default class HandlerForward extends HandlerBase {
             const headerName = this.srcRequest.rawHeaders[i];
             const headerValue = this.srcRequest.rawHeaders[i + 1];
 
-            if (isHopByHopHeader(headerName)) continue;
+            if (headerName === 'Connection' && headerValue === 'keep-alive') {
+                // Keep the "Connection: keep-alive" header, to reduce the chance that the server
+                // will detect we're not a browser and also to improve performance
+            } else if (isHopByHopHeader(headerName)) {
+                continue;
+            }
 
             /*
 
@@ -96,11 +101,12 @@ export default class HandlerForward extends HandlerBase {
             requestOptions.hostname = requestOptions.host = this.proxyUrlParsed.hostname;
             requestOptions.port = this.proxyUrlParsed.port;
 
-            if (this.proxyUrlParsed.username) {
-                let auth = this.proxyUrlParsed.username;
-                if (this.proxyUrlParsed.password) auth += ':' + this.proxyUrlParsed.password;
-                requestOptions.headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
-            }
+            // HTTP requests to proxy contain the full URL in path, for example:
+            // "GET http://www.example.com HTTP/1.1\r\n"
+            // So we need to replicate it here
+            requestOptions.path = this.srcRequest.url;
+
+            this.maybeAddProxyAuthorizationHeader(requestOptions.headers);
         }
 
         this.srcSocket.resume();

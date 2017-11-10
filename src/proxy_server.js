@@ -1,4 +1,5 @@
 import http from 'http';
+import _ from 'underscore';
 import { parseHostHeader, parseUrl } from './tools';
 import Promise from 'bluebird';
 import HandlerForward from './handler_forward';
@@ -38,6 +39,22 @@ export default class ProxyServer {
         socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
     }
 
+    onRequest(request, response) {
+        this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
+
+        console.log("MAIN REQUEST");
+        console.dir(_.pick(request, 'headers', 'url', 'method', 'httpVersion'));
+
+        const handler = new HandlerForward({
+            srcRequest: request,
+            srcResponse: response,
+            proxyUrl: this.targetProxyUrl,
+            verbose: this.verbose,
+        });
+        handler.run();
+        return;
+    }
+
     onConnect(request, socket, head) {
         this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
         //console.dir(request.headers);
@@ -69,20 +86,6 @@ export default class ProxyServer {
         }
     }
 
-    onRequest(request, response) {
-        this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
-
-        console.dir(request.headers);
-
-        const handler = new HandlerForward({
-            srcRequest: request,
-            srcResponse: response,
-            proxyUrl: this.targetProxyUrl,
-            verbose: this.verbose,
-        });
-        handler.run();
-        return;
-    }
 
     /**
      *
@@ -102,7 +105,7 @@ export default class ProxyServer {
     }
 
     close(closeConnections, callback) {
-        // TODO: keep track of all handlers and add close them if closeConnections=true
+        // TODO: keep track of all handlers and close them if closeConnections=true
         if (this.server) {
             const server = this.server;
             this.server = null;
