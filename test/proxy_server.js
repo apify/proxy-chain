@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import _ from 'underscore';
 import { expect, assert } from 'chai';
 import proxy from 'proxy';
@@ -9,262 +10,180 @@ import Promise from 'bluebird';
 import request from 'request';
 
 import { parseUrl } from '../build/tools';
-//import { ProxyChain, PROXY_CHAIN } from '../build/proxy_chain';
+import { ProxyServer } from '../build/proxy_server';
+import { TargetServer } from './target_server';
 
 /* globals process */
 
-/*
-const ORIG_PROXY_CHAIN = _.clone(PROXY_CHAIN);
 
-let proxyServer;
-let proxyPort; // eslint-disable-line no-unused-vars
-const proxyAuth = { scheme: 'Basic', username: 'username', password: 'password' };
-let wasProxyCalled = false; // eslint-disable-line no-unused-vars
 
-// Setup local proxy server for the tests
-before(() => {
-    // Find free port for the proxy
-    return portastic.find({ min: 50000, max: 50100 }).then((ports) => {
-        return new Promise((resolve, reject) => {
-            const httpServer = http.createServer();
 
-            // Setup proxy authorization
-            httpServer.authenticate = function (req, fn) {
-                // parse the "Proxy-Authorization" header
-                const auth = req.headers['proxy-authorization'];
-                if (!auth) {
-                    // optimization: don't invoke the child process if no
-                    // "Proxy-Authorization" header was given
-                    // console.log('not Proxy-Authorization');
-                    return fn(null, false);
-                }
-                const parsed = basicAuthParser(auth);
-                const isEqual = _.isEqual(parsed, proxyAuth);
-                // console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, proxyAuth, isEqual);
-                if (isEqual) wasProxyCalled = true;
-                fn(null, isEqual);
-            };
 
-            httpServer.on('error', reject);
+const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 
-            proxyServer = proxy(httpServer);
-            proxyServer.listen(ports[0], () => {
-                proxyPort = proxyServer.address().port;
-                resolve();
-            });
-        });
-    });
-});
-
-after(function () {
-    this.timeout(60 * 1000);
-    if (proxyServer) return Promise.promisify(proxyServer.close).bind(proxyServer)();
-});
+// Enable self-signed certificates
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 
 const requestPromised = (opts) => {
-    // console.log('requestPromised');
-    // console.dir(opts);
     return new Promise((resolve, reject) => {
         request(opts, (error, response, body) => {
             if (error) return reject(error);
-            if (response.statusCode !== 200) {
-                console.log('ERROR VOLE');
-                // console.dir(response);
-                console.dir(body);
-
-                return reject(new Error(`Received invalid response code: ${response.statusCode}`));
-            }
-            if (opts.expectBodyContainsText) expect(body).to.contain(opts.expectBodyContainsText);
-            resolve();
+            resolve(response, body);
         });
     });
 };
 
 
-describe('ProxyChain', function () {
-    // Need larger timeout for Travis CI
-    this.timeout(1000 * 1000);
+const createTestSuite = ({ useSsl, useProxyChain, proxyChainAuth }) => {
+    return function() {
+        this.timeout(30 * 1000);
 
-    it('throws nice error when "squid" command not found', () => {
-        PROXY_CHAIN.SQUID_CMD = 'command-that-does-not-exist';
-        const pc = new ProxyChain(parseUrl('http://whatever.com:1234'));
-        return pc.start()
-        .then(() => {
-            assert.fail();
-        })
-        .catch((err) => {
-            expect(err.message).to.contain('command not found in the PATH');
-        })
-        .finally(() => {
-            Object.assign(PROXY_CHAIN, ORIG_PROXY_CHAIN);
-        });
-    });
+        let freePorts;
 
-    it('throws an error when "squid" command exits with non-zero code', () => {
-        PROXY_CHAIN.SQUID_CMD = 'false';
-        const pc = new ProxyChain(parseUrl('http://whatever.com:1234'));
-        return pc.start()
-        .then(() => {
-            assert.fail();
-        })
-        .catch((err) => {
-            expect(err.message).to.contain('exited unexpectedly');
-        })
-        .finally(() => {
-            Object.assign(PROXY_CHAIN, ORIG_PROXY_CHAIN);
-        });
-    });
+        let targetServerPort;
+        let targetServer;
 
-    it('throws nice error when no more free ports available', () => {
-        // Testing proxy is already listening on proxyPort
-        PROXY_CHAIN.PORT_FROM = proxyPort;
-        PROXY_CHAIN.PORT_TO = proxyPort;
-        const pc = new ProxyChain(parseUrl('http://whatever.com:1234'));
-        return pc.start()
-        .then(() => {
-            assert.fail();
-        })
-        .catch((err) => {
-            expect(err.message).to.contain('There are no more free ports');
-        })
-        .finally(() => {
-            Object.assign(PROXY_CHAIN, ORIG_PROXY_CHAIN);
-        });
-    });
+        let proxyChainServer;
+        let proxyChainPort;
+        let proxyChainWasCalled = false;
 
-    it('throws for invalid args', () => {
-        assert.throws(() => { new ProxyChain(null); }, Error); // eslint-disable-line no-new
-    });
+        let mainProxyServer;
+        let mainProxyServerPort;
 
-    it('throws for unsupported proxy protocols', () => {
-        assert.throws(() => { new ProxyChain(parseUrl('socks://whatever.com')); }, Error); // eslint-disable-line no-new
-        assert.throws(() => { new ProxyChain(parseUrl('https://whatever.com')); }, Error); // eslint-disable-line no-new
-        assert.throws(() => { new ProxyChain(parseUrl('socks5://whatever.com')); }, Error); // eslint-disable-line no-new
-    });
+        const proto = useSsl ? 'https' : 'http';
 
-    it('throws for invalid URLs', () => {
-        assert.throws(() => { new ProxyChain(parseUrl('://whatever.com')); }, Error); // eslint-disable-line no-new
-        assert.throws(() => { new ProxyChain(parseUrl('https://whatever.com')); }, Error); // eslint-disable-line no-new
-        assert.throws(() => { new ProxyChain(parseUrl('socks5://whatever.com')); }, Error); // eslint-disable-line no-new
-        assert.throws(() => { new ProxyChain(parseUrl('http://no-port-provided')); }, Error); // eslint-disable-line no-new
-    });
+        before(() => {
+            return portastic.find({ min: 50000, max: 50100 }).then((ports) => {
+                freePorts = ports;
 
-    it('works well', () => {
-        // TODO: test maybe 5 proxies at the same time
-        const proxyChain1 = new ProxyChain(parseUrl(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`));
-        const proxyChain2 = new ProxyChain(parseUrl(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`));
-        let parsedChildProxyUrl1;
-        let parsedChildProxyUrl2;
-        return Promise.resolve()
-        .then(() => {
-            return Promise.all([proxyChain1.start(), proxyChain2.start()]);
-        })
-        .then((results) => {
-            parsedChildProxyUrl1 = results[0];
-            parsedChildProxyUrl2 = results[1];
-            expect(parsedChildProxyUrl1.port).to.not.equal(proxyPort);
-            expect(parsedChildProxyUrl2.port).to.not.equal(proxyPort);
-            expect(parsedChildProxyUrl1.port).to.not.equal(parsedChildProxyUrl2.port);
+                // Setup target HTTP server
+                targetServerPort = freePorts[0];
+                targetServer = new TargetServer({ port: targetServerPort, useSsl, sslKey, sslCrt });
+                return targetServer.listen();
+            }).then(() => {
+                // Setup proxy chain server
+                if (useProxyChain) {
+                    return new Promise((resolve, reject) => {
+                        const proxyChainHttpServer = http.createServer();
 
-            // Test call through proxy 1
-            wasProxyCalled = false;
-            return requestPromised({
-                uri: 'https://www.example.com', // Test HTTPS
-                proxy: `${parsedChildProxyUrl1.protocol}//${parsedChildProxyUrl1.host}`,
-                expectBodyContainsText: 'Example Domain',
+                        // Setup proxy authorization
+                        proxyChainHttpServer.authenticate = function (req, fn) {
+                            // parse the "Proxy-Authorization" header
+                            const auth = req.headers['proxy-authorization'];
+                            if (!auth) {
+                                // optimization: don't invoke the child process if no
+                                // "Proxy-Authorization" header was given
+                                // console.log('not Proxy-Authorization');
+                                return fn(null, false);
+                            }
+                            const parsed = basicAuthParser(auth);
+                            const isEqual = _.isEqual(parsed, proxyChainAuth);
+                            // console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, proxyAuth, isEqual);
+                            if (isEqual) proxyChainWasCalled = true;
+                            fn(null, isEqual);
+                        };
+
+                        proxyChainHttpServer.on('error', (err) => {
+                            console.dir(err);
+                            throw new Error('Proxy chain HTTP server failed');
+                        });
+
+                        proxyChainPort = freePorts[1];
+                        proxyChainServer = proxy(proxyChainHttpServer);
+                        proxyChainServer.listen(proxyChainPort, (err) => {
+                            if (err) return reject(err);
+                            resolve();
+                        });
+                    });
+                }
+            }).then(() => {
+                // Setup main proxy server
+                mainProxyServerPort = freePorts[2];
+
+                const opts = {
+                    port: mainProxyServerPort,
+                    verbose: true,
+                    targetProxyUrl: 'http://username:password@localhost:8001'
+                };
+
+                mainProxyServer = new ProxyServer(opts);
+
+                return mainProxyServer.listen();
             });
-        })
-        .then(() => {
-            expect(wasProxyCalled).to.equal(true);
-        })
-        .then(() => {
-            // Test call through proxy 2
-            wasProxyCalled = false;
-            return requestPromised({
-                uri: 'http://www.example.com', // Test HTTP
-                proxy: `${parsedChildProxyUrl2.protocol}//${parsedChildProxyUrl2.host}`,
-                expectBodyContainsText: 'Example Domain',
-            });
-        })
-        .then(() => {
-            expect(wasProxyCalled).to.equal(true);
-        })
-        .then(() => {
-            // Test again call through proxy 1
-            wasProxyCalled = false;
-            return requestPromised({
-                uri: 'http://www.example.com',
-                proxy: `${parsedChildProxyUrl1.protocol}//${parsedChildProxyUrl1.host}`,
-                expectBodyContainsText: 'Example Domain',
-            });
-        })
-        .then(() => {
-            expect(wasProxyCalled).to.equal(true);
-        })
-        .then(() => {
-            proxyChain1.shutdown();
-            proxyChain2.shutdown();
-
-            // Test these can be called multiple times
-            proxyChain1.shutdown();
-            proxyChain2.shutdown();
         });
-    });
 
-    it('fails with invalid proxy credentials', () => {
-        const proxyChain = new ProxyChain(parseUrl(`http://username:bad-password@127.0.0.1:${proxyPort}`));
-
-        return Promise.resolve()
-        .then(() => {
-            return proxyChain.start();
-        })
-        .then((parsedChildProxyUrl) => {
-            expect(parsedChildProxyUrl.port).to.not.equal(proxyPort);
-            wasProxyCalled = false;
-            return requestPromised({
-                uri: 'https://www.example.com',
-                proxy: `${parsedChildProxyUrl.protocol}//${parsedChildProxyUrl.host}`,
-                expectBodyContainsText: 'Example Domain',
-            });
-        })
-        .then(() => {
-            assert.fail();
-        })
-        .catch((err) => {
-            expect(err.message).to.contains('tunneling socket could not be established');
-            expect(wasProxyCalled).to.equal(false);
-        })
-        .then(() => {
-            proxyChain.shutdown();
+        it('handles simple GET to target server directly', () => {
+            const options = {
+                url: `${proto}://localhost:${targetServerPort}/hello-world`,
+                key: sslKey,
+            };
+            return requestPromised(options)
+                .then((response) => {
+                    expect(response.body).to.eql('Hello world!');
+                    expect(response.statusCode).to.eql(200);
+                });
         });
-    });
 
-    it('cleans up properly after shutdown', () => {
-        const proxyChain = new ProxyChain(parseUrl(`http://any:thing@127.0.0.1:${proxyPort}`));
-        let tmpDir;
+        it('handles simple GET', () => {
+            after(() => { proxyChainWasCalled = false; });
+            const options = {
+                url: `${proto}://localhost:${targetServerPort}/hello-world`,
+                key: sslKey,
+                proxy: `http://localhost:${mainProxyServerPort}`,
+            };
+            return requestPromised(options)
+                .then((response) => {
+                    expect(response.body).to.eql('Hello world!');
+                    expect(response.statusCode).to.eql(200);
 
-        return Promise.resolve()
-        .then(() => {
-            return proxyChain.start();
-        })
-        .then(() => {
-            tmpDir = proxyChain.tmpDir;
-            proxyChain.shutdown();
-        })
-        .then(() => {
-            return new Promise((resolve) => {
-                setTimeout(resolve, 100);
-            });
-        })
-        .then(() => {
-            expect(fs.existsSync(tmpDir)).to.equal(false);
-            expect(proxyChain._isSquidRunning()).to.equal(false);
+                    if (useProxyChain) {
+                        expect(proxyChainWasCalled).to.eql(true);
+                    }
+                });
         });
-    });
 
-    after(() => {
-        Object.assign(PROXY_CHAIN, ORIG_PROXY_CHAIN);
-    });
-});
-*/
+        after(() => {
+            // Shutdown all servers
+            return Promise.resolve().then(() => {
+                if (mainProxyServer) {
+                    return mainProxyServer.close();
+                }
+            })
+            .then(() => {
+                if (proxyChainServer) {
+                    return Promise.promisify(proxyChainServer.close).bind(proxyChainServer)();
+                }
+            })
+            .then(() => {
+                if (targetServer) {
+                    return targetServer.close();
+                }
+            });
+        });
+    };
+};
+
+
+describe('ProxyServer - HTTP / Direct', createTestSuite({
+    useSsl: false,
+    useProxyChain: false,
+}));
+
+describe('ProxyServer - HTTP / Proxy chain', createTestSuite({
+    useSsl: false,
+    useProxyChain: true,
+    proxyChainAuth: { scheme: 'Basic', username: 'username', password: 'password' },
+}));
+
+describe('ProxyServer - HTTPS / Direct', createTestSuite({
+    useSsl: true,
+    useProxyChain: false
+}));
+
+describe('ProxyServer - HTTPS / Proxy chain', createTestSuite({
+    useSsl: true,
+    useProxyChain: true,
+    proxyChainAuth: { scheme: 'Basic', username: 'username', password: 'password' },
+}));

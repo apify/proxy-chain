@@ -10,6 +10,7 @@ import basicAuthParser from 'basic-auth-parser';
 let proxyServer;
 const proxyAuth = { scheme: 'Basic', username: 'username', password: 'password' };
 
+
 new Promise((resolve, reject) => {
     const httpServer = http.createServer();
 

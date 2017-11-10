@@ -11,7 +11,7 @@ const DEFAULT_PROXY_SERVER_PORT = 8000;
 
 const REQUEST_ERROR_NAME = 'RequestError';
 
-export default class RequestError extends Error {
+export class RequestError extends Error {
     constructor(message, statusCode, headers) {
         super(message);
         this.name = REQUEST_ERROR_NAME;
@@ -251,13 +251,12 @@ export class ProxyServer {
             .nodeify(callback);
     }
 
-
-    close(closeConnections, callback) {
+    close(keepConnections, callback) {
         // TODO: keep track of all handlers and close them if closeConnections=true
         if (this.server) {
             const server = this.server;
             this.server = null;
-            return Promise.promisify(this.server.close)().nodeify(callback);
+            return Promise.promisify(server.close).bind(server)().nodeify(callback);
         }
     }
 }
