@@ -9,11 +9,31 @@ import basicAuthParser from 'basic-auth-parser';
 import Promise from 'bluebird';
 import request from 'request';
 
-import { parseUrl } from '../build/tools';
+import { parseUrl, parseProxyAuthorizationHeader } from '../build/tools';
 import { ProxyServer } from '../build/proxy_server';
 import { TargetServer } from './target_server';
 
 /* globals process */
+
+/*
+
+TODO - add following tests:
+- websockets
+- lot of small files
+- large files (direct / stream)
+- various response types
+- pages with basic auth
+- invalid chain proxy auth
+- connection to non-existent server
+- ensure no Via and X-Forwarded-For headers are added
+- ensure hop-by-hop headers are not passed
+
+- test chain = main proxy lopp
+
+- test authRealm
+
+- test memory is not leaking - run GC before and after test, mem size should be roughly the same
+*/
 
 
 const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
@@ -83,9 +103,10 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useProxyChain, p
                                 // console.log('not Proxy-Authorization');
                                 return fn(null, false);
                             }
-                            const parsed = basicAuthParser(auth);
+
+                            const parsed = parseProxyAuthorizationHeader(auth);
                             const isEqual = _.isEqual(parsed, proxyChainAuth);
-                            console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, proxyAuth, isEqual);
+                            console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, proxyChainAuth, isEqual);
                             if (isEqual) proxyChainWasCalled = true;
                             fn(null, isEqual);
                         };
@@ -110,12 +131,30 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useProxyChain, p
 
                     const opts = {
                         port: mainProxyServerPort,
-                        verbose: true,
+                        verbose: false,
                     };
+
+                    if (mainProxyAuth) {
+                        opts.authFunction = ({ request, username, password }) => {
+                            return mainProxyAuth.username === username
+                                && mainProxyAuth.password === password;
+                        }
+                    }
 
                     if (useProxyChain) {
                         opts.proxyChainUrlFunction = ({ request, username, hostname, port, protocol }) => {
-                            return Promise.resolve(`http://${proxyChainAuth ? proxyChainAuth + '@' : ''}localhost:${proxyChainPort}`);
+                            if (mainProxyAuth
+                                && (mainProxyAuth.username !== username || mainProxyAuth.hostname !== hostname)) {
+                                throw new Error('proxyChainUrlFunction() didn\'t receive correct username/password?!');
+                            }
+
+                            let auth = '';
+                            if (proxyChainAuth) {
+                                auth = proxyChainAuth.username;
+                                if (proxyChainAuth.password) auth += `:${proxyChainAuth.password}`;
+                                auth += '@';
+                            }
+                            return Promise.resolve(`http://${auth}localhost:${proxyChainPort}`);
                         };
                     }
 
@@ -126,25 +165,54 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useProxyChain, p
             }).then(() => {
                 // Generate URLs
                 baseUrl = `${useSsl ? 'https' : 'http'}://localhost:${targetServerPort}`;
-                if (useMainProxy) mainProxyUrl = `http://${mainProxyAuth ? mainProxyAuth + '@' : ''}localhost:${mainProxyServerPort}`;
+
+                if (useMainProxy) {
+                    let auth = '';
+                    if (mainProxyAuth) {
+                        auth = mainProxyAuth.username;
+                        if (mainProxyAuth.password) auth += `:${proxyChainAuth.password}`;
+                        auth += '@';
+                    }
+                    mainProxyUrl = `http://${auth}localhost:${mainProxyServerPort}`;
+                }
             });
         });
 
-        it('handles GET /hello-world', () => {
-            after(() => { proxyChainWasCalled = false; });
+        it('handles simple GET request', () => {
             const opts = getRequestOpts('/hello-world');
-            console.log('REQUEST OPTIONS');
-            console.dir(_.omit(opts, 'key'));
             return requestPromised(opts)
                 .then((response) => {
                     expect(response.body).to.eql('Hello world!');
                     expect(response.statusCode).to.eql(200);
-
-                    if (useProxyChain) {
-                        expect(proxyChainWasCalled).to.eql(true);
-                    }
                 });
         });
+
+        it('handles 301 redirect', () => {
+            const opts = getRequestOpts('/redirect-to-hello-world');
+            return requestPromised(opts)
+                .then((response) => {
+                    expect(response.body).to.eql('Hello world!');
+                    expect(response.statusCode).to.eql(200);
+                });
+        });
+
+        if (useProxyChain) {
+            it('really called the proxy chain', () => {
+                expect(proxyChainWasCalled).to.eql(true);
+            });
+        }
+
+        if (useMainProxy) {
+            it('returns 400 for direct connection', () => {
+                const opts = {
+                    url: `${mainProxyUrl}`,
+                };
+                return requestPromised(opts)
+                    .then((response) => {
+                        expect(response.statusCode).to.eql(400);
+                    });
+            });
+        }
 
         after(() => {
             // Shutdown all servers
@@ -168,44 +236,54 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useProxyChain, p
 };
 
 // Test direct connection to ensure our tests are correct
-describe('HTTP -> Target', createTestSuite({
+describe('ProxyServer (HTTP -> Target)', createTestSuite({
     useSsl: false,
     useMainProxy: false,
     useProxyChain: false,
 }));
 
-describe('HTTP -> Proxy -> Target', createTestSuite({
+describe('ProxyServer (HTTP -> Proxy -> Target)', createTestSuite({
     useSsl: false,
     useMainProxy: true,
     useProxyChain: false,
 }));
 
-/*
-
-describe('HTTP -> Proxy -> Proxy (with auth) -> Target', createTestSuite({
+describe('ProxyServer (HTTP -> Proxy -> Proxy with username:password -> Target)', createTestSuite({
     useSsl: false,
     useMainProxy: true,
     useProxyChain: true,
-    proxyChainAuth: { scheme: 'Basic', username: 'username', password: 'password' },
+    proxyChainAuth: { type: 'Basic', username: 'username', password: 'password' },
 }));
 
-describe('HTTPS -> Target', createTestSuite({
+describe('ProxyServer (HTTP -> Proxy -> Proxy with username -> Target)', createTestSuite({
+    useSsl: false,
+    useMainProxy: true,
+    useProxyChain: true,
+    proxyChainAuth: { type: 'Basic', username: 'username', password: null },
+}));
+
+describe('ProxyServer (HTTPS -> Target)', createTestSuite({
     useSsl: true,
     useMainProxy: false,
     useProxyChain: false,
 }));
 
-describe('HTTPS -> Proxy -> Proxy -> Target', createTestSuite({
+describe('ProxyServer (HTTPS -> Proxy -> Proxy -> Target)', createTestSuite({
     useSsl: true,
     useMainProxy: true,
     useProxyChain: false
 }));
 
-describe('HTTPS -> Proxy -> Proxy (with auth) -> Target', createTestSuite({
+describe('ProxyServer (HTTPS -> Proxy -> Proxy with username:password -> Target)', createTestSuite({
     useSsl: true,
     useMainProxy: true,
     useProxyChain: true,
-    proxyChainAuth: { scheme: 'Basic', username: 'username', password: 'password' },
+    proxyChainAuth: { type: 'Basic', username: 'username', password: 'password' },
 }));
 
-*/
+describe('ProxyServer (HTTPS -> Proxy -> Proxy with username -> Target)', createTestSuite({
+    useSsl: true,
+    useMainProxy: true,
+    useProxyChain: true,
+    proxyChainAuth: { type: 'Basic', username: 'username', password: null },
+}));

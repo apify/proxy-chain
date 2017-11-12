@@ -228,6 +228,7 @@ export class ProxyServer {
                 };
                 return this.proxyChainUrlFunction(funcOpts)
                     .then((proxyChainUrl) => {
+                        // console.log("proxyChainUrl: " + proxyChainUrl);
                         result.proxyChainUrl = proxyChainUrl;
                         return result;
                     });

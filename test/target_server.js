@@ -11,10 +11,12 @@ import Promise from 'bluebird';
 export class TargetServer {
     constructor({ port, useSsl, sslKey, sslCrt }) {
         this.port = port;
+        this.useSsl = useSsl;
 
         this.app = express();
 
         this.app.get('/hello-world', this.getHelloWorld.bind(this));
+        this.app.get('/redirect-to-hello-world', this.getRedirectToHelloWorld.bind(this));
         this.app.all('*', this.handleHttpRequest.bind(this));
 
         if (useSsl) {
@@ -35,6 +37,12 @@ export class TargetServer {
     getHelloWorld(request, response) {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         response.end('Hello world!');
+    }
+
+    getRedirectToHelloWorld(request, response) {
+        const location = `${this.useSsl ? 'https' : 'http'}://localhost:${this.port}/hello-world`;
+        response.writeHead(301, { 'Content-Type': 'text/plain', 'Location': location });
+        response.end();
     }
 
     handleHttpRequest(request, response) {
