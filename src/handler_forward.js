@@ -17,7 +17,7 @@ export default class HandlerForward extends HandlerBase {
         if (this.verbose) {
             const srcReq = this.srcRequest || {};
             if (!srcReq.method) console.log('WARNING: no method ???');
-            console.log(`HandlerForward[${this.proxyChainUrlRedacted ? this.proxyChainUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
+            console.log(`HandlerForward[${this.chainedProxyUrlRedacted ? this.chainedProxyUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
         }
     }
 
@@ -89,9 +89,9 @@ export default class HandlerForward extends HandlerBase {
          */
 
         // If desired, send the request via proxy
-        if (this.proxyChainUrlParsed) {
-            reqOpts.hostname = reqOpts.host = this.proxyChainUrlParsed.hostname;
-            reqOpts.port = this.proxyChainUrlParsed.port;
+        if (this.chainedProxyUrlParsed) {
+            reqOpts.hostname = reqOpts.host = this.chainedProxyUrlParsed.hostname;
+            reqOpts.port = this.chainedProxyUrlParsed.port;
 
             // HTTP requests to proxy contain the full URL in path, for example:
             // "GET http://www.example.com HTTP/1.1\r\n"

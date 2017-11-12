@@ -9,7 +9,7 @@ import { parseUrl, redactParsedUrl } from './tools';
  * when the handler is no longer used.
  */
 export default class HandlerBase extends EventEmitter {
-    constructor({ srcRequest, srcResponse, trgParsed, verbose, proxyChainUrl }) {
+    constructor({ srcRequest, srcResponse, trgParsed, verbose, chainedProxyUrl }) {
         super();
 
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
@@ -25,22 +25,22 @@ export default class HandlerBase extends EventEmitter {
         this.trgParsed.port = this.trgParsed.port || DEFAULT_TARGET_PORT;
 
         this.verbose = !!verbose;
-        this.proxyChainUrl = proxyChainUrl;
+        this.chainedProxyUrl = chainedProxyUrl;
 
-        this.proxyChainUrlParsed = proxyChainUrl ? parseUrl(proxyChainUrl) : null;
-        this.proxyChainUrlRedacted = proxyChainUrl ? redactParsedUrl(this.proxyChainUrlParsed) : null;
+        this.chainedProxyUrlParsed = chainedProxyUrl ? parseUrl(chainedProxyUrl) : null;
+        this.chainedProxyUrlRedacted = chainedProxyUrl ? redactParsedUrl(this.chainedProxyUrlParsed) : null;
 
         // Indicates that source socket might have received some data already
         this.srcGotResponse = false;
 
         this.isDestroyed = false;
 
-        if (proxyChainUrl) {
-            if (!this.proxyChainUrlParsed.hostname || !this.proxyChainUrlParsed.port) {
-                throw new Error('Invalid "proxyChainUrl" option: URL must have hostname and port');
+        if (chainedProxyUrl) {
+            if (!this.chainedProxyUrlParsed.hostname || !this.chainedProxyUrlParsed.port) {
+                throw new Error('Invalid "chainedProxyUrl" option: URL must have hostname and port');
             }
-            if (this.proxyChainUrlParsed.scheme !== 'http') {
-                throw new Error('Invalid "proxyChainUrl" option: URL must have the "http" scheme');
+            if (this.chainedProxyUrlParsed.scheme !== 'http') {
+                throw new Error('Invalid "chainedProxyUrl" option: URL must have the "http" scheme');
             }
         }
 
@@ -104,7 +104,7 @@ export default class HandlerBase extends EventEmitter {
     }
 
     maybeAddProxyAuthorizationHeader(headers) {
-        const parsed = this.proxyChainUrlParsed;
+        const parsed = this.chainedProxyUrlParsed;
         if (parsed && parsed.username) {
             let auth = parsed.username;
             if (parsed.password) auth += ':' + parsed.password;

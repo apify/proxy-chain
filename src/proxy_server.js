@@ -8,13 +8,16 @@ import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
 
-// TODO: Implement this requirement from rfc7230
-// A proxy MUST forward unrecognized header fields unless the field-name
+
+// TODO:
+// - Fail gracefully if target proxy fails (invalid credentials or non-existent)
+// - Implement this requirement from rfc7230
+// "A proxy MUST forward unrecognized header fields unless the field-name
 // is listed in the Connection header field (Section 6.1) or the proxy
 // is specifically configured to block, or otherwise transform, such
 // fields.  Other recipients SHOULD ignore unrecognized header fields.
 // These requirements allow HTTP's functionality to be enhanced without
-// requiring prior update of deployed intermediaries.
+// requiring prior update of deployed intermediaries."
 
 const DEFAULT_AUTH_REALM = 'Proxy';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
@@ -42,14 +45,15 @@ export class ProxyServer {
      * @param [options.authFunction] Custom function to authenticate proxy requests.
      * It accepts a single parameter which is an object:
      * `{ request: Object, username: String, password: String }`
-     * and returns a promise resolving to a Boolean value.
+     * and returns a Boolean value or promise resolving to a Boolean value indicating
+     * that authentication succeeded.
      * If `authFunction` is not set, the proxy server will not require any authentication.
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header. By default it's `Proxy`.
-     * @param [options.proxyChainUrlFunction] Custom function that provides the proxy to chain to.
+     * @param [options.chainedProxyUrlFunction] Custom function that provides the proxy to chain to.
      * It accepts a single parameter which is an object:
      * `{ request: Object, username: String, password: String, hostname: String, port: Number, isHttp: Boolean }`
-     * and returns a promise resolving to a String value with the chained proxy URL.
-     * If the result is false-ish value, the request will be proxied directly to the target host.
+     * and returns a String or promise resolving to a String value with the chained proxy URL.
+     * If the result is a false-ish value, the request will be proxied directly to the target host.
      * @param [options.verbose] If true, the server logs
      */
     constructor(options) {
@@ -58,7 +62,7 @@ export class ProxyServer {
         this.port = options.port || DEFAULT_PROXY_SERVER_PORT;
         this.authFunction = options.authFunction;
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
-        this.proxyChainUrlFunction = options.proxyChainUrlFunction;
+        this.chainedProxyUrlFunction = options.chainedProxyUrlFunction;
         this.verbose = !!options.verbose;
 
         this.server = http.createServer();
@@ -108,7 +112,7 @@ export class ProxyServer {
 
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
-                const handler = handlerOpts.proxyChainUrl
+                const handler = handlerOpts.chainedProxyUrl
                     ? new HandlerTunnelChain(handlerOpts)
                     : new HandlerTunnelDirect(handlerOpts);
                 handler.run();
@@ -132,7 +136,7 @@ export class ProxyServer {
         let result = {
             srcRequest: request,
             trgParsed: null,
-            proxyChainUrl: null,
+            chainedProxyUrl: null,
             verbose: this.verbose,
         };
 
@@ -174,7 +178,7 @@ export class ProxyServer {
                 result.trgParsed.port = result.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using the provided authFunction (if provided)
-                if (!this.authFunction) return null;
+                if (!this.authFunction) return true;
 
                 // Pause the socket so that no data is lost
                 socket.pause();
@@ -200,18 +204,18 @@ export class ProxyServer {
                     authFuncOpts.password = password = auth.password
                 }
 
-                return this.authFunction(authFuncOpts)
-                    .then((isAuthenticated) => {
-                        // If not authenticated, request client to authenticate
-                        if (!isAuthenticated) {
-                            const headers = { 'Proxy-Authenticate': `Basic realm="${this.authRealm}"` };
-                            throw new RequestError('Credential required.', 407, headers);
-                        }
-                    });
+                // User function returns a result directly or a promise
+                return this.authFunction(authFuncOpts);
             })
-            .then(() => {
-                // Obtain URL to chained proxy using the provided proxyChainUrlFunction (if provided)
-                if (!this.proxyChainUrlFunction) return result;
+            .then((isAuthenticated) => {
+                // If not authenticated, request client to authenticate
+                if (!isAuthenticated) {
+                    const headers = { 'Proxy-Authenticate': `Basic realm="${this.authRealm}"` };
+                    throw new RequestError('Credential required.', 407, headers);
+                }
+
+                // Obtain URL to chained proxy using the provided chainedProxyUrlFunction (if provided)
+                if (!this.chainedProxyUrlFunction) return null;
 
                 if (!paused) {
                     socket.pause();
@@ -226,12 +230,12 @@ export class ProxyServer {
                     port: result.trgParsed.port,
                     isHttp,
                 };
-                return this.proxyChainUrlFunction(funcOpts)
-                    .then((proxyChainUrl) => {
-                        // console.log("proxyChainUrl: " + proxyChainUrl);
-                        result.proxyChainUrl = proxyChainUrl;
-                        return result;
-                    });
+                return this.chainedProxyUrlFunction(funcOpts);
+            })
+            .then((chainedProxyUrl) => {
+                result.chainedProxyUrl = chainedProxyUrl;
+
+                return result;
             })
             .finally(() => {
                 if (paused) socket.resume();
