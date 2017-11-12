@@ -1,6 +1,6 @@
 import http from 'http';
 import EventEmitter from 'events';
-import { parseUrl, redactParsedUrl, DEFAULT_PORT } from './tools';
+import { parseUrl, redactParsedUrl } from './tools';
 
 /* globals Buffer */
 
@@ -9,11 +9,11 @@ import { parseUrl, redactParsedUrl, DEFAULT_PORT } from './tools';
  * when the handler is no longer used.
  */
 export default class HandlerBase extends EventEmitter {
-
-    constructor({ srcRequest, srcResponse, trgHost, trgPort, verbose, proxyChainUrl }) {
+    constructor({ srcRequest, srcResponse, trgParsed, verbose, proxyChainUrl }) {
         super();
 
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
+        if (!trgParsed.hostname) throw new Error('The "trgParsed.hostname" option is required');
 
         this.srcRequest = srcRequest;
         this.srcResponse = srcResponse;
@@ -21,8 +21,8 @@ export default class HandlerBase extends EventEmitter {
 
         this.trgRequest = null;
         this.trgSocket = null;
-        this.trgHost = trgHost;
-        this.trgPort = trgPort || DEFAULT_PORT;
+        this.trgParsed = trgParsed;
+        this.trgParsed.port = this.trgParsed.port || DEFAULT_TARGET_PORT;
 
         this.verbose = !!verbose;
         this.proxyChainUrl = proxyChainUrl;
@@ -36,8 +36,12 @@ export default class HandlerBase extends EventEmitter {
         this.isDestroyed = false;
 
         if (proxyChainUrl) {
-            if (!this.proxyChainUrlParsed.host || !this.proxyChainUrlParsed.port) throw new Error('Invalid "proxyChainUrl" option: URL must have host and port');
-            if (this.proxyChainUrlParsed.scheme !== 'http') throw new Error('Invalid "proxyChainUrl" option: URL must have "http" scheme');
+            if (!this.proxyChainUrlParsed.hostname || !this.proxyChainUrlParsed.port) {
+                throw new Error('Invalid "proxyChainUrl" option: URL must have hostname and port');
+            }
+            if (this.proxyChainUrlParsed.scheme !== 'http') {
+                throw new Error('Invalid "proxyChainUrl" option: URL must have the "http" scheme');
+            }
         }
 
         // Create ServerResponse for the client HTTP request if it doesn't exist

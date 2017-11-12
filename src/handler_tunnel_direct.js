@@ -8,19 +8,17 @@ export default class HandlerTunnelDirect extends HandlerBase {
     constructor(options) {
         super(options);
 
-        if (!this.trgHost)  throw new Error('The "trgHost" option is required');
-
         this.bindHandlersToThis(['onTrgSocketConnect', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError']);
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerTunnelDirect[${this.trgHost}:${this.trgPort}]: ${str}`);
+        if (this.verbose) console.log(`HandlerTunnelDirect[${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
     }
 
     run() {
         this.log('Connecting...');
 
-        this.trgSocket = net.createConnection(this.trgPort, this.trgHost);
+        this.trgSocket = net.createConnection(this.trgParsed.port, this.trgParsed.hostname);
         this.trgSocket.once('connect', this.onTrgSocketConnect);
         this.trgSocket.once('close', this.onTrgSocketClose);
         this.trgSocket.once('end', this.onTrgSocketEnd);

@@ -1,13 +1,24 @@
 import http from 'http';
+import url from 'url';
 import _ from 'underscore';
+
 import { parseHostHeader, parseProxyAuthorizationHeader } from './tools';
 import Promise from 'bluebird';
 import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
 
+// TODO: Implement this requirement from rfc7230
+// A proxy MUST forward unrecognized header fields unless the field-name
+// is listed in the Connection header field (Section 6.1) or the proxy
+// is specifically configured to block, or otherwise transform, such
+// fields.  Other recipients SHOULD ignore unrecognized header fields.
+// These requirements allow HTTP's functionality to be enhanced without
+// requiring prior update of deployed intermediaries.
+
 const DEFAULT_AUTH_REALM = 'Proxy';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
+const DEFAULT_TARGET_PORT = 80;
 
 const REQUEST_ERROR_NAME = 'RequestError';
 
@@ -29,12 +40,14 @@ export class ProxyServer {
      * @param options
      * @param [options.port] Port where the server the server will listen. By default 8000.
      * @param [options.authFunction] Custom function to authenticate proxy requests.
-     * It accepts a single parameter which is an object `{ request: Object, username: String, password: String }`
+     * It accepts a single parameter which is an object:
+     * `{ request: Object, username: String, password: String }`
      * and returns a promise resolving to a Boolean value.
      * If `authFunction` is not set, the proxy server will not require any authentication.
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header. By default it's `Proxy`.
      * @param [options.proxyChainUrlFunction] Custom function that provides the proxy to chain to.
-     * It accepts a single parameter which is an object `{ request: Object, username: String, host: String, port: Number, protocol: String }`
+     * It accepts a single parameter which is an object:
+     * `{ request: Object, username: String, password: String, hostname: String, port: Number, isHttp: Boolean }`
      * and returns a promise resolving to a String value with the chained proxy URL.
      * If the result is false-ish value, the request will be proxied directly to the target host.
      * @param [options.verbose] If true, the server logs
@@ -112,29 +125,55 @@ export class ProxyServer {
      * @param request
      */
     prepareRequestHandling(request) {
+        //console.log('XXX prepareRequestHandling');
+        //console.dir(_.pick(request, 'url', 'method'));
+        //console.dir(url.parse(request.url));
+
         let result = {
             srcRequest: request,
-            trgHost: null,
-            trgPort: null,
+            trgParsed: null,
             proxyChainUrl: null,
             verbose: this.verbose,
         };
 
         const socket = request.socket;
         let paused = false;
+        let isHttp = false;
         let username = null;
+        let password = null;
 
         return Promise.resolve()
             .then(() => {
-                // First, parse Host header
-                const parsedHost = parseHostHeader(request.headers['host']);
-                if (!parsedHost || !parsedHost.host) {
-                    throw new RequestError('Invalid "Host" header', 400);
-                }
-                result.trgHost = parsedHost.host;
-                result.trgPort = parsedHost.port;
+                // Determine target hostname and port
+                if (request.method === 'CONNECT') {
+                    // The request should look like:
+                    //   CONNECT server.example.com:80 HTTP/1.1
+                    // Note that request.url contains the "server.example.com:80" part
+                    result.trgParsed = parseHostHeader(request.url);
+                } else {
+                    // The request should look like:
+                    //   GET http://server.example.com:80/some-path HTTP/1.1
+                    // Note that RFC 7230 says:
+                    // "When making a request to a proxy, other than a CONNECT or server-wide
+                    //  OPTIONS request (as detailed below), a client MUST send the target
+                    //  URI in absolute-form as the request-target"
+                    const parsed = url.parse(request.url);
 
-                // Second, authenticate the request using the provided authFunction
+                    // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
+                    if (!parsed.protocol) {
+                        throw new RequestError('Hey, good try, but I\'m a proxy, not your ordinary HTTP server!', 400);
+                    }
+                    // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
+                    if (parsed.protocol !== 'http:') {
+                        throw new RequestError(`Only HTTP protocol is supported (was ${requestOptions.protocol})`, 400);
+                    }
+
+                    result.trgParsed = parsed;
+                    isHttp = true;
+                }
+                result.trgParsed.port = result.trgParsed.port || DEFAULT_TARGET_PORT;
+
+                // Authenticate the request using the provided authFunction (if provided)
                 if (!this.authFunction) return null;
 
                 // Pause the socket so that no data is lost
@@ -158,7 +197,7 @@ export class ProxyServer {
                     }
 
                     authFuncOpts.username = username = auth.username;
-                    authFuncOpts.password = auth.password
+                    authFuncOpts.password = password = auth.password
                 }
 
                 return this.authFunction(authFuncOpts)
@@ -171,7 +210,7 @@ export class ProxyServer {
                     });
             })
             .then(() => {
-                // Third, obtain URL to chained proxy using the provided proxyChainUrlFunction
+                // Obtain URL to chained proxy using the provided proxyChainUrlFunction (if provided)
                 if (!this.proxyChainUrlFunction) return result;
 
                 if (!paused) {
@@ -182,9 +221,10 @@ export class ProxyServer {
                 const funcOpts = {
                     request,
                     username,
-                    host: result.trgHost,
-                    port: result.trgPort,
-                    protocol: 'TODO',
+                    password,
+                    hostname: result.trgParsed.hostname,
+                    port: result.trgParsed.port,
+                    isHttp,
                 };
                 return this.proxyChainUrlFunction(funcOpts)
                     .then((proxyChainUrl) => {

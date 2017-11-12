@@ -1,7 +1,5 @@
 import http from 'http';
-import url from 'url';
-import _ from 'underscore';
-import { isHopByHopHeader, tee, DEFAULT_PORT } from './tools';
+import { isHopByHopHeader, tee } from './tools';
 import HandlerBase from './handler_base';
 
 
@@ -26,9 +24,9 @@ export default class HandlerForward extends HandlerBase {
     run() {
         this.log('Connecting...');
 
-        const requestOptions = url.parse(this.srcRequest.url);
-        requestOptions.method = this.srcRequest.method;
-        requestOptions.headers = {};
+        const reqOpts = this.trgParsed;
+        reqOpts.method = this.srcRequest.method;
+        reqOpts.headers = {};
 
         // setup outbound proxy request HTTP headers
         //TODO: var hasXForwardedFor = false;
@@ -64,7 +62,7 @@ export default class HandlerForward extends HandlerBase {
             }
             */
 
-            requestOptions.headers[headerName] = headerValue;
+            reqOpts.headers[headerName] = headerValue;
         };
 
         /*
@@ -90,34 +88,24 @@ export default class HandlerForward extends HandlerBase {
         }
          */
 
-
-        if (!requestOptions.port) requestOptions.port = DEFAULT_PORT;
-
-
         // If desired, send the request via proxy
         if (this.proxyChainUrlParsed) {
-            requestOptions.hostname = requestOptions.host = this.proxyChainUrlParsed.hostname;
-            requestOptions.port = this.proxyChainUrlParsed.port;
+            reqOpts.hostname = reqOpts.host = this.proxyChainUrlParsed.hostname;
+            reqOpts.port = this.proxyChainUrlParsed.port;
 
             // HTTP requests to proxy contain the full URL in path, for example:
             // "GET http://www.example.com HTTP/1.1\r\n"
             // So we need to replicate it here
-            requestOptions.path = this.srcRequest.url;
+            reqOpts.path = this.srcRequest.url;
 
-            this.maybeAddProxyAuthorizationHeader(requestOptions.headers);
-        }
-
-        if (requestOptions.protocol !== 'http:') {
-            // only "http://" is supported, "https://" should use CONNECT method
-            this.fail(`Only HTTP protocol is supported (was ${requestOptions.protocol})`, 400);
-            return;
+            this.maybeAddProxyAuthorizationHeader(reqOpts.headers);
         }
 
         this.log('Connecting...');
 
         //console.dir(requestOptions);
 
-        this.trgRequest = http.request(requestOptions);
+        this.trgRequest = http.request(reqOpts);
         this.trgRequest.on('response', this.onTrgResponse);
         this.trgRequest.on('error', this.onTrgError);
 

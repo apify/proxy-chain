@@ -11,14 +11,13 @@ export default class HandlerTunnelChain extends HandlerBase {
     constructor(options) {
         super(options);
 
-        if (!this.trgHost || !this.trgPort) throw new Error('The "trgHost" and "trgPort" options are required');
         if (!this.proxyChainUrl) throw new Error('The "proxyChainUrl" option is required');
 
         this.bindHandlersToThis(['onTrgRequestConnect', 'onTrgRequestAbort', 'onTrgRequestError']);
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerTunnelChain[${this.proxyChainUrlRedacted} -> ${this.trgHost}:${this.trgPort}]: ${str}`);
+        if (this.verbose) console.log(`HandlerTunnelChain[${this.proxyChainUrlRedacted} -> ${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
     }
 
     run() {
@@ -26,9 +25,9 @@ export default class HandlerTunnelChain extends HandlerBase {
 
         let options = {
             method: 'CONNECT',
-            host: this.proxyChainUrlParsed.hostname,
+            hostname: this.proxyChainUrlParsed.hostname,
             port: this.proxyChainUrlParsed.port,
-            path: `${this.trgHost}:${this.trgPort}`,
+            path: `${this.trgParsed.hostname}:${this.trgParsed.port}`,
             headers: {},
         };
 

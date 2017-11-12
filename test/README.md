@@ -13,4 +13,8 @@ Test:
 - ensure no Via and X-Forwarded-For headers are added
 - test redirects
 
+- test chain = main proxy lopp
+
+- direct connection to proxy returns 400
+
 - test memory is not leaking - run GC before and after test, mem size should be roughly the same

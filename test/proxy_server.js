@@ -16,9 +16,6 @@ import { TargetServer } from './target_server';
 /* globals process */
 
 
-
-
-
 const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 
@@ -36,7 +33,7 @@ const requestPromised = (opts) => {
 };
 
 
-const createTestSuite = ({ useSsl, useProxyChain, proxyChainAuth }) => {
+const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useProxyChain, proxyChainAuth }) => {
     return function() {
         this.timeout(30 * 1000);
 
@@ -52,7 +49,15 @@ const createTestSuite = ({ useSsl, useProxyChain, proxyChainAuth }) => {
         let mainProxyServer;
         let mainProxyServerPort;
 
-        const proto = useSsl ? 'https' : 'http';
+        let baseUrl;
+        let mainProxyUrl;
+        let getRequestOpts = (path) => {
+            return {
+                url: `${baseUrl}${path}`,
+                key: sslKey,
+                proxy: mainProxyUrl,
+            }
+        };
 
         before(() => {
             return portastic.find({ min: 50000, max: 50100 }).then((ports) => {
@@ -80,7 +85,7 @@ const createTestSuite = ({ useSsl, useProxyChain, proxyChainAuth }) => {
                             }
                             const parsed = basicAuthParser(auth);
                             const isEqual = _.isEqual(parsed, proxyChainAuth);
-                            // console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, proxyAuth, isEqual);
+                            console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, proxyAuth, isEqual);
                             if (isEqual) proxyChainWasCalled = true;
                             fn(null, isEqual);
                         };
@@ -100,40 +105,37 @@ const createTestSuite = ({ useSsl, useProxyChain, proxyChainAuth }) => {
                 }
             }).then(() => {
                 // Setup main proxy server
-                mainProxyServerPort = freePorts[2];
+                if (useMainProxy) {
+                    mainProxyServerPort = freePorts[2];
 
-                const opts = {
-                    port: mainProxyServerPort,
-                    verbose: true,
-                    targetProxyUrl: 'http://username:password@localhost:8001'
-                };
+                    const opts = {
+                        port: mainProxyServerPort,
+                        verbose: true,
+                    };
 
-                mainProxyServer = new ProxyServer(opts);
+                    if (useProxyChain) {
+                        opts.proxyChainUrlFunction = ({ request, username, hostname, port, protocol }) => {
+                            return Promise.resolve(`http://${proxyChainAuth ? proxyChainAuth + '@' : ''}localhost:${proxyChainPort}`);
+                        };
+                    }
 
-                return mainProxyServer.listen();
+                    mainProxyServer = new ProxyServer(opts);
+
+                    return mainProxyServer.listen();
+                }
+            }).then(() => {
+                // Generate URLs
+                baseUrl = `${useSsl ? 'https' : 'http'}://localhost:${targetServerPort}`;
+                if (useMainProxy) mainProxyUrl = `http://${mainProxyAuth ? mainProxyAuth + '@' : ''}localhost:${mainProxyServerPort}`;
             });
         });
 
-        it('handles simple GET to target server directly', () => {
-            const options = {
-                url: `${proto}://localhost:${targetServerPort}/hello-world`,
-                key: sslKey,
-            };
-            return requestPromised(options)
-                .then((response) => {
-                    expect(response.body).to.eql('Hello world!');
-                    expect(response.statusCode).to.eql(200);
-                });
-        });
-
-        it('handles simple GET', () => {
+        it('handles GET /hello-world', () => {
             after(() => { proxyChainWasCalled = false; });
-            const options = {
-                url: `${proto}://localhost:${targetServerPort}/hello-world`,
-                key: sslKey,
-                proxy: `http://localhost:${mainProxyServerPort}`,
-            };
-            return requestPromised(options)
+            const opts = getRequestOpts('/hello-world');
+            console.log('REQUEST OPTIONS');
+            console.dir(_.omit(opts, 'key'));
+            return requestPromised(opts)
                 .then((response) => {
                     expect(response.body).to.eql('Hello world!');
                     expect(response.statusCode).to.eql(200);
@@ -165,25 +167,45 @@ const createTestSuite = ({ useSsl, useProxyChain, proxyChainAuth }) => {
     };
 };
 
-
-describe('ProxyServer - HTTP / Direct', createTestSuite({
+// Test direct connection to ensure our tests are correct
+describe('HTTP -> Target', createTestSuite({
     useSsl: false,
+    useMainProxy: false,
     useProxyChain: false,
 }));
 
-describe('ProxyServer - HTTP / Proxy chain', createTestSuite({
+describe('HTTP -> Proxy -> Target', createTestSuite({
     useSsl: false,
+    useMainProxy: true,
+    useProxyChain: false,
+}));
+
+/*
+
+describe('HTTP -> Proxy -> Proxy (with auth) -> Target', createTestSuite({
+    useSsl: false,
+    useMainProxy: true,
     useProxyChain: true,
     proxyChainAuth: { scheme: 'Basic', username: 'username', password: 'password' },
 }));
 
-describe('ProxyServer - HTTPS / Direct', createTestSuite({
+describe('HTTPS -> Target', createTestSuite({
     useSsl: true,
+    useMainProxy: false,
+    useProxyChain: false,
+}));
+
+describe('HTTPS -> Proxy -> Proxy -> Target', createTestSuite({
+    useSsl: true,
+    useMainProxy: true,
     useProxyChain: false
 }));
 
-describe('ProxyServer - HTTPS / Proxy chain', createTestSuite({
+describe('HTTPS -> Proxy -> Proxy (with auth) -> Target', createTestSuite({
     useSsl: true,
+    useMainProxy: true,
     useProxyChain: true,
     proxyChainAuth: { scheme: 'Basic', username: 'username', password: 'password' },
 }));
+
+*/

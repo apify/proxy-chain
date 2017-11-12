@@ -79,13 +79,13 @@ describe('tools.redactUrl()', () => {
 
 describe('tools.parseHostHeader()', () => {
     it('works with valid input', () => {
-        expect(parseHostHeader('www.example.com:80')).to.eql({ host: 'www.example.com', port: 80 });
-        expect(parseHostHeader('something:1')).to.eql({ host: 'something', port: 1 });
-        expect(parseHostHeader('something:65535')).to.eql({ host: 'something', port: 65535 });
-        expect(parseHostHeader('example.com')).to.eql({ host: 'example.com', port: null });
-        expect(parseHostHeader('1.2.3.4')).to.eql({ host: '1.2.3.4', port: null });
-        expect(parseHostHeader('1.2.3.4:5555')).to.eql({ host: '1.2.3.4', port: 5555 });
-        expect(parseHostHeader('a.b.c.d.e.f.g:1')).to.eql({ host: 'a.b.c.d.e.f.g', port: 1 });
+        expect(parseHostHeader('www.example.com:80')).to.eql({ hostname: 'www.example.com', port: 80 });
+        expect(parseHostHeader('something:1')).to.eql({ hostname: 'something', port: 1 });
+        expect(parseHostHeader('something:65535')).to.eql({ hostname: 'something', port: 65535 });
+        expect(parseHostHeader('example.com')).to.eql({ hostname: 'example.com', port: null });
+        expect(parseHostHeader('1.2.3.4')).to.eql({ hostname: '1.2.3.4', port: null });
+        expect(parseHostHeader('1.2.3.4:5555')).to.eql({ hostname: '1.2.3.4', port: 5555 });
+        expect(parseHostHeader('a.b.c.d.e.f.g:1')).to.eql({ hostname: 'a.b.c.d.e.f.g', port: 1 });
     });
 
     it('works with invalid input', () => {

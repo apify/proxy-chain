@@ -2,8 +2,6 @@ import urlModule from 'url';
 import through from 'through';
 
 
-export const DEFAULT_PORT = 80;
-
 const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9]))(:([0-9]+))?$/;
 
 
@@ -19,8 +17,8 @@ export const parseHostHeader = (hostHeader) => {
     const matches = HOST_HEADER_REGEX.exec(hostHeader || '');
     if (!matches) return null;
 
-    let host = matches[1];
-    if (host.length > 255) return null;
+    let hostname = matches[1];
+    if (hostname.length > 255) return null;
 
     let port = null;
     if (matches[5]) {
@@ -28,7 +26,7 @@ export const parseHostHeader = (hostHeader) => {
         if (!(port > 0 && port <= 65535)) return null;
     }
 
-    return { host, port };
+    return { hostname, port };
 };
 
 
