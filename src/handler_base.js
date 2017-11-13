@@ -9,11 +9,14 @@ import { parseUrl, redactParsedUrl } from './tools';
  * when the handler is no longer used.
  */
 export default class HandlerBase extends EventEmitter {
-    constructor({ srcRequest, srcResponse, trgParsed, verbose, upstreamProxyUrl }) {
+    constructor({ id, srcRequest, srcResponse, trgParsed, verbose, upstreamProxyUrl }) {
         super();
 
+        if (!id) throw new Error('The "id" option is required');
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
         if (!trgParsed.hostname) throw new Error('The "trgParsed.hostname" option is required');
+
+        this.id = id;
 
         this.srcRequest = srcRequest;
         this.srcResponse = srcResponse;
@@ -119,21 +122,20 @@ export default class HandlerBase extends EventEmitter {
             this.log('Source already received a response, just destroying the socket...');
             this.destroy();
         } else if (statusCode) {
+            // Custom error message coming from RequestError
             this.log(`${err}, responding with custom status code ${statusCode} to client`);
             this.srcResponse.writeHead(statusCode);
             this.srcResponse.end(`${err}`);
         } else if (err.code === 'ENOTFOUND' && this.upstreamProxyUrl) {
-            this.log('Chained proxy not found, sending 502 to source');
-            this.srcResponse.writeHead(502, { 'Connection': 'close' }, () => {
-                this.srcResponse.socket.abort();
-            });
+            this.log('Upstream proxy not found, sending 502 to client');
+            this.srcResponse.writeHead(502);
             this.srcResponse.end('Upstream proxy was not found');
         } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrl) {
-            this.log('Target server not found, sending 404 to source');
+            this.log('Target server not found, sending 404 to client');
             this.srcResponse.writeHead(404);
             this.srcResponse.end('Target server not found');
         } else {
-            this.log('Unknown error, sending 500 to source');
+            this.log('Unknown error, sending 500 to client');
             this.srcResponse.writeHead(500);
             this.srcResponse.end('Internal server error');
         }
@@ -182,7 +184,7 @@ export default class HandlerBase extends EventEmitter {
 
             this.isDestroyed = true;
 
-            this.emit('destroyed');
+            this.emit('destroy');
         }
     }
 }

@@ -16,7 +16,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
     }
 
     run() {
-        this.log('Connecting...');
+        this.log('Connecting to target...');
 
         this.trgSocket = net.createConnection(this.trgParsed.port, this.trgParsed.hostname);
         this.trgSocket.once('connect', this.onTrgSocketConnect);

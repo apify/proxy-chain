@@ -66,6 +66,10 @@ export class ProxyServer {
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
 
+        // Key is handler ID, value is HandlerXxx instance
+        this.handlers = {};
+        this.lastHandlerId = 0;
+
         this.server = http.createServer();
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
@@ -94,7 +98,7 @@ export class ProxyServer {
             .then((handlerOpts) => {
                 handlerOpts.srcResponse = response;
                 const handler = new HandlerForward(handlerOpts);
-                handler.run();
+                this.handlerRun(handler);
             })
             .catch((err) => {
                 this.failRequest(request, err);
@@ -116,7 +120,7 @@ export class ProxyServer {
                 const handler = handlerOpts.upstreamProxyUrl
                     ? new HandlerTunnelChain(handlerOpts)
                     : new HandlerTunnelDirect(handlerOpts);
-                handler.run();
+                this.handlerRun(handler);
             })
             .catch((err) => {
                 this.failRequest(request, err);
@@ -135,6 +139,7 @@ export class ProxyServer {
         //console.dir(url.parse(request.url));
 
         let result = {
+            id: ++this.lastHandlerId,
             srcRequest: request,
             trgParsed: null,
             upstreamProxyUrl: null,
@@ -225,6 +230,14 @@ export class ProxyServer {
             });
     }
 
+    handlerRun(handler) {
+        this.handlers[handler.id] = handler;
+        handler.once('destroy', () => {
+            delete this.handlers[handler.id];
+        });
+        handler.run();
+    }
+
     /**
      * Sends a HTTP error response to the client.
      * @param request
@@ -279,7 +292,19 @@ export class ProxyServer {
             .nodeify(callback);
     }
 
-    close(keepConnections, callback) {
+    close(destroyConnections, callback) {
+        if (typeof(destroyConnections) === 'function') {
+            callback = destroyConnections;
+            destroyConnections = false;
+        }
+
+        if (destroyConnections) {
+            this.log('Destroying pending handlers');
+            _.each(this.handlers, (handler) => {
+                handler.destroy();
+            });
+        }
+
         // TODO: keep track of all handlers and close them if closeConnections=true
         if (this.server) {
             const server = this.server;
