@@ -137,45 +137,48 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
                         verbose: true,
                     };
 
-                    if (mainProxyAuth) {
-                        opts.authFunction = ({ request, username, password }) => {
-                            const isAuthenticated = mainProxyAuth.username === username && mainProxyAuth.password === password;
+                    if (mainProxyAuth || useChainedProxy) {
+                        opts.prepareRequestFunction = ({ request, username, password, hostname, port, isHttp }) => {
 
-                            // Sometimes return a promise, sometimes the result directly
-                            counter++;
-                            if (counter % 2 === 0) return isAuthenticated;
-                            else return Promise.resolve(isAuthenticated);
-                        }
-                    }
+                            const result = {
+                                isAuthenticated: true,
+                                chainedProxyUrl: null,
+                            };
 
-                    if (useChainedProxy) {
-                        opts.chainedProxyUrlFunction = ({ request, username, hostname, port, protocol }) => {
-                            let chainedProxyUrl;
+                            if (mainProxyAuth) {
+                                result.isAuthenticated = mainProxyAuth.username === username && mainProxyAuth.password === password;
+                            }
 
-                            if (hostname === 'hostname-invalid-proxy-chain-credentials') {
-                                chainedProxyUrl = `http://invalid:credentials@localhost:${chainedProxyPort}`;
-                            } else if (hostname === 'hostname-invalid-proxy-chain-url') {
-                                chainedProxyUrl = `http://${NON_EXISTENT_HOSTNAME}:1234`;
-                            } else {
-                                if (mainProxyAuth
-                                    && (mainProxyAuth.username !== username || mainProxyAuth.hostname !== hostname)) {
-                                    throw new Error('chainedProxyUrlFunction() didn\'t receive correct username/password?!');
+                            if (useChainedProxy) {
+                                let chainedProxyUrl;
+
+                                if (hostname === 'hostname-invalid-proxy-chain-credentials') {
+                                    chainedProxyUrl = `http://invalid:credentials@localhost:${chainedProxyPort}`;
+                                } else if (hostname === 'hostname-invalid-proxy-chain-url') {
+                                    chainedProxyUrl = `http://${NON_EXISTENT_HOSTNAME}:1234`;
+                                } else {
+                                    if (mainProxyAuth
+                                        && (mainProxyAuth.username !== username || mainProxyAuth.hostname !== hostname)) {
+                                        throw new Error('chainedProxyUrlFunction() didn\'t receive correct username/password?!');
+                                    }
+
+                                    let auth = '';
+                                    if (chainedProxyAuth) {
+                                        auth = chainedProxyAuth.username;
+                                        if (chainedProxyAuth.password) auth += `:${chainedProxyAuth.password}`;
+                                        auth += '@';
+                                    }
+
+                                    chainedProxyUrl = `http://${auth}localhost:${chainedProxyPort}`;
                                 }
 
-                                let auth = '';
-                                if (chainedProxyAuth) {
-                                    auth = chainedProxyAuth.username;
-                                    if (chainedProxyAuth.password) auth += `:${chainedProxyAuth.password}`;
-                                    auth += '@';
-                                }
-
-                                chainedProxyUrl = `http://${auth}localhost:${chainedProxyPort}`;
+                                result.chainedProxyUrl = chainedProxyUrl;
                             }
 
                             // Sometimes return a promise, sometimes the result directly
-                            if (counter % 2 === 0) return chainedProxyUrl;
-                            else return Promise.resolve(chainedProxyUrl);
-                        };
+                            if (counter++ % 2 === 0) return result;
+                            else return Promise.resolve(result);
+                        }
                     }
 
                     mainProxyServer = new ProxyServer(opts);

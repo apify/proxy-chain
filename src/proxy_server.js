@@ -42,27 +42,23 @@ export class ProxyServer {
      * Initializes a new instance of ProxyServer class.
      * @param options
      * @param [options.port] Port where the server the server will listen. By default 8000.
-     * @param [options.authFunction] Custom function to authenticate proxy requests.
-     * It accepts a single parameter which is an object:
-     * `{ request: Object, username: String, password: String }`
-     * and returns a Boolean value or promise resolving to a Boolean value indicating
-     * that authentication succeeded.
-     * If `authFunction` is not set, the proxy server will not require any authentication.
-     * @param [options.authRealm] Realm used in the Proxy-Authenticate header. By default it's `Proxy`.
-     * @param [options.chainedProxyUrlFunction] Custom function that provides the proxy to chain to.
-     * It accepts a single parameter which is an object:
+     * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests
+     * and provide URL to chained proxy. It accepts a single parameter which is an object:
      * `{ request: Object, username: String, password: String, hostname: String, port: Number, isHttp: Boolean }`
-     * and returns a String or promise resolving to a String value with the chained proxy URL.
-     * If the result is a false-ish value, the request will be proxied directly to the target host.
+     * and returns an object (or promise resolving to the object) with following form:
+     * `{ isAuthenticated: Boolean, chainedProxyUrl: String }`
+     * If `chainedProxyUrl` is false-ish value, no chained proxy is used.
+     * If `prepareRequestFunction` is not set, the proxy server will not require any authentication
+     * and with not use any chained proxy.
+     * @param [options.authRealm] Realm used in the Proxy-Authenticate header. By default it's `Proxy`.
      * @param [options.verbose] If true, the server logs
      */
     constructor(options) {
         options = options || {};
 
         this.port = options.port || DEFAULT_PROXY_SERVER_PORT;
-        this.authFunction = options.authFunction;
+        this.prepareRequestFunction = options.prepareRequestFunction;
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
-        this.chainedProxyUrlFunction = options.chainedProxyUrlFunction;
         this.verbose = !!options.verbose;
 
         this.server = http.createServer();
@@ -141,10 +137,7 @@ export class ProxyServer {
         };
 
         const socket = request.socket;
-        let paused = false;
         let isHttp = false;
-        let username = null;
-        let password = null;
 
         return Promise.resolve()
             .then(() => {
@@ -177,17 +170,19 @@ export class ProxyServer {
                 }
                 result.trgParsed.port = result.trgParsed.port || DEFAULT_TARGET_PORT;
 
-                // Authenticate the request using the provided authFunction (if provided)
-                if (!this.authFunction) return true;
+                // Authenticate the request using a user function (if provided)
+                if (!this.prepareRequestFunction) return { isAuthenticated: true, chainedProxyUrl: null };
 
                 // Pause the socket so that no data is lost
                 socket.pause();
-                paused = true;
 
-                const authFuncOpts = {
+                const funcOpts = {
                     request,
                     username: null,
                     password: null,
+                    hostname: result.trgParsed.hostname,
+                    port: result.trgParsed.port,
+                    isHttp,
                 };
 
                 const proxyAuth = request.headers['proxy-authorization'];
@@ -200,45 +195,28 @@ export class ProxyServer {
                         throw new RequestError('The "Proxy-Authorization" header must have the "Basic" type.', 400);
                     }
 
-                    authFuncOpts.username = username = auth.username;
-                    authFuncOpts.password = password = auth.password
+                    funcOpts.username = auth.username;
+                    funcOpts.password = auth.password
                 }
 
                 // User function returns a result directly or a promise
-                return this.authFunction(authFuncOpts);
+                return this.prepareRequestFunction(funcOpts);
             })
-            .then((isAuthenticated) => {
+            .then((funcResult) => {
                 // If not authenticated, request client to authenticate
-                if (!isAuthenticated) {
+                if (!funcResult || !funcResult.isAuthenticated) {
                     const headers = { 'Proxy-Authenticate': `Basic realm="${this.authRealm}"` };
                     throw new RequestError('Credential required.', 407, headers);
                 }
 
-                // Obtain URL to chained proxy using the provided chainedProxyUrlFunction (if provided)
-                if (!this.chainedProxyUrlFunction) return null;
-
-                if (!paused) {
-                    socket.pause();
-                    paused = true;
+                if (funcResult && funcResult.chainedProxyUrl) {
+                    result.chainedProxyUrl = funcResult.chainedProxyUrl;
                 }
-
-                const funcOpts = {
-                    request,
-                    username,
-                    password,
-                    hostname: result.trgParsed.hostname,
-                    port: result.trgParsed.port,
-                    isHttp,
-                };
-                return this.chainedProxyUrlFunction(funcOpts);
-            })
-            .then((chainedProxyUrl) => {
-                result.chainedProxyUrl = chainedProxyUrl;
 
                 return result;
             })
             .finally(() => {
-                if (paused) socket.resume();
+                if (this.prepareRequestFunction) socket.resume();
             });
     }
 
