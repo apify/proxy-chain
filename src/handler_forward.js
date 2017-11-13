@@ -131,6 +131,9 @@ export default class HandlerForward extends HandlerBase {
 
     onTrgResponse(response) {
         this.log(`Received response from target (${response.statusCode})`);
+        //console.dir(response);
+
+        if (this.checkUpstreamProxy407(response)) return;
 
         this.srcGotResponse = true;
 

@@ -292,6 +292,12 @@ export class ProxyServer {
             .nodeify(callback);
     }
 
+    /**
+     * Closes the proxy server.
+     * @param [destroyConnections] If true, then all the pending connections from clients
+     * to targets and upstream proxies will be forcibly aborted.
+     * @param callback
+     */
     close(destroyConnections, callback) {
         if (typeof(destroyConnections) === 'function') {
             callback = destroyConnections;
@@ -300,9 +306,12 @@ export class ProxyServer {
 
         if (destroyConnections) {
             this.log('Destroying pending handlers');
+            let count = 0;
             _.each(this.handlers, (handler) => {
+                count++;
                 handler.destroy();
             });
+            this.log(`Destroyed ${count} pending handlers`);
         }
 
         // TODO: keep track of all handlers and close them if closeConnections=true

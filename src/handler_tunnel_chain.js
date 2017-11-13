@@ -64,6 +64,8 @@ export default class HandlerTunnelChain extends HandlerBase {
     onTrgRequestConnect (response, socket, head) {
         this.log(`Connected to upstream proxy`);
 
+        if (this.checkUpstreamProxy407(response)) return;
+
         this.srcGotResponse = true;
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
         this.srcResponse.writeHead(200, 'Connection established');

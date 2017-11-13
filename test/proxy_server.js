@@ -122,7 +122,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
                             const parsed = parseProxyAuthorizationHeader(auth);
                             const isEqual = _.isEqual(parsed, upstreamProxyAuth);
-                            //console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, upstreamProxyAuth, isEqual);
+                            console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, upstreamProxyAuth, isEqual);
                             if (isEqual) upstreamProxyWasCalled = true;
                             fn(null, isEqual);
                         };
@@ -237,19 +237,15 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                 expect(upstreamProxyWasCalled).to.eql(true);
             });
 
-            it('fails gracefully on invalid upstream proxy URL', () => {
-                const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-host`);
-                // Otherwise the socket would be kept open and mainProxy close would timeout
-                // opts.headers['Connection'] = 'close';
+            const testForResponse502 = (opts) => {
                 // The proxy should fail with 502 Bad gateway, unfortunately the request library throws for HTTPS and sends 502 for HTTP
-                opts.timeout = 500;
                 const promise = requestPromised(opts);
                 if (useSsl) {
                     return promise.then(() => {
                         assert.fail();
                     })
                     .catch((err) => {
-                        console.dir(err);
+                        // console.dir(err);
                         expect(err.message).to.contain('502');
                     });
                 } else {
@@ -257,18 +253,19 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                         expect(response.statusCode).to.eql(502);
                     });
                 }
+            };
+
+            it('fails gracefully on invalid upstream proxy URL', () => {
+                const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-host`);
+                return testForResponse502(opts);
             });
 
-            /*
-            it('fails gracefully on invalid upstream proxy credentials', () => {
-                const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-credentials`);
-                return requestPromised(opts)
-                    .then((response) => {
-                        console.log(response.body);
-                        expect(response.statusCode).to.eql(200);
-                    });
-            });
-            */
+            if (upstreamProxyAuth) {
+                it('fails gracefully on invalid upstream proxy credentials', () => {
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-credentials`);
+                    return testForResponse502(opts);
+                });
+            }
         }
 
 
@@ -282,9 +279,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
             });
 
             it('returns 400 for direct connection to main proxy', () => {
-                const opts = {
-                    url: `${mainProxyUrl}`,
-                };
+                const opts = { url: `${mainProxyUrl}` };
                 return requestPromised(opts)
                     .then((response) => {
                         expect(response.statusCode).to.eql(400);

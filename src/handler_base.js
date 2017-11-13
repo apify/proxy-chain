@@ -115,6 +115,20 @@ export default class HandlerBase extends EventEmitter {
         }
     }
 
+    /**
+     * Checks whether response from upstream proxy is 407 Proxy Authentication Required
+     * and if so, responds 502 Bad Gateway to client.
+     * @param response
+     * @return {boolean}
+     */
+    checkUpstreamProxy407(response) {
+        if (this.upstreamProxyUrl && response.statusCode === 407) {
+            this.fail('Upstream proxy need different credentials', 502);
+            return true;
+        }
+        return false;
+    }
+
     fail(err, statusCode) {
         this.removeListeners();
 
@@ -122,7 +136,7 @@ export default class HandlerBase extends EventEmitter {
             this.log('Source already received a response, just destroying the socket...');
             this.destroy();
         } else if (statusCode) {
-            // Custom error message coming from RequestError
+            // Manual error
             this.log(`${err}, responding with custom status code ${statusCode} to client`);
             this.srcResponse.writeHead(statusCode);
             this.srcResponse.end(`${err}`);
