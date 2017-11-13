@@ -11,22 +11,22 @@ export default class HandlerTunnelChain extends HandlerBase {
     constructor(options) {
         super(options);
 
-        if (!this.chainedProxyUrl) throw new Error('The "chainedProxyUrl" option is required');
+        if (!this.upstreamProxyUrl) throw new Error('The "upstreamProxyUrl" option is required');
 
         this.bindHandlersToThis(['onTrgRequestConnect', 'onTrgRequestAbort', 'onTrgRequestError']);
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerTunnelChain[${this.chainedProxyUrlRedacted} -> ${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
+        if (this.verbose) console.log(`HandlerTunnelChain[${this.upstreamProxyUrlRedacted} -> ${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
     }
 
     run() {
-        this.log('Connecting to proxy...');
+        this.log('Connecting to upstream proxy...');
 
         let options = {
             method: 'CONNECT',
-            hostname: this.chainedProxyUrlParsed.hostname,
-            port: this.chainedProxyUrlParsed.port,
+            hostname: this.upstreamProxyUrlParsed.hostname,
+            port: this.upstreamProxyUrlParsed.port,
             path: `${this.trgParsed.hostname}:${this.trgParsed.port}`,
             headers: {},
         };
@@ -43,8 +43,15 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.trgRequest.on('continue', () => {
             this.log('Target continue');
         });
-        this.trgRequest.on('socket', () => {
-            this.log('Target socket');
+        this.trgRequest.on('socket', (socket) => {
+            this.log('Target socket assigned');
+
+            socket.once('close', () => {
+                this.log('Target socket closed');
+            });
+            socket.once('end', () => {
+                this.log('Target socket ended');
+            });
         });
         this.trgRequest.on('timeout', () => {
             this.log('Target timeout');
@@ -55,7 +62,7 @@ export default class HandlerTunnelChain extends HandlerBase {
     }
 
     onTrgRequestConnect (response, socket, head) {
-        this.log(`Connected to target proxy`);
+        this.log(`Connected to upstream proxy`);
 
         this.srcGotResponse = true;
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);

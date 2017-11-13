@@ -41,7 +41,7 @@ const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 // Enable self-signed certificates
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-const NON_EXISTENT_HOSTNAME = 'some-hostname-that-surely-doesnt-exist-123';
+const NON_EXISTENT_HOSTNAME = 'non-existent-hostname';
 
 
 const requestPromised = (opts) => {
@@ -54,7 +54,7 @@ const requestPromised = (opts) => {
 };
 
 
-const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy, chainedProxyAuth }) => {
+const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy, upstreamProxyAuth }) => {
     return function() {
         this.timeout(30 * 1000);
 
@@ -63,9 +63,9 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
         let targetServerPort;
         let targetServer;
 
-        let chainedProxyServer;
-        let chainedProxyPort;
-        let chainedProxyWasCalled = false;
+        let upstreamProxyServer;
+        let upstreamProxyPort;
+        let upstreamProxyWasCalled = false;
 
         let mainProxyServer;
         let mainProxyServerPort;
@@ -77,6 +77,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
                 url: pathOrUrl[0] === '/' ? `${baseUrl}${pathOrUrl}` : pathOrUrl,
                 key: sslKey,
                 proxy: mainProxyUrl,
+                headers: {},
             }
         };
 
@@ -94,10 +95,10 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
                 // Setup proxy chain server
                 if (useChainedProxy) {
                     return new Promise((resolve, reject) => {
-                        const chainedProxyHttpServer = http.createServer();
+                        const upstreamProxyHttpServer = http.createServer();
 
                         // Setup proxy authorization
-                        chainedProxyHttpServer.authenticate = function (req, fn) {
+                        upstreamProxyHttpServer.authenticate = function (req, fn) {
                             // parse the "Proxy-Authorization" header
                             const auth = req.headers['proxy-authorization'];
                             if (!auth) {
@@ -108,20 +109,20 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
                             }
 
                             const parsed = parseProxyAuthorizationHeader(auth);
-                            const isEqual = _.isEqual(parsed, chainedProxyAuth);
-                            //console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, chainedProxyAuth, isEqual);
-                            if (isEqual) chainedProxyWasCalled = true;
+                            const isEqual = _.isEqual(parsed, upstreamProxyAuth);
+                            //console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, upstreamProxyAuth, isEqual);
+                            if (isEqual) upstreamProxyWasCalled = true;
                             fn(null, isEqual);
                         };
 
-                        chainedProxyHttpServer.on('error', (err) => {
+                        upstreamProxyHttpServer.on('error', (err) => {
                             console.dir(err);
-                            throw new Error('Proxy chain HTTP server failed');
+                            throw new Error('Upstream proxy HTTP server failed');
                         });
 
-                        chainedProxyPort = freePorts[1];
-                        chainedProxyServer = proxy(chainedProxyHttpServer);
-                        chainedProxyServer.listen(chainedProxyPort, (err) => {
+                        upstreamProxyPort = freePorts[1];
+                        upstreamProxyServer = proxy(upstreamProxyHttpServer);
+                        upstreamProxyServer.listen(upstreamProxyPort, (err) => {
                             if (err) return reject(err);
                             resolve();
                         });
@@ -141,38 +142,38 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
                         opts.prepareRequestFunction = ({ request, username, password, hostname, port, isHttp }) => {
 
                             const result = {
-                                isAuthenticated: true,
-                                chainedProxyUrl: null,
+                                requestAuthentication: false,
+                                upstreamProxyUrl: null,
                             };
 
                             if (mainProxyAuth) {
-                                result.isAuthenticated = mainProxyAuth.username === username && mainProxyAuth.password === password;
+                                result.requestAuthentication = mainProxyAuth.username !== username || mainProxyAuth.password !== password;
                             }
 
                             if (useChainedProxy) {
-                                let chainedProxyUrl;
+                                let upstreamProxyUrl;
 
-                                if (hostname === 'hostname-invalid-proxy-chain-credentials') {
-                                    chainedProxyUrl = `http://invalid:credentials@localhost:${chainedProxyPort}`;
-                                } else if (hostname === 'hostname-invalid-proxy-chain-url') {
-                                    chainedProxyUrl = `http://${NON_EXISTENT_HOSTNAME}:1234`;
+                                if (hostname === 'activate-invalid-upstream-proxy-credentials') {
+                                    upstreamProxyUrl = `http://invalid:credentials@localhost:${upstreamProxyPort}`;
+                                } else if (hostname === 'activate-invalid-upstream-proxy-host') {
+                                    upstreamProxyUrl = `http://dummy-hostname:1234`;
                                 } else {
                                     if (mainProxyAuth
                                         && (mainProxyAuth.username !== username || mainProxyAuth.hostname !== hostname)) {
-                                        throw new Error('chainedProxyUrlFunction() didn\'t receive correct username/password?!');
+                                        throw new Error('upstreamProxyUrlFunction() didn\'t receive correct username/password?!');
                                     }
 
                                     let auth = '';
-                                    if (chainedProxyAuth) {
-                                        auth = chainedProxyAuth.username;
-                                        if (chainedProxyAuth.password) auth += `:${chainedProxyAuth.password}`;
+                                    if (upstreamProxyAuth) {
+                                        auth = upstreamProxyAuth.username;
+                                        if (upstreamProxyAuth.password) auth += `:${upstreamProxyAuth.password}`;
                                         auth += '@';
                                     }
 
-                                    chainedProxyUrl = `http://${auth}localhost:${chainedProxyPort}`;
+                                    upstreamProxyUrl = `http://${auth}localhost:${upstreamProxyPort}`;
                                 }
 
-                                result.chainedProxyUrl = chainedProxyUrl;
+                                result.upstreamProxyUrl = upstreamProxyUrl;
                             }
 
                             // Sometimes return a promise, sometimes the result directly
@@ -193,7 +194,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
                     let auth = '';
                     if (mainProxyAuth) {
                         auth = mainProxyAuth.username;
-                        if (mainProxyAuth.password) auth += `:${chainedProxyAuth.password}`;
+                        if (mainProxyAuth.password) auth += `:${upstreamProxyAuth.password}`;
                         auth += '@';
                     }
                     mainProxyUrl = `http://${auth}localhost:${mainProxyServerPort}`;
@@ -220,22 +221,33 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
         });
 
         if (useChainedProxy) {
-            it('really called the proxy chain', () => {
-                expect(chainedProxyWasCalled).to.eql(true);
+            it('really called the upstream proxy', () => {
+                expect(upstreamProxyWasCalled).to.eql(true);
             });
 
-            it('fails gracefully on invalid chained proxy URL', () => {
-                const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://hostname-invalid-proxy-chain-url`);
-                return requestPromised(opts)
-                    .then((response) => {
-                        console.log(response.body);
-                        expect(response.statusCode).to.eql(200);
+            it('fails gracefully on invalid upstream proxy URL', () => {
+                const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-host`);
+                // Otherwise the socket would be kept open and mainProxy close would timeout
+                // opts.headers['Connection'] = 'close';
+                // The proxy should fail with 502 Bad gateway, unfortunatell the request library throws for HTTPS and sends 502 for HTTP
+                const promise = requestPromised(opts);
+                if (useSsl) {
+                    return promise.then(() => {
+                        assert.fail();
+                    })
+                    .catch((err) => {
+                        expect(err.message).to.contain('502');
                     });
+                } else {
+                    return promise.then((response) => {
+                        expect(response.statusCode).to.eql(502);
+                    });
+                }
             });
 
             /*
             it('fails gracefully on invalid chained proxy credentials', () => {
-                const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://hostname-invalid-proxy-chain-credentials`);
+                const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-credentials`);
                 return requestPromised(opts)
                     .then((response) => {
                         console.log(response.body);
@@ -266,20 +278,25 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useChainedProxy,
             });
         }
 
-        after(() => {
+        after(function () {
+            this.timeout(5 * 1000);
+
             // Shutdown all servers
             return Promise.resolve().then(() => {
                 if (mainProxyServer) {
+                    console.log('shutting down mainProxyServer');
                     return mainProxyServer.close();
                 }
             })
             .then(() => {
-                if (chainedProxyServer) {
-                    return Promise.promisify(chainedProxyServer.close).bind(chainedProxyServer)();
+                if (upstreamProxyServer) {
+                    console.log('shutting down upstreamProxyServer');
+                    return Promise.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
                 }
             })
             .then(() => {
                 if (targetServer) {
+                    console.log('shutting down targetServer');
                     return targetServer.close();
                 }
             });
@@ -304,14 +321,14 @@ describe('ProxyServer (HTTP -> Proxy -> Proxy with username:password -> Target)'
     useSsl: false,
     useMainProxy: true,
     useChainedProxy: true,
-    chainedProxyAuth: { type: 'Basic', username: 'username', password: 'password' },
+    upstreamProxyAuth: { type: 'Basic', username: 'username', password: 'password' },
 }));
 
 describe('ProxyServer (HTTP -> Proxy -> Proxy with username -> Target)', createTestSuite({
     useSsl: false,
     useMainProxy: true,
     useChainedProxy: true,
-    chainedProxyAuth: { type: 'Basic', username: 'username', password: null },
+    upstreamProxyAuth: { type: 'Basic', username: 'username', password: null },
 }));
 
 describe('ProxyServer (HTTPS -> Target)', createTestSuite({
@@ -330,12 +347,12 @@ describe('ProxyServer (HTTPS -> Proxy -> Proxy with username:password -> Target)
     useSsl: true,
     useMainProxy: true,
     useChainedProxy: true,
-    chainedProxyAuth: { type: 'Basic', username: 'username', password: 'password' },
+    upstreamProxyAuth: { type: 'Basic', username: 'username', password: 'password' },
 }));
 
 describe('ProxyServer (HTTPS -> Proxy -> Proxy with username -> Target)', createTestSuite({
     useSsl: true,
     useMainProxy: true,
     useChainedProxy: true,
-    chainedProxyAuth: { type: 'Basic', username: 'username', password: null },
+    upstreamProxyAuth: { type: 'Basic', username: 'username', password: null },
 }));

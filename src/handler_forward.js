@@ -4,7 +4,7 @@ import HandlerBase from './handler_base';
 
 
 /**
- * Represents a proxied request to a HTTP server, either direct or chained via another proxy.
+ * Represents a proxied request to a HTTP server, either direct or via another upstream proxy.
  */
 export default class HandlerForward extends HandlerBase {
     constructor(options) {
@@ -17,13 +17,11 @@ export default class HandlerForward extends HandlerBase {
         if (this.verbose) {
             const srcReq = this.srcRequest || {};
             if (!srcReq.method) console.log('WARNING: no method ???');
-            console.log(`HandlerForward[${this.chainedProxyUrlRedacted ? this.chainedProxyUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
+            console.log(`HandlerForward[${this.upstreamProxyUrlRedacted ? this.upstreamProxyUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
         }
     }
 
     run() {
-        this.log('Connecting...');
-
         const reqOpts = this.trgParsed;
         reqOpts.method = this.srcRequest.method;
         reqOpts.headers = {};
@@ -89,9 +87,9 @@ export default class HandlerForward extends HandlerBase {
          */
 
         // If desired, send the request via proxy
-        if (this.chainedProxyUrlParsed) {
-            reqOpts.hostname = reqOpts.host = this.chainedProxyUrlParsed.hostname;
-            reqOpts.port = this.chainedProxyUrlParsed.port;
+        if (this.upstreamProxyUrlParsed) {
+            reqOpts.hostname = reqOpts.host = this.upstreamProxyUrlParsed.hostname;
+            reqOpts.port = this.upstreamProxyUrlParsed.port;
 
             // HTTP requests to proxy contain the full URL in path, for example:
             // "GET http://www.example.com HTTP/1.1\r\n"
@@ -99,15 +97,33 @@ export default class HandlerForward extends HandlerBase {
             reqOpts.path = this.srcRequest.url;
 
             this.maybeAddProxyAuthorizationHeader(reqOpts.headers);
+
+            this.log('Connecting to upstream proxy...');
+        } else {
+            this.log('Connecting to target...');
         }
 
-        this.log('Connecting...');
+
 
         //console.dir(requestOptions);
 
         this.trgRequest = http.request(reqOpts);
         this.trgRequest.on('response', this.onTrgResponse);
         this.trgRequest.on('error', this.onTrgError);
+
+        this.trgRequest.on('socket', (socket) => {
+            this.log('Target socket assigned');
+
+            socket.once('close', () => {
+                this.log('Target socket closed');
+            });
+            socket.once('end', () => {
+                this.log('Target socket ended');
+            });
+        });
+
+
+
 
         //this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
         this.srcRequest.pipe(this.trgRequest);

@@ -19,6 +19,11 @@ import HandlerTunnelChain from './handler_tunnel_chain';
 // These requirements allow HTTP's functionality to be enhanced without
 // requiring prior update of deployed intermediaries."
 
+// TODO:
+// - Use connection pooling and maybe other stuff from:
+// https://github.com/request/tunnel-agent/blob/master/index.js
+// https://github.com/request/request/blob/master/lib/tunnel.js
+
 const DEFAULT_AUTH_REALM = 'Proxy';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 const DEFAULT_TARGET_PORT = 80;
@@ -43,13 +48,13 @@ export class ProxyServer {
      * @param options
      * @param [options.port] Port where the server the server will listen. By default 8000.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests
-     * and provide URL to chained proxy. It accepts a single parameter which is an object:
+     * and provide URL to chained upstream proxy. It accepts a single parameter which is an object:
      * `{ request: Object, username: String, password: String, hostname: String, port: Number, isHttp: Boolean }`
      * and returns an object (or promise resolving to the object) with following form:
-     * `{ isAuthenticated: Boolean, chainedProxyUrl: String }`
-     * If `chainedProxyUrl` is false-ish value, no chained proxy is used.
+     * `{ requestAuthentication: Boolean, upstreamProxyUrl: String }`
+     * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
      * If `prepareRequestFunction` is not set, the proxy server will not require any authentication
-     * and with not use any chained proxy.
+     * and with not use any upstream proxy.
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header. By default it's `Proxy`.
      * @param [options.verbose] If true, the server logs
      */
@@ -77,7 +82,7 @@ export class ProxyServer {
     }
 
     /**
-     * Handles normal HTTP request by forwarding it to target host or the chained proxy.
+     * Handles normal HTTP request by forwarding it to target host or the upstream proxy.
      */
     onRequest(request, response) {
         this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
@@ -97,7 +102,7 @@ export class ProxyServer {
     }
 
     /**
-     * Handles HTTP CONNECT request by setting up a tunnel either to target host or to the chained proxy.
+     * Handles HTTP CONNECT request by setting up a tunnel either to target host or to the upstream proxy.
      * @param request
      * @param socket
      * @param head
@@ -108,7 +113,7 @@ export class ProxyServer {
 
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
-                const handler = handlerOpts.chainedProxyUrl
+                const handler = handlerOpts.upstreamProxyUrl
                     ? new HandlerTunnelChain(handlerOpts)
                     : new HandlerTunnelDirect(handlerOpts);
                 handler.run();
@@ -120,7 +125,7 @@ export class ProxyServer {
 
 
     /**
-     * Authenticates a new request and determines proxy chain URL using the user functions.
+     * Authenticates a new request and determines upstream proxy URL using the user function.
      * Returns a promise resolving to an object that can be passed to construcot of one of the HandlerXxx classes.
      * @param request
      */
@@ -132,7 +137,7 @@ export class ProxyServer {
         let result = {
             srcRequest: request,
             trgParsed: null,
-            chainedProxyUrl: null,
+            upstreamProxyUrl: null,
             verbose: this.verbose,
         };
 
@@ -171,7 +176,7 @@ export class ProxyServer {
                 result.trgParsed.port = result.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using a user function (if provided)
-                if (!this.prepareRequestFunction) return { isAuthenticated: true, chainedProxyUrl: null };
+                if (!this.prepareRequestFunction) return { requestAuthentication: false, upstreamProxyUrl: null };
 
                 // Pause the socket so that no data is lost
                 socket.pause();
@@ -204,13 +209,13 @@ export class ProxyServer {
             })
             .then((funcResult) => {
                 // If not authenticated, request client to authenticate
-                if (!funcResult || !funcResult.isAuthenticated) {
+                if (funcResult && funcResult.requestAuthentication) {
                     const headers = { 'Proxy-Authenticate': `Basic realm="${this.authRealm}"` };
-                    throw new RequestError('Credential required.', 407, headers);
+                    throw new RequestError('Credentials required.', 407, headers);
                 }
 
-                if (funcResult && funcResult.chainedProxyUrl) {
-                    result.chainedProxyUrl = funcResult.chainedProxyUrl;
+                if (funcResult && funcResult.upstreamProxyUrl) {
+                    result.upstreamProxyUrl = funcResult.upstreamProxyUrl;
                 }
 
                 return result;

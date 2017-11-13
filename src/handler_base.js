@@ -9,7 +9,7 @@ import { parseUrl, redactParsedUrl } from './tools';
  * when the handler is no longer used.
  */
 export default class HandlerBase extends EventEmitter {
-    constructor({ srcRequest, srcResponse, trgParsed, verbose, chainedProxyUrl }) {
+    constructor({ srcRequest, srcResponse, trgParsed, verbose, upstreamProxyUrl }) {
         super();
 
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
@@ -25,22 +25,22 @@ export default class HandlerBase extends EventEmitter {
         this.trgParsed.port = this.trgParsed.port || DEFAULT_TARGET_PORT;
 
         this.verbose = !!verbose;
-        this.chainedProxyUrl = chainedProxyUrl;
+        this.upstreamProxyUrl = upstreamProxyUrl;
 
-        this.chainedProxyUrlParsed = chainedProxyUrl ? parseUrl(chainedProxyUrl) : null;
-        this.chainedProxyUrlRedacted = chainedProxyUrl ? redactParsedUrl(this.chainedProxyUrlParsed) : null;
+        this.upstreamProxyUrlParsed = upstreamProxyUrl ? parseUrl(upstreamProxyUrl) : null;
+        this.upstreamProxyUrlRedacted = upstreamProxyUrl ? redactParsedUrl(this.upstreamProxyUrlParsed) : null;
 
         // Indicates that source socket might have received some data already
         this.srcGotResponse = false;
 
         this.isDestroyed = false;
 
-        if (chainedProxyUrl) {
-            if (!this.chainedProxyUrlParsed.hostname || !this.chainedProxyUrlParsed.port) {
-                throw new Error('Invalid "chainedProxyUrl" option: URL must have hostname and port');
+        if (upstreamProxyUrl) {
+            if (!this.upstreamProxyUrlParsed.hostname || !this.upstreamProxyUrlParsed.port) {
+                throw new Error('Invalid "upstreamProxyUrl" option: URL must have hostname and port');
             }
-            if (this.chainedProxyUrlParsed.scheme !== 'http') {
-                throw new Error('Invalid "chainedProxyUrl" option: URL must have the "http" scheme');
+            if (this.upstreamProxyUrlParsed.scheme !== 'http') {
+                throw new Error('Invalid "upstreamProxyUrl" option: URL must have the "http" scheme');
             }
         }
 
@@ -104,7 +104,7 @@ export default class HandlerBase extends EventEmitter {
     }
 
     maybeAddProxyAuthorizationHeader(headers) {
-        const parsed = this.chainedProxyUrlParsed;
+        const parsed = this.upstreamProxyUrlParsed;
         if (parsed && parsed.username) {
             let auth = parsed.username;
             if (parsed.password) auth += ':' + parsed.password;
@@ -122,7 +122,13 @@ export default class HandlerBase extends EventEmitter {
             this.log(`${err}, responding with custom status code ${statusCode} to client`);
             this.srcResponse.writeHead(statusCode);
             this.srcResponse.end(`${err}`);
-        } else if (err.code === 'ENOTFOUND') {
+        } else if (err.code === 'ENOTFOUND' && this.upstreamProxyUrl) {
+            this.log('Chained proxy not found, sending 502 to source');
+            this.srcResponse.writeHead(502, { 'Connection': 'close' }, () => {
+                this.srcResponse.socket.abort();
+            });
+            this.srcResponse.end('Upstream proxy was not found');
+        } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrl) {
             this.log('Target server not found, sending 404 to source');
             this.srcResponse.writeHead(404);
             this.srcResponse.end('Target server not found');
