@@ -1,8 +1,10 @@
 import http from 'http';
 import https from 'https';
 import express from 'express';
+import bodyParser from 'body-parser';
 import WebSocket from 'ws';
 import Promise from 'bluebird';
+import basicAuth from 'basic-auth';
 
 
 /**
@@ -15,8 +17,17 @@ export class TargetServer {
 
         this.app = express();
 
-        this.app.get('/hello-world', this.getHelloWorld.bind(this));
+        // Parse an HTML body into a string
+        this.app.use(bodyParser.text({ type: 'text/*', limit: '10MB' }));
+
+        this.app.all('/hello-world', this.allHelloWorld.bind(this));
+        this.app.all('/echo-request-info', this.allEchoRequestInfo.bind(this));
+        this.app.all('/echo-payload', this.allEchoPayload.bind(this));
         this.app.get('/redirect-to-hello-world', this.getRedirectToHelloWorld.bind(this));
+        this.app.get('/get-1m-a-chars-together', this.get1MACharsTogether.bind(this));
+        this.app.get('/get-1m-a-chars-streamed', this.get1MACharsStreamed.bind(this));
+        this.app.get('/basic-auth', this.getBasicAuth.bind(this));
+
         this.app.all('*', this.handleHttpRequest.bind(this));
 
         if (useSsl) {
@@ -34,9 +45,38 @@ export class TargetServer {
         return Promise.promisify(this.httpServer.listen).bind(this.httpServer)(this.port);
     }
 
-    getHelloWorld(request, response) {
+    allHelloWorld(request, response) {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         response.end('Hello world!');
+    }
+
+    allEchoRequestInfo(request, response) {
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        const result = _.pick(request, 'headers', 'method');
+        response.end(JSON.stringify(result));
+    }
+
+    allEchoPayload(request, response) {
+        response.writeHead(200, { 'Content-Type': request.headers['content-type'] || 'dummy' });
+        // console.log('allEchoPayload: ' + request.body.length);
+        response.end(request.body);
+    }
+
+    get1MACharsTogether(request, response) {
+        response.writeHead(200, { 'Content-Type': 'text/plain' });
+        let str = '';
+        for (let i=0; i<10000; i++) {
+            str += 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+        }
+        response.end(str);
+    }
+
+    get1MACharsStreamed(request, response) {
+        response.writeHead(200, { 'Content-Type': 'text/plain' });
+        for (let i=0; i<10000; i++) {
+            response.write('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+        }
+        response.end();
     }
 
     getRedirectToHelloWorld(request, response) {
@@ -44,6 +84,18 @@ export class TargetServer {
         response.writeHead(301, { 'Content-Type': 'text/plain', 'Location': location });
         response.end();
     }
+
+    getBasicAuth(request, response) {
+        const auth = basicAuth(request);
+        if (!auth || auth.name !== 'john.doe' || auth.pass !== 'Passwd') {
+            response.statusCode = 401;
+            response.setHeader('WWW-Authenticate', 'Basic realm="MyRealmName"');
+            response.end('Unauthorized');
+        } else {
+            response.end('OK');
+        }
+    }
+
 
     handleHttpRequest(request, response) {
         console.log('Received request');

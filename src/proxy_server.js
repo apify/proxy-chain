@@ -30,7 +30,7 @@ const DEFAULT_TARGET_PORT = 80;
 
 const REQUEST_ERROR_NAME = 'RequestError';
 
-export class RequestError extends Error {
+class RequestError extends Error {
     constructor(message, statusCode, headers) {
         super(message);
         this.name = REQUEST_ERROR_NAME;
@@ -254,7 +254,7 @@ export class ProxyServer {
     }
 
     /**
-     * Sends a simple HTTP response to the client.
+     * Sends a simple HTTP response to the client and forcibly closes the connection.
      * @param socket
      * @param statusCode
      * @param headers
@@ -268,7 +268,15 @@ export class ProxyServer {
             });
             msg += `\r\n${message}`;
 
-            socket.end(msg);
+            socket.write(msg, () => {
+                socket.end();
+
+                // Unfortunately calling end() will not close the socket
+                // if client refuses to close it. Hence calling destroy.
+                // TODO: maybe the client will never receive the response,
+                // maybe we could add the socket to some internal dictionary and close it in close()
+                socket.destroy();
+            });
         } catch (err) {
             this.log(`Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
         }
