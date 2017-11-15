@@ -74,6 +74,11 @@ export class ProxyServer {
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
         this.server.on('connect', this.onConnect.bind(this));
+
+        this.stats = {
+            httpRequestCount: 0,
+            connectRequestCount: 0,
+        }
     }
 
     log(str, force) {
@@ -157,6 +162,7 @@ export class ProxyServer {
                     //   CONNECT server.example.com:80 HTTP/1.1
                     // Note that request.url contains the "server.example.com:80" part
                     result.trgParsed = parseHostHeader(request.url);
+                    this.stats.connectRequestCount++;
                 } else {
                     // The request should look like:
                     //   GET http://server.example.com:80/some-path HTTP/1.1
@@ -177,6 +183,8 @@ export class ProxyServer {
 
                     result.trgParsed = parsed;
                     isHttp = true;
+
+                    this.stats.httpRequestCount++;
                 }
                 result.trgParsed.port = result.trgParsed.port || DEFAULT_TARGET_PORT;
 

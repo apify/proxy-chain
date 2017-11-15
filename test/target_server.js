@@ -5,13 +5,14 @@ import bodyParser from 'body-parser';
 import WebSocket from 'ws';
 import Promise from 'bluebird';
 import basicAuth from 'basic-auth';
+import _ from 'underscore';
 
 
 /**
  * A HTTP server used for testing. It supports HTTPS and web sockets.
  */
 export class TargetServer {
-    constructor({ port, useSsl, sslKey, sslCrt }) {
+    constructor({ port, wsPort, useSsl, sslKey, sslCrt }) {
         this.port = port;
         this.useSsl = useSsl;
 
@@ -36,9 +37,13 @@ export class TargetServer {
             this.httpServer = http.createServer(this.app);
         }
 
-        // web socket server for connections from web servers (to subscribe for live execution status)
-        this.wsServer = new WebSocket.Server({ server: this.httpServer });
-        this.wsServer.on('connection', this.onWsConnection.bind(this));
+        // Web socket server for upgraded HTTP connections
+        this.wsUpgServer = new WebSocket.Server({ server: this.httpServer });
+        this.wsUpgServer.on('connection', this.onWsConnection.bind(this));
+
+        // Web socket server directly listening on some port
+        this.wsDirectServer = new WebSocket.Server({ port: wsPort });
+        this.wsDirectServer.on('connection', this.onWsConnection.bind(this));
     }
 
     listen() {
@@ -107,20 +112,19 @@ export class TargetServer {
         response.end('It works!');
     }
 
-    onWsConnection(ws, req) {
-        //const clientIp = JSON.stringify(ws.upgradeReq.socket.remoteAddress);
-
+    onWsConnection(ws) {
         ws.on('error', (err) => {
             console.log(`Web socket error: ${err.stack || err}`);
+            throw err;
         });
 
-        ws.on('close', (code) => {
-            console.log(`Web socket closed`);
+        ws.on('close', () => {
+            //console.log(`Web socket closed`);
         });
 
-        ws.on('message', (message) => {
-            console.log('Received WS message');
-            //ws.send();
+        // Simply send data back
+        ws.on('message', (data) => {
+            ws.send('I received: ' + data);
         });
     }
 

@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "bluebird": "^3.5.1",
+    "https-proxy-agent": "^2.1.0",
     "portastic": "^1.0.1",
     "through": "^2.3.8",
     "underscore": "^1.8.3"
