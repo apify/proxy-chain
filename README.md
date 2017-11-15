@@ -1,4 +1,4 @@
-# proxy-chain: Node.js implementation of proxy server (think Squid) with SSL and upstream proxy support
+# proxy-chain: Node.js implementation of a proxy server (think Squid) with support for SSL, authentication and upstream proxy chaining
 
 [![npm version](https://badge.fury.io/js/proxy-chain.svg)](http://badge.fury.io/js/proxy-chain)
 [![Build Status](https://travis-ci.org/Apifier/proxy-chain.svg)](https://travis-ci.org/Apifier/proxy-chain)

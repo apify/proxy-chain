@@ -1,13 +1,12 @@
 {
   "name": "proxy-chain",
   "version": "0.0.1",
-  "description": "Enables creation of HTTP proxy-to-proxy chains",
+  "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication and upstream proxy chaining",
   "main": "build/index.js",
   "keywords": [
-    "apify",
-    "apifier",
     "proxy",
-    "chain"
+    "squid",
+    "apify"
   ],
   "author": {
     "name": "Apify",

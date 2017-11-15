@@ -16,9 +16,6 @@ if [ -z "${BRANCH_UP_TO_DATE}" ]; then
     exit 1
 fi
 
-echo "Generating documentation ..."
-npm run build-doc
-
 echo "Pushing to git ..."
 git push
 
