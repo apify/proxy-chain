@@ -13,7 +13,7 @@ import url from 'url';
 import HttpsProxyAgent from 'https-proxy-agent';
 
 import { parseUrl, parseProxyAuthorizationHeader } from '../build/tools';
-import { ProxyServer } from '../build/proxy_server';
+import { Server } from '../build/server';
 import { TargetServer } from './target_server';
 
 /* globals process */
@@ -206,7 +206,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
                     opts.authRealm = AUTH_REALM;
 
-                    mainProxyServer = new ProxyServer(opts);
+                    mainProxyServer = new Server(opts);
 
                     return mainProxyServer.listen();
                 }
@@ -525,11 +525,11 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
 
 // Test direct connection to target server to ensure our tests are correct
-describe('ProxyServer (HTTP -> Target)', createTestSuite({
+describe('Server (HTTP -> Target)', createTestSuite({
     useSsl: false,
     useMainProxy: false,
 }));
-describe('ProxyServer (HTTPS -> Target)', createTestSuite({
+describe('Server (HTTPS -> Target)', createTestSuite({
     useSsl: true,
     useMainProxy: false,
 }));
@@ -563,7 +563,7 @@ useSslVariants.forEach((useSsl) => {
             if (!useUpstreamProxy) variants = [ null ];
 
             variants.forEach((upstreamProxyAuth) => {
-                let desc = `ProxyServer (${useSsl ? 'HTTPS' : 'HTTP'} -> Main proxy `;
+                let desc = `Server (${useSsl ? 'HTTPS' : 'HTTP'} -> Main proxy `;
 
                 if (mainProxyAuth) {
                     if (!mainProxyAuth) {

@@ -42,9 +42,9 @@ class RequestError extends Error {
 }
 
 
-export class ProxyServer {
+export class Server {
     /**
-     * Initializes a new instance of ProxyServer class.
+     * Initializes a new instance of Server class.
      * @param options
      * @param [options.port] Port where the server the server will listen. By default 8000.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests
@@ -82,7 +82,7 @@ export class ProxyServer {
     }
 
     log(str, force) {
-        if (this.verbose || force) console.log(`ProxyServer[${this.port}]: ${str}`)
+        if (this.verbose || force) console.log(`Server[${this.port}]: ${str}`)
     }
 
     onClientError(err, socket) {

@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "build": "rm -rf ./build && babel src --out-dir build",
-    "mytest": "npm run build && node ./build/index.js",
+    "mytest": "npm run build && node ./build/test_run.js",
     "test": "npm run build && mocha --compilers js:babel-core/register --recursive",
     "test-cov": "npm run build && babel-node node_modules/isparta/bin/isparta cover --report html --report text node_modules/.bin/_mocha",
     "prepare": "npm run build",
