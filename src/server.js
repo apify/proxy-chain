@@ -1,9 +1,9 @@
 import http from 'http';
 import url from 'url';
 import _ from 'underscore';
+import Promise from 'bluebird';
 
 import { parseHostHeader, parseProxyAuthorizationHeader } from './tools';
-import Promise from 'bluebird';
 import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
@@ -78,11 +78,11 @@ export class Server {
         this.stats = {
             httpRequestCount: 0,
             connectRequestCount: 0,
-        }
+        };
     }
 
     log(str, force) {
-        if (this.verbose || force) console.log(`Server[${this.port}]: ${str}`)
+        if (this.verbose || force) console.log(`Server[${this.port}]: ${str}`);
     }
 
     onClientError(err, socket) {
@@ -96,8 +96,8 @@ export class Server {
     onRequest(request, response) {
         this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
-        //console.log("MAIN REQUEST");
-        //console.dir(_.pick(request, 'headers', 'url', 'method', 'httpVersion'));
+        // console.log("MAIN REQUEST");
+        // console.dir(_.pick(request, 'headers', 'url', 'method', 'httpVersion'));
 
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
@@ -113,12 +113,11 @@ export class Server {
     /**
      * Handles HTTP CONNECT request by setting up a tunnel either to target host or to the upstream proxy.
      * @param request
-     * @param socket
      * @param head
      */
-    onConnect(request, socket, head) {
+    onConnect(request) {
         this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
-        //console.dir(request.headers);
+        // console.dir(request.headers);
 
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
@@ -139,11 +138,11 @@ export class Server {
      * @param request
      */
     prepareRequestHandling(request) {
-        //console.log('XXX prepareRequestHandling');
-        //console.dir(_.pick(request, 'url', 'method'));
-        //console.dir(url.parse(request.url));
+        // console.log('XXX prepareRequestHandling');
+        // console.dir(_.pick(request, 'url', 'method'));
+        // console.dir(url.parse(request.url));
 
-        let result = {
+        const result = {
             id: ++this.lastHandlerId,
             srcRequest: request,
             trgParsed: null,
@@ -214,7 +213,7 @@ export class Server {
                     }
 
                     funcOpts.username = auth.username;
-                    funcOpts.password = auth.password
+                    funcOpts.password = auth.password;
                 }
 
                 // User function returns a result directly or a promise
@@ -315,7 +314,7 @@ export class Server {
      * @param callback
      */
     close(destroyConnections, callback) {
-        if (typeof(destroyConnections) === 'function') {
+        if (typeof (destroyConnections) === 'function') {
             callback = destroyConnections;
             destroyConnections = false;
         }

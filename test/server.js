@@ -31,15 +31,15 @@ const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 
 // Enable self-signed certificates
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const NON_EXISTENT_HOSTNAME = 'non-existent-hostname';
 
 // Prepare testing data
-let DATA_CHUNKS = [];
+const DATA_CHUNKS = [];
 let DATA_CHUNKS_COMBINED = '';
-const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-for (let i = 0; i < 100; i++ ) {
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+for (let i = 0; i < 100; i++) {
     let chunk = '';
     for (let i = 0; i < 10000; i++) {
         chunk += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -54,7 +54,7 @@ const requestPromised = (opts) => {
     return new Promise((resolve, reject) => {
         const result = request(opts, (error, response, body) => {
             if (error) {
-                /*console.log('REQUEST');
+                /* console.log('REQUEST');
                 console.dir(response);
                 console.dir(body);
                 console.dir(result); */
@@ -66,8 +66,10 @@ const requestPromised = (opts) => {
 };
 
 
-const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy, upstreamProxyAuth }) => {
-    return function() {
+const createTestSuite = ({
+    useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy, upstreamProxyAuth,
+}) => {
+    return function () {
         this.timeout(60 * 1000);
 
         let freePorts;
@@ -83,17 +85,17 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
         let mainProxyServer;
         let mainProxyServerPort;
-        let mainProxyRequestCount = 0;
+        const mainProxyRequestCount = 0;
 
         let baseUrl;
         let mainProxyUrl;
-        let getRequestOpts = (pathOrUrl) => {
+        const getRequestOpts = (pathOrUrl) => {
             return {
                 url: pathOrUrl[0] === '/' ? `${baseUrl}${pathOrUrl}` : pathOrUrl,
                 key: sslKey,
                 proxy: mainProxyUrl,
                 headers: {},
-            }
+            };
         };
 
         let counter = 0;
@@ -105,7 +107,9 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                 // Setup target HTTP server
                 targetServerPort = freePorts.shift();
                 targetServerWsPort = freePorts.shift();
-                targetServer = new TargetServer({ port: targetServerPort, wsPort: targetServerWsPort, useSsl, sslKey, sslCrt });
+                targetServer = new TargetServer({
+                    port: targetServerPort, wsPort: targetServerWsPort, useSsl, sslKey, sslCrt,
+                });
                 return targetServer.listen();
             }).then(() => {
                 // Setup proxy chain server
@@ -134,7 +138,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
                             const parsed = parseProxyAuthorizationHeader(auth);
                             const isEqual = _.isEqual(parsed, upstreamProxyAuth);
-                            //console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, upstreamProxyAuth, isEqual);
+                            // console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, upstreamProxyAuth, isEqual);
                             if (isEqual) upstreamProxyWasCalled = true;
                             fn(null, isEqual);
                         };
@@ -159,11 +163,13 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
                     const opts = {
                         port: mainProxyServerPort,
-                        //verbose: true,
+                        // verbose: true,
                     };
 
                     if (mainProxyAuth || useUpstreamProxy) {
-                        opts.prepareRequestFunction = ({ request, username, password, hostname, port, isHttp }) => {
+                        opts.prepareRequestFunction = ({
+                            request, username, password, hostname, port, isHttp,
+                        }) => {
                             const result = {
                                 requestAuthentication: false,
                                 upstreamProxyUrl: null,
@@ -173,7 +179,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                                 if (mainProxyAuth.username !== username || mainProxyAuth.password !== password) {
                                     result.requestAuthentication = true;
                                     // Now that authentication is requested, upstream proxy should not get used to try some invalid one
-                                    result.upstreamProxyUrl = `http://dummy-hostname:4567`;
+                                    result.upstreamProxyUrl = 'http://dummy-hostname:4567';
                                 }
                             }
 
@@ -183,7 +189,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                                 if (hostname === 'activate-invalid-upstream-proxy-credentials') {
                                     upstreamProxyUrl = `http://invalid:credentials@localhost:${upstreamProxyPort}`;
                                 } else if (hostname === 'activate-invalid-upstream-proxy-host') {
-                                    upstreamProxyUrl = `http://dummy-hostname:1234`;
+                                    upstreamProxyUrl = 'http://dummy-hostname:1234';
                                 } else {
                                     let auth = '';
                                     if (upstreamProxyAuth) {
@@ -200,8 +206,8 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
                             // Sometimes return a promise, sometimes the result directly
                             if (counter++ % 2 === 0) return result;
-                            else return Promise.resolve(result);
-                        }
+                            return Promise.resolve(result);
+                        };
                     }
 
                     opts.authRealm = AUTH_REALM;
@@ -210,20 +216,21 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
                     return mainProxyServer.listen();
                 }
-            }).then(() => {
+            })
+                .then(() => {
                 // Generate URLs
-                baseUrl = `${useSsl ? 'https' : 'http'}://localhost:${targetServerPort}`;
+                    baseUrl = `${useSsl ? 'https' : 'http'}://localhost:${targetServerPort}`;
 
-                if (useMainProxy) {
-                    let auth = '';
-                    if (mainProxyAuth) {
-                        auth = mainProxyAuth.username;
-                        if (mainProxyAuth.password) auth += `:${mainProxyAuth.password}`;
-                        auth += '@';
+                    if (useMainProxy) {
+                        let auth = '';
+                        if (mainProxyAuth) {
+                            auth = mainProxyAuth.username;
+                            if (mainProxyAuth.password) auth += `:${mainProxyAuth.password}`;
+                            auth += '@';
+                        }
+                        mainProxyUrl = `http://${auth}localhost:${mainProxyServerPort}`;
                     }
-                    mainProxyUrl = `http://${auth}localhost:${mainProxyServerPort}`;
-                }
-            });
+                });
         });
 
         // Helper functions
@@ -236,23 +243,22 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                 return promise.then(() => {
                     assert.fail();
                 })
-                .catch((err) => {
+                    .catch((err) => {
                     // console.dir(err);
-                    expect(err.message).to.contain(`${expectedStatusCode}`);
-                });
-            } else {
-                return promise.then((response) => {
-                    expect(response.statusCode).to.eql(expectedStatusCode);
-                    return response;
-                });
+                        expect(err.message).to.contain(`${expectedStatusCode}`);
+                    });
             }
+            return promise.then((response) => {
+                expect(response.statusCode).to.eql(expectedStatusCode);
+                return response;
+            });
         };
 
         // Replacement for it() that checks whether the tests really called the main and upstream proxies
         const _it = (description, func) => {
             it(description, () => {
-                let upstreamCount = upstreamProxyRequestCount;
-                let mainCount = mainProxyServer ? mainProxyServer.stats.connectRequestCount + mainProxyServer.stats.httpRequestCount : null;
+                const upstreamCount = upstreamProxyRequestCount;
+                const mainCount = mainProxyServer ? mainProxyServer.stats.connectRequestCount + mainProxyServer.stats.httpRequestCount : null;
                 return func()
                     .then(() => {
                         if (useMainProxy) expect(mainCount).to.be.below(mainProxyServer.stats.connectRequestCount + mainProxyServer.stats.httpRequestCount);
@@ -288,7 +294,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
             });
         });
 
-        _it(`handles large streamed POST payload`, () => {
+        _it('handles large streamed POST payload', () => {
             const opts = getRequestOpts('/echo-payload');
             opts.headers['Content-Type'] = 'text/my-test';
             opts.method = 'POST';
@@ -317,9 +323,9 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                     });
                 }, 1);
             })
-            .finally(() => {
-                clearInterval(intervalId);
-            });
+                .finally(() => {
+                    clearInterval(intervalId);
+                });
         });
 
         const test1MAChars = () => {
@@ -331,8 +337,8 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                     expect(response.statusCode).to.eql(200);
                 });
         };
-        _it(`handles large GET response`, test1MAChars);
-        _it(`handles large streamed GET response`, test1MAChars);
+        _it('handles large GET response', test1MAChars);
+        _it('handles large streamed GET response', test1MAChars);
 
         _it('handles 301 redirect', () => {
             const opts = getRequestOpts('/redirect-to-hello-world');
@@ -369,9 +375,9 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
 
         // const url = `${self.actExecution.workerUrl}/live-status/${self.actExecution._id}`;
-        //self.workerWs = new WebSocket(url);
+        // self.workerWs = new WebSocket(url);
 
-        let testWsCall = (useHttpUpgrade) => {
+        const testWsCall = (useHttpUpgrade) => {
             return new Promise((resolve, reject) => {
                 // Create an instance of the `HttpsProxyAgent` class with the proxy server information
                 let agent = null;
@@ -383,7 +389,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                 const wsUrl = useHttpUpgrade
                     ? `${useSsl ? 'https' : 'http'}://localhost:${targetServerPort}`
                     : `${useSsl ? 'wss' : 'ws'}://localhost:${targetServerWsPort}`;
-                const ws = new WebSocket(wsUrl, { agent: agent });
+                const ws = new WebSocket(wsUrl, { agent });
 
                 ws.on('error', (err) => {
                     ws.close();
@@ -392,14 +398,14 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                 ws.on('open', () => {
                     ws.send('hello world');
                 });
-                ws.on('message', function (data, flags) {
+                ws.on('message', (data, flags) => {
                     ws.close();
                     resolve(data);
                 });
             })
-            .then((data) => {
-                expect(data).to.eql('I received: hello world');
-            });
+                .then((data) => {
+                    expect(data).to.eql('I received: hello world');
+                });
         };
 
         _it('handles web socket connection (upgrade from HTTP)', () => {
@@ -431,7 +437,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
             });
 
             _it('removes hop-by-hop headers (HTTP-only) and leaves other ones', () => {
-                const opts = getRequestOpts(`/echo-request-info`);
+                const opts = getRequestOpts('/echo-request-info');
                 opts.headers['X-Test-Header'] = 'my-test-value';
                 opts.headers['Transfer-Encoding'] = 'identity';
                 return requestPromised(opts)
@@ -500,7 +506,7 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
 
             // Shutdown all servers
             return Promise.resolve().then(() => {
-                //console.log('mainProxyServer');
+                // console.log('mainProxyServer');
                 if (mainProxyServer) {
                     // NOTE: we need to forcibly close pending connections,
                     // because e.g. on 502 errors in HTTPS mode, the request library
@@ -508,17 +514,17 @@ const createTestSuite = ({ useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy
                     return mainProxyServer.close(true);
                 }
             })
-            .then(() => {
-                //console.log('upstreamProxyServer');
-                if (upstreamProxyServer) {
-                    return Promise.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
-                }
-            })
-            .then(() => {
-                if (targetServer) {
-                    return targetServer.close();
-                }
-            });
+                .then(() => {
+                // console.log('upstreamProxyServer');
+                    if (upstreamProxyServer) {
+                        return Promise.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
+                    }
+                })
+                .then(() => {
+                    if (targetServer) {
+                        return targetServer.close();
+                    }
+                });
         });
     };
 };
@@ -548,7 +554,7 @@ const useUpstreamProxyVariants = [
     true,
     false,
 ];
-let upstreamProxyAuthVariants = [
+const upstreamProxyAuthVariants = [
     null,
     { type: 'Basic', username: 'username', password: null },
     { type: 'Basic', username: 'username', password: 'password' },
@@ -557,10 +563,9 @@ let upstreamProxyAuthVariants = [
 useSslVariants.forEach((useSsl) => {
     mainProxyAuthVariants.forEach((mainProxyAuth) => {
         useUpstreamProxyVariants.forEach((useUpstreamProxy) => {
-
             // If useUpstreamProxy is not used, only try one variant of upstreamProxyAuth
             let variants = upstreamProxyAuthVariants;
-            if (!useUpstreamProxy) variants = [ null ];
+            if (!useUpstreamProxy) variants = [null];
 
             variants.forEach((upstreamProxyAuth) => {
                 let desc = `Server (${useSsl ? 'HTTPS' : 'HTTP'} -> Main proxy `;
@@ -568,19 +573,15 @@ useSslVariants.forEach((useSsl) => {
                 if (mainProxyAuth) {
                     if (!mainProxyAuth) {
                         desc += 'public ';
-                    } else {
-                        if (mainProxyAuth.username && mainProxyAuth.password) desc += 'with username:password ';
-                        else desc += 'with username '
-                    }
+                    } else if (mainProxyAuth.username && mainProxyAuth.password) desc += 'with username:password ';
+                    else desc += 'with username ';
                 }
                 if (useUpstreamProxy) {
                     desc += '-> Upstream proxy ';
                     if (!upstreamProxyAuth) {
                         desc += 'public ';
-                    } else {
-                        if (upstreamProxyAuth.username && upstreamProxyAuth.password) desc += 'with username:password ';
-                        else desc += 'with username '
-                    }
+                    } else if (upstreamProxyAuth.username && upstreamProxyAuth.password) desc += 'with username:password ';
+                    else desc += 'with username ';
                 }
                 desc += '-> Target)';
 

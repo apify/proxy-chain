@@ -2,7 +2,7 @@ import urlModule from 'url';
 import through from 'through';
 
 
-const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9]))(:([0-9]+))?$/;
+const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
 
 
 /**
@@ -17,7 +17,7 @@ export const parseHostHeader = (hostHeader) => {
     const matches = HOST_HEADER_REGEX.exec(hostHeader || '');
     if (!matches) return null;
 
-    let hostname = matches[1];
+    const hostname = matches[1];
     if (hostname.length > 255) return null;
 
     let port = null;
@@ -38,12 +38,12 @@ const HOP_BY_HOP_HEADERS = [
     'TE',
     'Trailers',
     'Transfer-Encoding',
-    'Upgrade'
+    'Upgrade',
 ];
 
-const HOP_BY_HOP_HEADERS_REGEX = new RegExp('^(' + HOP_BY_HOP_HEADERS.join('|') + ')$', 'i');
+const HOP_BY_HOP_HEADERS_REGEX = new RegExp(`^(${HOP_BY_HOP_HEADERS.join('|')})$`, 'i');
 
-export const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS_REGEX.test(header);
+export const isHopByHopHeader = header => HOP_BY_HOP_HEADERS_REGEX.test(header);
 
 
 /**
@@ -107,7 +107,7 @@ export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') =
 };
 
 
-const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9\-]+) ([a-z0-9+\/=]+)$/i;
+const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;
 
 export const parseProxyAuthorizationHeader = (header) => {
     const matches = PROXY_AUTH_HEADER_REGEX.exec(header);
@@ -118,12 +118,12 @@ export const parseProxyAuthorizationHeader = (header) => {
 
     // NOTE: don't allow empty username because authenticate() function in server returns username
     const index = auth.indexOf(':');
-    if (index===0) return null;
+    if (index === 0) return null;
 
     return {
         type: matches[1],
         username: index >= 0 ? auth.substr(0, index) : auth,
-        password: index >= 0 ? auth.substr(index+1) : null,
+        password: index >= 0 ? auth.substr(index + 1) : null,
     };
 };
 
@@ -139,15 +139,15 @@ export const parseProxyAuthorizationHeader = (header) => {
 export const tee = (name, initialOnly = true) => {
     console.log('tee');
     let maxChunks = 2;
-    let duplex = through( chunk => {
+    const duplex = through((chunk) => {
         if (maxChunks || !initialOnly) {
-            let msg = chunk.toString();
-            msg += '';
+            // let msg = chunk.toString();
+            // msg += '';
             maxChunks--;
-            console.log('pipe: ' + JSON.stringify({
+            console.log(`pipe: ${JSON.stringify({
                 context: name,
-                chunkHead: chunk.toString().slice(0, 100)
-            }));
+                chunkHead: chunk.toString().slice(0, 100),
+            })}`);
         }
         duplex.queue(chunk);
     });

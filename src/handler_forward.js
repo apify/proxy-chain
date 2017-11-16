@@ -1,5 +1,5 @@
 import http from 'http';
-import { isHopByHopHeader, tee } from './tools';
+import { isHopByHopHeader } from './tools';
 import HandlerBase from './handler_base';
 
 
@@ -17,7 +17,8 @@ export default class HandlerForward extends HandlerBase {
         if (this.verbose) {
             const srcReq = this.srcRequest || {};
             if (!srcReq.method) console.log('WARNING: no method ???');
-            console.log(`HandlerForward[${this.upstreamProxyUrlRedacted ? this.upstreamProxyUrlRedacted + ' -> ' : ''}${srcReq.method} ${srcReq.url}]: ${str}`);
+            const urlRedacted = this.upstreamProxyUrlRedacted ? `${this.upstreamProxyUrlRedacted} -> ` : '';
+            console.log(`HandlerForward[${urlRedacted}${srcReq.method} ${srcReq.url}]: ${str}`);
         }
     }
 
@@ -27,11 +28,11 @@ export default class HandlerForward extends HandlerBase {
         reqOpts.headers = {};
 
         // setup outbound proxy request HTTP headers
-        //TODO: var hasXForwardedFor = false;
-        //var hasVia = false;
-        //var via = '1.1 ' + hostname + ' (proxy/' + version + ')';
+        // TODO: var hasXForwardedFor = false;
+        // var hasVia = false;
+        // var via = '1.1 ' + hostname + ' (proxy/' + version + ')';
 
-        for (let i = 0; i<this.srcRequest.rawHeaders.length; i += 2) {
+        for (let i = 0; i < this.srcRequest.rawHeaders.length; i += 2) {
             const headerName = this.srcRequest.rawHeaders[i];
             const headerValue = this.srcRequest.rawHeaders[i + 1];
 
@@ -61,7 +62,7 @@ export default class HandlerForward extends HandlerBase {
             */
 
             reqOpts.headers[headerName] = headerValue;
-        };
+        }
 
         /*
         // add "X-Forwarded-For" header if it's still not here by now
@@ -88,7 +89,8 @@ export default class HandlerForward extends HandlerBase {
 
         // If desired, send the request via proxy
         if (this.upstreamProxyUrlParsed) {
-            reqOpts.hostname = reqOpts.host = this.upstreamProxyUrlParsed.hostname;
+            reqOpts.host = this.upstreamProxyUrlParsed.hostname;
+            reqOpts.hostname = reqOpts.host;
             reqOpts.port = this.upstreamProxyUrlParsed.port;
 
             // HTTP requests to proxy contain the full URL in path, for example:
@@ -104,8 +106,7 @@ export default class HandlerForward extends HandlerBase {
         }
 
 
-
-        //console.dir(requestOptions);
+        // console.dir(requestOptions);
 
         this.trgRequest = http.request(reqOpts);
         this.trgRequest.on('response', this.onTrgResponse);
@@ -123,23 +124,21 @@ export default class HandlerForward extends HandlerBase {
         });
 
 
-
-
-        //this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
+        // this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
         this.srcRequest.pipe(this.trgRequest);
     }
 
     onTrgResponse(response) {
         this.log(`Received response from target (${response.statusCode})`);
-        //console.dir(response);
+        // console.dir(response);
 
         if (this.checkUpstreamProxy407(response)) return;
 
         this.srcGotResponse = true;
 
         // Prepare response headers
-        var headers = {};
-        for (let i = 0; i<response.rawHeaders.length; i += 2) {
+        const headers = {};
+        for (let i = 0; i < response.rawHeaders.length; i += 2) {
             const headerName = response.rawHeaders[i];
             const headerValue = response.rawHeaders[i + 1];
 
@@ -150,13 +149,13 @@ export default class HandlerForward extends HandlerBase {
 
         this.srcResponse.writeHead(response.statusCode, headers);
         response.pipe(this.srcResponse);
-    };
+    }
 
 
     onTrgError(err) {
         this.log(`Target socket failed: ${err.stack || err}`);
         this.fail(err);
-    };
+    }
 
     removeListeners() {
         super.removeListeners();

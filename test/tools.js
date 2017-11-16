@@ -76,7 +76,6 @@ describe('tools.redactUrl()', () => {
 });
 
 
-
 describe('tools.parseHostHeader()', () => {
     it('works with valid input', () => {
         expect(parseHostHeader('www.example.com:80')).to.eql({ hostname: 'www.example.com', port: 80 });
@@ -101,10 +100,9 @@ describe('tools.parseHostHeader()', () => {
         expect(parseHostHeader('example.com:999999')).to.eql(null);
 
         let LONG_HOSTNAME = '';
-        for( var i=0; i<=256; i++)
-            LONG_HOSTNAME += 'a';
+        for (let i = 0; i <= 256; i++) { LONG_HOSTNAME += 'a'; }
         expect(parseHostHeader(LONG_HOSTNAME)).to.eql(null);
-        expect(parseHostHeader(LONG_HOSTNAME + ':123')).to.eql(null);
+        expect(parseHostHeader(`${LONG_HOSTNAME}:123`)).to.eql(null);
     });
 });
 
@@ -132,7 +130,7 @@ describe('tools.parseProxyAuthorizationHeader()', () => {
 
         expect(parse(authStr('Basic', 'username:password'))).to.eql({ type: 'Basic', username: 'username', password: 'password' });
         expect(parse(authStr('Basic', 'user1234:password567'))).to.eql({ type: 'Basic', username: 'user1234', password: 'password567' });
-        expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({ type: 'Basic', username: 'username', password: 'pass:with:many:colons' });
+        expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({ type: 'Basic', username: 'username', password: 'pass:with:many:colons' }); //eslint-disable-line
         expect(parse(authStr('Basic', 'username:'))).to.eql({ type: 'Basic', username: 'username', password: '' });
         expect(parse(authStr('Basic', 'username'))).to.eql({ type: 'Basic', username: 'username', password: null });
         expect(parse(authStr('SCRAM-SHA-256', 'something:else'))).to.eql({ type: 'SCRAM-SHA-256', username: 'something', password: 'else' });

@@ -25,7 +25,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
         this.trgSocket.once('error', this.onTrgSocketError);
     }
 
-    onTrgSocketConnect () {
+    onTrgSocketConnect() {
         this.log('Connected');
 
         this.srcGotResponse = true;

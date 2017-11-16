@@ -9,7 +9,9 @@ import { parseUrl, redactParsedUrl } from './tools';
  * when the handler is no longer used.
  */
 export default class HandlerBase extends EventEmitter {
-    constructor({ id, srcRequest, srcResponse, trgParsed, verbose, upstreamProxyUrl }) {
+    constructor({
+        id, srcRequest, srcResponse, trgParsed, verbose, upstreamProxyUrl,
+    }) {
         super();
 
         if (!id) throw new Error('The "id" option is required');
@@ -79,10 +81,10 @@ export default class HandlerBase extends EventEmitter {
     }
 
     // Abstract method, needs to be overridden
-    log() {}
+    log() {} // eslint-disable-line
 
     // Abstract method, needs to be overridden
-    run() {}
+    run() {} // eslint-disable-line
 
     // if the client closes the connection prematurely,
     // then close the upstream socket
@@ -92,7 +94,7 @@ export default class HandlerBase extends EventEmitter {
     }
 
     onSrcSocketEnd() {
-        this.log(`Source socket ended`);
+        this.log('Source socket ended');
         this.destroy();
     }
 
@@ -101,7 +103,7 @@ export default class HandlerBase extends EventEmitter {
         this.destroy();
     }
 
-    onSrcResponseFinish () {
+    onSrcResponseFinish() {
         this.log('Source response finished');
         this.removeListeners();
     }
@@ -110,7 +112,7 @@ export default class HandlerBase extends EventEmitter {
         const parsed = this.upstreamProxyUrlParsed;
         if (parsed && parsed.username) {
             let auth = parsed.username;
-            if (parsed.password) auth += ':' + parsed.password;
+            if (parsed.password) auth += `:${parsed.password}`;
             headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
         }
     }
@@ -153,7 +155,7 @@ export default class HandlerBase extends EventEmitter {
             this.srcResponse.writeHead(500);
             this.srcResponse.end('Internal server error');
         }
-    };
+    }
 
     removeListeners() {
         this.log('Removing listeners');

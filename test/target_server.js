@@ -12,7 +12,9 @@ import _ from 'underscore';
  * A HTTP server used for testing. It supports HTTPS and web sockets.
  */
 export class TargetServer {
-    constructor({ port, wsPort, useSsl, sslKey, sslCrt }) {
+    constructor({
+        port, wsPort, useSsl, sslKey, sslCrt,
+    }) {
         this.port = port;
         this.useSsl = useSsl;
 
@@ -70,7 +72,7 @@ export class TargetServer {
     get1MACharsTogether(request, response) {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         let str = '';
-        for (let i=0; i<10000; i++) {
+        for (let i = 0; i < 10000; i++) {
             str += 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
         }
         response.end(str);
@@ -78,7 +80,7 @@ export class TargetServer {
 
     get1MACharsStreamed(request, response) {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
-        for (let i=0; i<10000; i++) {
+        for (let i = 0; i < 10000; i++) {
             response.write('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
         }
         response.end();
@@ -86,7 +88,7 @@ export class TargetServer {
 
     getRedirectToHelloWorld(request, response) {
         const location = `${this.useSsl ? 'https' : 'http'}://localhost:${this.port}/hello-world`;
-        response.writeHead(301, { 'Content-Type': 'text/plain', 'Location': location });
+        response.writeHead(301, { 'Content-Type': 'text/plain', Location: location });
         response.end();
     }
 
@@ -105,8 +107,8 @@ export class TargetServer {
     handleHttpRequest(request, response) {
         console.log('Received request');
 
-        //const message = request.body;
-        //const remoteAddr = request.socket.remoteAddress;
+        // const message = request.body;
+        // const remoteAddr = request.socket.remoteAddress;
 
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         response.end('It works!');
@@ -119,12 +121,12 @@ export class TargetServer {
         });
 
         ws.on('close', () => {
-            //console.log(`Web socket closed`);
+            // console.log(`Web socket closed`);
         });
 
         // Simply send data back
         ws.on('message', (data) => {
-            ws.send('I received: ' + data);
+            ws.send(`I received: ${data}`);
         });
     }
 

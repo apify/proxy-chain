@@ -1,6 +1,6 @@
 import http from 'http';
-import { tee } from './tools';
 import HandlerBase from './handler_base';
+// import { tee } from './tools';
 
 /* globals Buffer */
 
@@ -17,13 +17,15 @@ export default class HandlerTunnelChain extends HandlerBase {
     }
 
     log(str) {
-        if (this.verbose) console.log(`HandlerTunnelChain[${this.upstreamProxyUrlRedacted} -> ${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
+        if (this.verbose) {
+            console.log(`HandlerTunnelChain[${this.upstreamProxyUrlRedacted} -> ${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
+        }
     }
 
     run() {
         this.log('Connecting to upstream proxy...');
 
-        let options = {
+        const options = {
             method: 'CONNECT',
             hostname: this.upstreamProxyUrlParsed.hostname,
             port: this.upstreamProxyUrlParsed.port,
@@ -61,8 +63,8 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.trgRequest.end();
     }
 
-    onTrgRequestConnect (response, socket, head) {
-        this.log(`Connected to upstream proxy`);
+    onTrgRequestConnect(response, socket) {
+        this.log('Connected to upstream proxy');
 
         if (this.checkUpstreamProxy407(response)) return;
 
@@ -71,7 +73,7 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.srcResponse.writeHead(200, 'Connection established');
 
         // TODO: ???
-        //this.response.writeHead(response.statusCode, response.statusMessage);
+        // this.response.writeHead(response.statusCode, response.statusMessage);
 
         // TODO: attach handlers to trgSocket ???
         this.trgSocket = socket;
@@ -89,8 +91,8 @@ export default class HandlerTunnelChain extends HandlerBase {
         // Setup bi-directional tunnel
         this.trgSocket.pipe(this.srcSocket);
         this.srcSocket.pipe(this.trgSocket);
-        //this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
-        //this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
+        // this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
+        // this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
     }
 
     onTrgRequestAbort() {
