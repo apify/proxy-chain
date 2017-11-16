@@ -1,5 +1,5 @@
 import urlModule from 'url';
-import through from 'through';
+// import through from 'through';
 
 
 const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
@@ -135,7 +135,7 @@ export const parseProxyAuthorizationHeader = (header) => {
  * @param   {String}   name          identifier
  * @param   {Boolean}  initialOnly   log only initial chunk of data
  * @return  {through}                duplex stream (pipe)
- */
+
 export const tee = (name, initialOnly = true) => {
     console.log('tee');
     let maxChunks = 2;
@@ -154,3 +154,4 @@ export const tee = (name, initialOnly = true) => {
 
     return duplex;
 };
+*/

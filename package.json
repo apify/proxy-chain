@@ -1,6 +1,6 @@
 {
   "name": "proxy-chain",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication and upstream proxy chaining.",
   "main": "build/index.js",
   "keywords": [
@@ -40,9 +40,6 @@
   },
   "dependencies": {
     "bluebird": "^3.5.1",
-    "https-proxy-agent": "^2.1.0",
-    "portastic": "^1.0.1",
-    "through": "^2.3.8",
     "underscore": "^1.8.3"
   },
   "devDependencies": {
@@ -54,6 +51,7 @@
     "basic-auth": "^2.0.0",
     "body-parser": "^1.18.2",
     "chai": "^4.0.2",
+    "https-proxy-agent": "^2.1.0",
     "eslint": "^3.19.0",
     "eslint-config-airbnb": "^15.0.1",
     "eslint-config-airbnb-base": "^11.1.0",
@@ -64,10 +62,12 @@
     "express": "^4.16.2",
     "isparta": "^4.0.0",
     "mocha": "^3.2.0",
+    "portastic": "^1.0.1",
     "proxy": "^0.2.4",
     "request": "^2.83.0",
     "sinon": "^2.2.0",
     "sinon-stub-promise": "^4.0.0",
+    "through": "^2.3.8",
     "ws": "^3.3.1"
   },
   "optionalDependencies": {}
