@@ -67,3 +67,16 @@ server.listen(() => {
   console.log(`Proxy server is listening on port ${8000}`);
 });
 ```
+
+# Closing the server
+
+To shutdown the proxy server, call the `close([destroyConnections], [callback])` function. For example:
+
+```javascript
+server.close(true, () => {
+  console.log('Proxy server was closed.');
+});
+```
+
+The `destroyConnections` parameter indicates whether pending proxy connections should be forcibly closed.
+If the `callback` parameter is ommited, the function returns a promise.
