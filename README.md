@@ -6,7 +6,7 @@
 Node.js implementation of a proxy server (think Squid) with support for SSL, authentication and upstream proxy chaining.
 The authentication and proxy chaining configuration is defined in code and can be dynamic.
 Note that the proxy server only supports Basic authentication
-(see (Proxy-Authorization)[https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization] for details).
+(see [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization) for details).
 
 For example, this library is useful if you need to use proxies with authentication
 in the headless Chrome web browser, because it doesn't accept proxy URLs such as `http://username:password@proxy.example.com:8080`.
