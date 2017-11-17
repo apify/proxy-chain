@@ -112,7 +112,7 @@ If callback is not provided, the function returns a promise instead.
 ### `parseUrl(url)`
 
 Calls Node.js's [url.parse](https://nodejs.org/docs/latest/api/url.html#url_url_parse_urlstring_parsequerystring_slashesdenotehost)
-function and extends the result with the following fields: `scheme`, `username` and `password`.
+function and extends the resulting object with the following fields: `scheme`, `username` and `password`.
 For example, for `HTTP://bob:pass123@example.com` these values are
 `http`, `bob` and `pass123`, respectively.
 
@@ -122,6 +122,6 @@ For example, for `HTTP://bob:pass123@example.com` these values are
 Takes a URL and hides the password from it. For example:
 
 ```javascript
-// Prints 'http://bob:pass123@example.com'
-console.log(redactUrl('http://bob:<redacted>@example.com'));
+// Prints 'http://bob:<redacted>@example.com'
+console.log(redactUrl('http://bob:pass123@example.com'));
 ```
