@@ -68,7 +68,7 @@ server.listen(() => {
 });
 ```
 
-# Closing the server
+## Closing the server
 
 To shutdown the proxy server, call the `close([destroyConnections], [callback])` function. For example:
 
@@ -78,5 +78,50 @@ server.close(true, () => {
 });
 ```
 
-The `destroyConnections` parameter indicates whether pending proxy connections should be forcibly closed.
-If the `callback` parameter is ommited, the function returns a promise.
+The `closeConnections` parameter indicates whether pending proxy connections should be forcibly closed.
+If the `callback` parameter is omitted, the function returns a promise.
+
+
+## Helper functions
+
+The package also provides several utility functions.
+
+
+### `anonymizeProxy(proxyUrl, callback)`
+
+Parses and validates a HTTP proxy URL. If the proxy requires authentication,
+then the function starts an open local proxy server that forwards to the proxy.
+
+The function takes optional callback that receives the anonymous proxy URL.
+If no callback is supplied, the function returns a promise that resolves to a String with
+anonymous proxy URL or the original URL if it was already anonymous.
+
+
+### `closeAnonymizedProxy(anonymizedProxyUrl, closeConnections, callback)`
+
+Closes anonymous proxy previously started by `anonymizeProxy()`.
+If proxy was not found or was already closed, the function has no effect
+and its result if `false`. Otherwise the result is `true`.
+
+The `closeConnections` parameter indicates whether pending proxy connections are forcibly closed.
+
+The function takes optional callback that receives the result Boolean from the function.
+If callback is not provided, the function returns a promise instead.
+
+
+### `parseUrl(url)`
+
+Calls Node.js's [url.parse](https://nodejs.org/docs/latest/api/url.html#url_url_parse_urlstring_parsequerystring_slashesdenotehost)
+function and extends the result with the following fields: `scheme`, `username` and `password`.
+For example, for `HTTP://bob:pass123@example.com` these values are
+`http`, `bob` and `pass123`, respectively.
+
+
+### `redactUrl(url, passwordReplacement)`
+
+Takes a URL and hides the password from it. For example:
+
+```javascript
+// Prints 'http://bob:pass123@example.com'
+console.log(redactUrl('http://bob:<redacted>@example.com'));
+```

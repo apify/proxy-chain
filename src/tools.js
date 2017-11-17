@@ -49,7 +49,6 @@ export const isHopByHopHeader = header => HOP_BY_HOP_HEADERS_REGEX.test(header);
 /**
  * Sames are Node's url.parse() just adds the 'username', 'password' and 'scheme' fields.
  * Note that `scheme` is always lower-cased (e.g. `ftp`).
- * TODO: let apify package import and reuse this code !!!
  * @param url
  * @ignore
  */
