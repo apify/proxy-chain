@@ -221,6 +221,18 @@ describe('utils.anonymizeProxy', function () {
             .then((closed) => {
                 expect(closed).to.eql(true);
 
+                // Test proxy is really closed
+                return requestPromised({
+                    uri: proxyUrl1,
+                })
+                .then(() => {
+                    assert.fail();
+                })
+                .catch((err) => {
+                    expect(err.message).to.contain('ECONNREFUSED');
+                });
+            })
+            .then(() => {
                 // Test callback-style
                 return new Promise((resolve, reject) => {
                     closeAnonymizedProxy(proxyUrl2, true, (err, closed) => {
