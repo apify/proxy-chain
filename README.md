@@ -8,10 +8,11 @@ The authentication and proxy chaining configuration is defined in code and can b
 Note that the proxy server only supports Basic authentication
 (see [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization) for details).
 
-For example, this library is useful if you need to use proxies with authentication
+For example, this package is useful if you need to use proxies with authentication
 in the headless Chrome web browser, because it doesn't accept proxy URLs such as `http://username:password@proxy.example.com:8080`.
 With this library, you can setup a local proxy server without any password
 that will forward requests to the upstream proxy with password.
+For this very purpose the package is used by the [Apify web scraping platform](https://www.apify.com).
 
 
 ## Run a simple HTTP/HTTPS proxy server
