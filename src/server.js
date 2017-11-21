@@ -12,12 +12,13 @@ import HandlerTunnelChain from './handler_tunnel_chain';
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
 // - Implement this requirement from rfc7230
-// "A proxy MUST forward unrecognized header fields unless the field-name
-// is listed in the Connection header field (Section 6.1) or the proxy
-// is specifically configured to block, or otherwise transform, such
-// fields.  Other recipients SHOULD ignore unrecognized header fields.
-// These requirements allow HTTP's functionality to be enhanced without
-// requiring prior update of deployed intermediaries."
+//   "A proxy MUST forward unrecognized header fields unless the field-name
+//    is listed in the Connection header field (Section 6.1) or the proxy
+//    is specifically configured to block, or otherwise transform, such
+//    fields.  Other recipients SHOULD ignore unrecognized header fields.
+//    These requirements allow HTTP's functionality to be enhanced without
+//    requiring prior update of deployed intermediaries."
+// - Add param to prepareRequestFunction() that would allow the caller to kill a connection
 
 // TODO:
 // - Use connection pooling and maybe other stuff from:
