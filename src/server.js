@@ -280,10 +280,10 @@ export class Server {
                 socket.end();
 
                 // Unfortunately calling end() will not close the socket
-                // if client refuses to close it. Hence calling destroy.
-                // TODO: maybe the client will never receive the response,
-                // maybe we could add the socket to some internal dictionary and close it in close()
-                socket.destroy();
+                // if client refuses to close it. Hence calling destroy after a short while.
+                setTimeout(() => {
+                    socket.destroy();
+                }, 100);
             });
         } catch (err) {
             this.log(`Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);

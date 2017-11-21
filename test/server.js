@@ -175,6 +175,14 @@ const createTestSuite = ({
                                 upstreamProxyUrl: null,
                             };
 
+                            if (hostname === 'activate-error-in-prep-req-func-throw') {
+                                throw 'Testing error 1';
+                            }
+
+                            if (hostname === 'activate-error-in-prep-req-func-promise') {
+                                return Promise.reject('Testing error 2');
+                            }
+
                             if (mainProxyAuth) {
                                 if (mainProxyAuth.username !== username || mainProxyAuth.password !== password) {
                                     result.requestAuthentication = true;
@@ -483,6 +491,18 @@ const createTestSuite = ({
                                 expect(response.headers['proxy-authenticate']).to.eql(`Basic realm="${AUTH_REALM}"`);
                             }
                         });
+                });
+
+                it('returns 500 on error in prepareRequestFunction', () => {
+                    return Promise.resolve()
+                    .then(() => {
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-throw`);
+                        return testForErrorResponse(opts, 500);
+                    })
+                    .then(() => {
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-promise`);
+                        return testForErrorResponse(opts, 500);
+                    });
                 });
             }
 
