@@ -153,7 +153,7 @@ export default class HandlerBase extends EventEmitter {
         } else {
             this.log('Unknown error, sending 500 to client');
             this.srcResponse.writeHead(500);
-            this.srcResponse.end('Internal server error');
+            this.srcResponse.end('Internal error in proxy server');
         }
     }
 

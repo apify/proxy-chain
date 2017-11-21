@@ -263,7 +263,7 @@ export class Server extends EventEmitter {
             this.sendResponse(request.socket, err.statusCode, err.headers, err.message);
         } else {
             this.log(`Request failed with unknown error: ${err.stack || err}`);
-            this.sendResponse(request.socket, 500, null, 'Internal server error');
+            this.sendResponse(request.socket, 500, null, 'Internal error in proxy server');
             this.emit('requestFailed', err);
         }
     }
