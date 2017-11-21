@@ -1,5 +1,6 @@
 import http from 'http';
 import url from 'url';
+import EventEmitter from 'events';
 import _ from 'underscore';
 import Promise from 'bluebird';
 
@@ -42,8 +43,11 @@ class RequestError extends Error {
     }
 }
 
-
-export class Server {
+/**
+ * Represents the proxy server.
+ * It emits 'requestFailed' event on unexpected request errors.
+ */
+export class Server extends EventEmitter {
     /**
      * Initializes a new instance of Server class.
      * @param options
@@ -60,6 +64,8 @@ export class Server {
      * @param [options.verbose] If true, the server logs
      */
     constructor(options) {
+        super();
+
         options = options || {};
 
         this.port = options.port || DEFAULT_PROXY_SERVER_PORT;
@@ -82,8 +88,8 @@ export class Server {
         };
     }
 
-    log(str, force) {
-        if (this.verbose || force) console.log(`Server[${this.port}]: ${str}`);
+    log(str) {
+        if (this.verbose) console.log(`Server[${this.port}]: ${str}`);
     }
 
     onClientError(err, socket) {
@@ -256,8 +262,9 @@ export class Server {
             this.log(`Request failed (status ${err.statusCode}): ${err.message}`);
             this.sendResponse(request.socket, err.statusCode, err.headers, err.message);
         } else {
-            this.log(`Request failed with unknown error: ${err.stack || err}`, true);
+            this.log(`Request failed with unknown error: ${err.stack || err}`);
             this.sendResponse(request.socket, 500, null, 'Internal server error');
+            this.emit('requestFailed', err);
         }
     }
 

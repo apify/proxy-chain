@@ -176,11 +176,11 @@ const createTestSuite = ({
                             };
 
                             if (hostname === 'activate-error-in-prep-req-func-throw') {
-                                throw 'Testing error 1';
+                                throw new Error('Testing error 1');
                             }
 
                             if (hostname === 'activate-error-in-prep-req-func-promise') {
-                                return Promise.reject('Testing error 2');
+                                return Promise.reject(new Error('Testing error 2'));
                             }
 
                             if (mainProxyAuth) {
@@ -246,19 +246,36 @@ const createTestSuite = ({
         // Tests for 502 Bad gateway or 407 Proxy Authenticate
         // Unfortunately the request library throws for HTTPS and sends status code for HTTP
         const testForErrorResponse = (opts, expectedStatusCode) => {
+
+            let requestError = null;
+            const onRequestFailed = (err) => {
+                requestError = err;
+            };
+
+            mainProxyServer.on('requestFailed', onRequestFailed);
+
             const promise = requestPromised(opts);
+
             if (useSsl) {
                 return promise.then(() => {
                     assert.fail();
                 })
                     .catch((err) => {
-                    // console.dir(err);
+                        // console.dir(err);
                         expect(err.message).to.contain(`${expectedStatusCode}`);
                     });
             }
             return promise.then((response) => {
                 expect(response.statusCode).to.eql(expectedStatusCode);
+                if (expectedStatusCode === 500) {
+                    expect(requestError).to.have.own.property('message');
+                } else {
+                    expect(requestError).to.eql(null);
+                }
                 return response;
+            })
+            .finally(() => {
+                mainProxyServer.removeListener('requestFailed', onRequestFailed);
             });
         };
 
