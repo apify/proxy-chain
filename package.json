@@ -30,9 +30,8 @@
   ],
   "scripts": {
     "build": "rm -rf ./build && babel src --out-dir build",
-    "mytest": "npm run build && node ./build/test_run.js",
+    "local-proxy": "npm run build && node ./build/run_locally.js",
     "test": "npm run build && mocha --compilers js:babel-core/register --recursive",
-    "test-cov": "npm run build && babel-node node_modules/isparta/bin/isparta cover --report html --report text node_modules/.bin/_mocha",
     "prepare": "npm run build",
     "prepublishOnly": "(test $RUNNING_FROM_SCRIPT || (echo \"You must use publish.sh instead of 'npm publish' directly!\"; exit 1)) && npm test && npm run lint",
     "clean": "rm -rf build",

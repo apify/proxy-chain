@@ -32,7 +32,11 @@ const DEFAULT_TARGET_PORT = 80;
 
 const REQUEST_ERROR_NAME = 'RequestError';
 
-class RequestError extends Error {
+/**
+ * Represents custom request error. The message is emmited as HTTP response
+ * with a specific HTTP code and headers.
+ */
+export class RequestError extends Error {
     constructor(message, statusCode, headers) {
         super(message);
         this.name = REQUEST_ERROR_NAME;
