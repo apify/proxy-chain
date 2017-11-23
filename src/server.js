@@ -283,6 +283,9 @@ export class Server extends EventEmitter {
      */
     sendResponse(socket, statusCode, headers, message) {
         try {
+            headers = headers || {};
+            if (!headers['Content-Type']) headers['Content-Type'] = 'text/plain';
+
             let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
             _.each(headers, (value, key) => {
                 msg += `${key}: ${value}\r\n`;
