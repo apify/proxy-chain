@@ -13,7 +13,7 @@ import url from 'url';
 import HttpsProxyAgent from 'https-proxy-agent';
 
 import { parseUrl, parseProxyAuthorizationHeader } from '../build/tools';
-import { Server } from '../build/server';
+import { Server, RequestError } from '../build/server';
 import { TargetServer } from './target_server';
 
 /* globals process */
@@ -178,9 +178,15 @@ const createTestSuite = ({
                             if (hostname === 'activate-error-in-prep-req-func-throw') {
                                 throw new Error('Testing error 1');
                             }
+                            if (hostname === 'activate-error-in-prep-req-func-throw-known') {
+                                throw new RequestError('Known error 1', 501);
+                            }
 
                             if (hostname === 'activate-error-in-prep-req-func-promise') {
                                 return Promise.reject(new Error('Testing error 2'));
+                            }
+                            if (hostname === 'activate-error-in-prep-req-func-promise-known') {
+                                throw new RequestError('Known error 2', 501);
                             }
 
                             if (mainProxyAuth) {
@@ -519,6 +525,14 @@ const createTestSuite = ({
                     .then(() => {
                         const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-promise`);
                         return testForErrorResponse(opts, 500);
+                    })
+                    .then(() => {
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-throw-known`);
+                        return testForErrorResponse(opts, 501);
+                    })
+                    .then(() => {
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-promise-known`);
+                        return testForErrorResponse(opts, 501);
                     });
                 });
             }

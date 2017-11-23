@@ -33,8 +33,10 @@ const DEFAULT_TARGET_PORT = 80;
 const REQUEST_ERROR_NAME = 'RequestError';
 
 /**
- * Represents custom request error. The message is emmited as HTTP response
+ * Represents custom request error. The message is emitted as HTTP response
  * with a specific HTTP code and headers.
+ * If this error is thrown from the `prepareRequestFunction` function,
+ * the message and status code is sent to client.
  */
 export class RequestError extends Error {
     constructor(message, statusCode, headers) {

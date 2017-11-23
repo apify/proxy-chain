@@ -1,4 +1,4 @@
-import { Server } from './server';
+import { Server, RequestError } from './server';
 import { parseUrl, redactUrl, redactParsedUrl } from './tools';
 import { anonymizeProxy, closeAnonymizedProxy } from './anonymize_proxy';
 
@@ -7,6 +7,7 @@ import { anonymizeProxy, closeAnonymizedProxy } from './anonymize_proxy';
 // Publicly exported functions and classes
 const ProxyChain = {
     Server,
+    RequestError,
     parseUrl,
     redactUrl,
     redactParsedUrl,
