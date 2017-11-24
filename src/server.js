@@ -37,6 +37,8 @@ const REQUEST_ERROR_NAME = 'RequestError';
  * with a specific HTTP code and headers.
  * If this error is thrown from the `prepareRequestFunction` function,
  * the message and status code is sent to client.
+ * By default, the response will have Content-Type: text/plain
+ * and for the 407 status the Proxy-Authenticate header will be added.
  */
 export class RequestError extends Error {
     constructor(message, statusCode, headers) {
@@ -235,8 +237,7 @@ export class Server extends EventEmitter {
             .then((funcResult) => {
                 // If not authenticated, request client to authenticate
                 if (funcResult && funcResult.requestAuthentication) {
-                    const headers = { 'Proxy-Authenticate': `Basic realm="${this.authRealm}"` };
-                    throw new RequestError('Credentials required.', 407, headers);
+                    throw new RequestError('Credentials required.', 407);
                 }
 
                 if (funcResult && funcResult.upstreamProxyUrl) {
@@ -284,7 +285,13 @@ export class Server extends EventEmitter {
     sendResponse(socket, statusCode, headers, message) {
         try {
             headers = headers || {};
-            if (!headers['Content-Type']) headers['Content-Type'] = 'text/plain';
+
+            if (!headers['Content-Type']) {
+                headers['Content-Type'] = 'text/plain';
+            }
+            if (statusCode === 407 && !headers['Proxy-Authenticate']) {
+                headers['Proxy-Authenticate'] = `Basic realm="${this.authRealm}"`;
+            }
 
             let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
             _.each(headers, (value, key) => {
