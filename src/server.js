@@ -188,7 +188,7 @@ export class Server extends EventEmitter {
 
                     // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
                     if (!parsed.protocol) {
-                        throw new RequestError('Hey, good try, but I\'m a proxy, not your ordinary HTTP server!', 400);
+                        throw new RequestError('Hey, good try, but I\'m a HTTP proxy, not an ordinary web server :)', 400);
                     }
                     // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
                     if (parsed.protocol !== 'http:') {
