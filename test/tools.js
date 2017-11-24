@@ -132,7 +132,9 @@ describe('tools.parseProxyAuthorizationHeader()', () => {
         expect(parse(authStr('Basic', 'user1234:password567'))).to.eql({ type: 'Basic', username: 'user1234', password: 'password567' });
         expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({ type: 'Basic', username: 'username', password: 'pass:with:many:colons' }); //eslint-disable-line
         expect(parse(authStr('Basic', 'username:'))).to.eql({ type: 'Basic', username: 'username', password: '' });
-        expect(parse(authStr('Basic', 'username'))).to.eql({ type: 'Basic', username: 'username', password: null });
+        expect(parse(authStr('Basic', 'username'))).to.eql({ type: 'Basic', username: 'username', password: '' });
+        expect(parse(authStr('Basic', ':'))).to.eql({ type: 'Basic', username: '', password: '' });
+        expect(parse(authStr('Basic', ':passWord'))).to.eql({ type: 'Basic', username: '', password: 'passWord' });
         expect(parse(authStr('SCRAM-SHA-256', 'something:else'))).to.eql({ type: 'SCRAM-SHA-256', username: 'something', password: 'else' });
     });
 
@@ -144,8 +146,7 @@ describe('tools.parseProxyAuthorizationHeader()', () => {
         expect(parse('    ')).to.eql(null);
         expect(parse('whatever')).to.eql(null);
         expect(parse('bla bla bla')).to.eql(null);
-        expect(parse(authStr('Basic', ':'))).to.eql(null);
-        expect(parse(authStr('Basic', ':password'))).to.eql(null);
+        expect(parse(authStr('Basic', ''))).to.eql(null);
         expect(parse('123124')).to.eql(null);
     });
 });

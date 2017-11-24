@@ -206,12 +206,7 @@ const createTestSuite = ({
                                     upstreamProxyUrl = 'http://dummy-hostname:1234';
                                 } else {
                                     let auth = '';
-                                    if (upstreamProxyAuth) {
-                                        auth = upstreamProxyAuth.username;
-                                        if (upstreamProxyAuth.password) auth += `:${upstreamProxyAuth.password}`;
-                                        auth += '@';
-                                    }
-
+                                    if (upstreamProxyAuth) auth = `${upstreamProxyAuth.username}:${upstreamProxyAuth.password}@`;
                                     upstreamProxyUrl = `http://${auth}localhost:${upstreamProxyPort}`;
                                 }
 
@@ -237,11 +232,7 @@ const createTestSuite = ({
 
                     if (useMainProxy) {
                         let auth = '';
-                        if (mainProxyAuth) {
-                            auth = mainProxyAuth.username;
-                            if (mainProxyAuth.password) auth += `:${mainProxyAuth.password}`;
-                            auth += '@';
-                        }
+                        if (mainProxyAuth) auth = `${mainProxyAuth.username}:${mainProxyAuth.password}@`;
                         mainProxyUrl = `http://${auth}localhost:${mainProxyServerPort}`;
                     }
                 });
@@ -598,7 +589,7 @@ const useSslVariants = [
 ];
 const mainProxyAuthVariants = [
     null,
-    { username: 'username', password: null },
+    { username: 'username', password: '' },
     { username: 'username', password: 'password' },
 ];
 const useUpstreamProxyVariants = [
@@ -607,7 +598,7 @@ const useUpstreamProxyVariants = [
 ];
 const upstreamProxyAuthVariants = [
     null,
-    { type: 'Basic', username: 'username', password: null },
+    { type: 'Basic', username: 'username', password: '' },
     { type: 'Basic', username: 'username', password: 'password' },
 ];
 

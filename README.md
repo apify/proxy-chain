@@ -46,12 +46,12 @@ const server = new ProxyChain.Server({
     // Note that the function takes a single argument with the following properties:
     // * request  - An instance of http.IncomingMessage class with information about the client request
     //              (which is either HTTP CONNECT for SSL protocol, or other HTTP request)
-    // * username - Username parsed from the Proxy-Authorization header
-    // * password - Password parsed from the Proxy-Authorization header
+    // * username - Username parsed from the Proxy-Authorization header. Might be empty string.
+    // * password - Password parsed from the Proxy-Authorization header. Might be empty string.
     // * hostname - Hostname of the target server
     // * port     - Port of the target server
     // * isHttp   - If true, this is a HTTP request, otherwise it's a HTTP CONNECT tunnel for SSL
-    //             or other protocols
+    //              or other protocols
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         return {
             // Require clients to authenticate with username 'bob' and password 'TopSecret'

@@ -108,6 +108,12 @@ export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') =
 
 const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;
 
+/**
+ * Parses the content of the Proxy-Authorization HTTP header.
+ * @param header
+ * @returns {*} Object with fields { type: String, username: String, password: String }
+ * or null if string parsing failed. Note that password and username might be empty strings.
+ */
 export const parseProxyAuthorizationHeader = (header) => {
     const matches = PROXY_AUTH_HEADER_REGEX.exec(header);
     if (!matches) return null;
@@ -115,14 +121,11 @@ export const parseProxyAuthorizationHeader = (header) => {
     const auth = Buffer.from(matches[2], 'base64').toString();
     if (!auth) return null;
 
-    // NOTE: don't allow empty username because authenticate() function in server returns username
     const index = auth.indexOf(':');
-    if (index === 0) return null;
-
     return {
         type: matches[1],
         username: index >= 0 ? auth.substr(0, index) : auth,
-        password: index >= 0 ? auth.substr(index + 1) : null,
+        password: index >= 0 ? auth.substr(index + 1) : '',
     };
 };
 
