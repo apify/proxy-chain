@@ -175,6 +175,8 @@ const createTestSuite = ({
                                 upstreamProxyUrl: null,
                             };
 
+                            expect(port).to.be.an('number');
+
                             if (hostname === 'activate-error-in-prep-req-func-throw') {
                                 throw new Error('Testing error 1');
                             }

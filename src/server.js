@@ -1,10 +1,9 @@
 import http from 'http';
-import url from 'url';
 import EventEmitter from 'events';
 import _ from 'underscore';
 import Promise from 'bluebird';
 
-import { parseHostHeader, parseProxyAuthorizationHeader } from './tools';
+import { parseHostHeader, parseProxyAuthorizationHeader, parseUrl } from './tools';
 import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
@@ -184,7 +183,7 @@ export class Server extends EventEmitter {
                     // "When making a request to a proxy, other than a CONNECT or server-wide
                     //  OPTIONS request (as detailed below), a client MUST send the target
                     //  URI in absolute-form as the request-target"
-                    const parsed = url.parse(request.url);
+                    const parsed = parseUrl(request.url);
 
                     // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
                     if (!parsed.protocol) {

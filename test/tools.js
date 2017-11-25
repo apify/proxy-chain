@@ -18,36 +18,42 @@ describe('tools.parseUrl()', () => {
             scheme: 'https',
             username: 'username',
             password: 'password',
+            port: 12345,
         });
 
         testUrl('http://us-er+na12345me:@www.example.com:12345/some/path', {
             scheme: 'http',
             username: 'us-er+na12345me',
             password: '',
+            port: 12345,
         });
 
         testUrl('socks5://username@www.example.com:12345/some/path', {
             scheme: 'socks5',
             username: 'username',
             password: null,
+            port: 12345,
         });
 
         testUrl('FTP://@www.example.com:12345/some/path', {
             scheme: 'ftp',
             username: null,
             password: null,
+            port: 12345,
         });
 
         testUrl('HTTP://www.example.com:12345/some/path', {
             scheme: 'http',
             username: null,
             password: null,
+            port: 12345,
         });
 
-        testUrl('www.example.com:12345/some/path', {
-            scheme: null,
+        testUrl('HTTP://www.example.com/some/path', {
+            scheme: 'http',
             username: null,
             password: null,
+            port: null,
         });
     });
 });

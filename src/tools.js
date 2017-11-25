@@ -22,7 +22,7 @@ export const parseHostHeader = (hostHeader) => {
 
     let port = null;
     if (matches[5]) {
-        port = parseInt(matches[6]);
+        port = parseInt(matches[6], 10);
         if (!(port > 0 && port <= 65535)) return null;
     }
 
@@ -48,6 +48,7 @@ export const isHopByHopHeader = header => HOP_BY_HOP_HEADERS_REGEX.test(header);
 
 /**
  * Sames are Node's url.parse() just adds the 'username', 'password' and 'scheme' fields.
+ * Also this method makes sure "port" is a number rather than a string.
  * Note that `scheme` is always lower-cased (e.g. `ftp`).
  * @param url
  * @ignore
@@ -72,6 +73,10 @@ export const parseUrl = (url) => {
         if (matches && matches.length === 2) {
             parsed.scheme = matches[1];
         }
+    }
+
+    if (parsed.port) {
+        parsed.port = parseInt(parsed.port, 10);
     }
 
     return parsed;
