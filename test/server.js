@@ -27,6 +27,8 @@ TODO - add following tests:
 - IPv6 !!!
 */
 
+// See README.md for details
+const LOCALHOST_TEST = 'localhost-test';
 
 const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
@@ -230,13 +232,13 @@ const createTestSuite = ({
                                 let upstreamProxyUrl;
 
                                 if (hostname === 'activate-invalid-upstream-proxy-credentials') {
-                                    upstreamProxyUrl = `http://invalid:credentials@localhost:${upstreamProxyPort}`;
+                                    upstreamProxyUrl = `http://invalid:credentials@127.0.0.1:${upstreamProxyPort}`;
                                 } else if (hostname === 'activate-invalid-upstream-proxy-host') {
                                     upstreamProxyUrl = 'http://dummy-hostname:1234';
                                 } else {
                                     let auth = '';
                                     if (upstreamProxyAuth) auth = `${upstreamProxyAuth.username}:${upstreamProxyAuth.password}@`;
-                                    upstreamProxyUrl = `http://${auth}localhost:${upstreamProxyPort}`;
+                                    upstreamProxyUrl = `http://${auth}127.0.0.1:${upstreamProxyPort}`;
                                 }
 
                                 result.upstreamProxyUrl = upstreamProxyUrl;
@@ -257,13 +259,12 @@ const createTestSuite = ({
             })
                 .then(() => {
                     // Generate URLs
-                    // NOTE: use 10.200.10.1 instead of localhost so that PhantomJS uses proxies
-                    baseUrl = `${useSsl ? 'https' : 'http'}://10.200.10.1:${targetServerPort}`;
+                    baseUrl = `${useSsl ? 'https' : 'http'}://127.0.0.1:${targetServerPort}`;
 
                     if (useMainProxy) {
                         let auth = '';
                         if (mainProxyAuth) auth = `${mainProxyAuth.username}:${mainProxyAuth.password}@`;
-                        mainProxyUrl = `http://${auth}localhost:${mainProxyServerPort}`;
+                        mainProxyUrl = `http://${auth}127.0.0.1:${mainProxyServerPort}`;
                     }
                 });
         });
@@ -430,7 +431,9 @@ const createTestSuite = ({
             _it('handles GET request from PhantomJS', () => {
                 return Promise.resolve()
                     .then(() => {
-                        return phantomGet(`${baseUrl}/hello-world`, mainProxyUrl);
+                        // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
+                        const url = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                        return phantomGet(url, mainProxyUrl);
                     })
                     .then((response) => {
                         expect(response).to.contain('Hello world!');
@@ -448,8 +451,8 @@ const createTestSuite = ({
                 }
 
                 const wsUrl = useHttpUpgrade
-                    ? `${useSsl ? 'https' : 'http'}://localhost:${targetServerPort}`
-                    : `${useSsl ? 'wss' : 'ws'}://localhost:${targetServerWsPort}`;
+                    ? `${useSsl ? 'https' : 'http'}://127.0.0.1:${targetServerPort}`
+                    : `${useSsl ? 'wss' : 'ws'}://127.0.0.1:${targetServerWsPort}`;
                 const ws = new WebSocket(wsUrl, { agent });
 
                 ws.on('error', (err) => {
@@ -517,25 +520,25 @@ const createTestSuite = ({
                         .then(() => {
                             // Test no username and password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `http://localhost:${mainProxyServerPort}`;
+                            opts.proxy = `http://127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(() => {
                             // Test good username and invalid password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `http://${mainProxyAuth.username}:bad-password@localhost:${mainProxyServerPort}`;
+                            opts.proxy = `http://${mainProxyAuth.username}:bad-password@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(() => {
                             // Test invalid username and good password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `http://bad-username:${mainProxyAuth.password}@localhost:${mainProxyServerPort}`;
+                            opts.proxy = `http://bad-username:${mainProxyAuth.password}@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(() => {
                             // Test invalid username and good password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `http://bad-username:bad-password@localhost:${mainProxyServerPort}`;
+                            opts.proxy = `http://bad-username:bad-password@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then((response) => {
