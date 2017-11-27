@@ -11,3 +11,4 @@ pids
 .idea
 yarn.lock
 docs
+package-lock.json
