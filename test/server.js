@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import stream from 'stream';
+import childProcess from 'child_process';
 import _ from 'underscore';
 import { expect, assert } from 'chai';
 import proxy from 'proxy';
@@ -48,7 +49,7 @@ for (let i = 0; i < 100; i++) {
     DATA_CHUNKS_COMBINED += chunk;
 }
 
-const AUTH_REALM = 'TestProxy';
+const AUTH_REALM = 'Test Proxy'; // Test space in realm string
 
 const requestPromised = (opts) => {
     return new Promise((resolve, reject) => {
@@ -65,12 +66,38 @@ const requestPromised = (opts) => {
     });
 };
 
+// Opens web page in phantomjs and returns the HTML content
+const phantomGet = (url, proxyUrl) => {
+    const phantomPath = path.join(__dirname, '../node_modules/.bin/phantomjs');
+    const scriptPath = path.join(__dirname, './phantom_get.js');
+
+    let proxyParams = '';
+    if (proxyUrl) {
+        const parsed = parseUrl(proxyUrl);
+        proxyParams += `--proxy-type=http --proxy=${parsed.hostname}:${parsed.port} `;
+        if (parsed.username || parsed.password) {
+            if ((parsed.username && !parsed.password) || (!parsed.username && parsed.password)) {
+                throw new Error('PhantomJS cannot handle proxy only username or password!');
+            }
+            proxyParams += `--proxy-auth=${parsed.username}:${parsed.password} `;
+        }
+    }
+
+    return new Promise((resolve, reject) => {
+        const cmd = `${phantomPath} --ignore-ssl-errors=true ${proxyParams} ${scriptPath} ${url}`;
+        childProcess.exec(cmd, (error, stdout, stderr) => {
+            if (error) return reject(new Error(`Cannot open page in PhantomJS: ${error}: ${stderr || stdout}`));
+
+            resolve(stdout);
+        });
+    });
+};
 
 const createTestSuite = ({
     useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy, upstreamProxyAuth,
 }) => {
     return function () {
-        this.timeout(60 * 1000);
+        this.timeout(30 * 1000);
 
         let freePorts;
 
@@ -229,8 +256,9 @@ const createTestSuite = ({
                 }
             })
                 .then(() => {
-                // Generate URLs
-                    baseUrl = `${useSsl ? 'https' : 'http'}://localhost:${targetServerPort}`;
+                    // Generate URLs
+                    // NOTE: use 10.200.10.1 instead of localhost so that PhantomJS uses proxies
+                    baseUrl = `${useSsl ? 'https' : 'http'}://10.200.10.1:${targetServerPort}`;
 
                     if (useMainProxy) {
                         let auth = '';
@@ -397,9 +425,18 @@ const createTestSuite = ({
                 });
         });
 
-
-        // const url = `${self.actExecution.workerUrl}/live-status/${self.actExecution._id}`;
-        // self.workerWs = new WebSocket(url);
+        // NOTE: PhantomJS cannot handle proxy auth with empty user or password, both need to be present!
+        if (!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) {
+            _it('test GET request via PhantomJS', () => {
+                return Promise.resolve()
+                    .then(() => {
+                        return phantomGet(`${baseUrl}/hello-world`, mainProxyUrl);
+                    })
+                    .then((response) => {
+                        expect(response).to.contain('Hello world!');
+                    })
+            });
+        }
 
         const testWsCall = (useHttpUpgrade) => {
             return new Promise((resolve, reject) => {
@@ -573,7 +610,6 @@ const createTestSuite = ({
     };
 };
 
-
 // Test direct connection to target server to ensure our tests are correct
 describe('Server (HTTP -> Target)', createTestSuite({
     useSsl: false,
@@ -591,8 +627,9 @@ const useSslVariants = [
 ];
 const mainProxyAuthVariants = [
     null,
-    { username: 'username', password: '' },
-    { username: 'username', password: 'password' },
+    { username: 'user1', password: 'pass1' },
+    { username: 'user2', password: '' },
+    { username: '', password: 'pass3' },
 ];
 const useUpstreamProxyVariants = [
     true,
@@ -600,8 +637,8 @@ const useUpstreamProxyVariants = [
 ];
 const upstreamProxyAuthVariants = [
     null,
-    { type: 'Basic', username: 'username', password: '' },
-    { type: 'Basic', username: 'username', password: 'password' },
+    { type: 'Basic', username: 'userA', password: '' },
+    { type: 'Basic', username: 'userB', password: 'passA' },
 ];
 
 useSslVariants.forEach((useSsl) => {
@@ -618,14 +655,14 @@ useSslVariants.forEach((useSsl) => {
                     if (!mainProxyAuth) {
                         desc += 'public ';
                     } else if (mainProxyAuth.username && mainProxyAuth.password) desc += 'with username:password ';
-                    else desc += 'with username ';
+                    else desc += 'with username only ';
                 }
                 if (useUpstreamProxy) {
                     desc += '-> Upstream proxy ';
                     if (!upstreamProxyAuth) {
                         desc += 'public ';
                     } else if (upstreamProxyAuth.username && upstreamProxyAuth.password) desc += 'with username:password ';
-                    else desc += 'with username ';
+                    else desc += 'with username only ';
                 }
                 desc += '-> Target)';
 

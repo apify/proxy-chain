@@ -1,6 +1,6 @@
 {
   "name": "proxy-chain",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication and upstream proxy chaining.",
   "main": "build/index.js",
   "keywords": [
@@ -62,6 +62,7 @@
     "https-proxy-agent": "^2.1.0",
     "isparta": "^4.0.0",
     "mocha": "^3.2.0",
+    "phantomjs-prebuilt": "^2.1.16",
     "proxy": "^0.2.4",
     "request": "^2.83.0",
     "sinon": "^2.2.0",

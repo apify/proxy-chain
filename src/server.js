@@ -25,7 +25,7 @@ import HandlerTunnelChain from './handler_tunnel_chain';
 // https://github.com/request/tunnel-agent/blob/master/index.js
 // https://github.com/request/request/blob/master/lib/tunnel.js
 
-const DEFAULT_AUTH_REALM = 'Proxy';
+const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 const DEFAULT_TARGET_PORT = 80;
 
@@ -67,7 +67,7 @@ export class Server extends EventEmitter {
      * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
      * If `prepareRequestFunction` is not set, the proxy server will not require any authentication
      * and with not use any upstream proxy.
-     * @param [options.authRealm] Realm used in the Proxy-Authenticate header. By default it's `Proxy`.
+     * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server logs
      */
     constructor(options) {
@@ -169,6 +169,7 @@ export class Server extends EventEmitter {
 
         return Promise.resolve()
             .then(() => {
+                // console.dir(_.pick(request, 'url', 'headers', 'method'));
                 // Determine target hostname and port
                 if (request.method === 'CONNECT') {
                     // The request should look like:
@@ -286,10 +287,20 @@ export class Server extends EventEmitter {
             headers = headers || {};
 
             if (!headers['Content-Type']) {
-                headers['Content-Type'] = 'text/plain';
+                headers['Content-Type'] = 'text/html; charset=utf-8';
             }
             if (statusCode === 407 && !headers['Proxy-Authenticate']) {
                 headers['Proxy-Authenticate'] = `Basic realm="${this.authRealm}"`;
+            }
+            if (!headers.Server) {
+                headers.Server = this.authRealm;
+            }
+            // These headers are required by PhantomJS, otherwise the connection would timeout!
+            if (!headers.Connection) {
+                headers.Connection = 'close';
+            }
+            if (!headers['Content-Length']) {
+                headers['Content-Length'] = Buffer.byteLength(message);
             }
 
             let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
@@ -297,6 +308,8 @@ export class Server extends EventEmitter {
                 msg += `${key}: ${value}\r\n`;
             });
             msg += `\r\n${message}`;
+
+            // console.log("RESPONSE:\n" + msg);
 
             socket.write(msg, () => {
                 socket.end();
