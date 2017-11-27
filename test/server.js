@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import stream from 'stream';
 import childProcess from 'child_process';
+import dns from 'dns';
 import _ from 'underscore';
 import { expect, assert } from 'chai';
 import proxy from 'proxy';
@@ -612,6 +613,16 @@ const createTestSuite = ({
         });
     };
 };
+
+describe(`Test ${LOCALHOST_TEST} setup`, () => {
+    it('works', () => {
+        return Promise.promisify(dns.lookup).bind(dns)(LOCALHOST_TEST, { family: 4 })
+            .then((address) => {
+                // If this fails, see README.md !!!
+                expect(address).to.eql('127.0.0.1');
+            });
+    });
+});
 
 // Test direct connection to target server to ensure our tests are correct
 describe('Server (HTTP -> Target)', createTestSuite({
