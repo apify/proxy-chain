@@ -427,7 +427,7 @@ const createTestSuite = ({
 
         // NOTE: PhantomJS cannot handle proxy auth with empty user or password, both need to be present!
         if (!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) {
-            _it('test GET request via PhantomJS', () => {
+            _it('handles GET request from PhantomJS', () => {
                 return Promise.resolve()
                     .then(() => {
                         return phantomGet(`${baseUrl}/hello-world`, mainProxyUrl);
