@@ -7,10 +7,10 @@ import { parseUrl } from './tools';
 const anonymizedProxyUrlToServer = {};
 
 export const ANONYMIZED_PROXY_PORTS = {
-    FROM: 55000,
-    TO: 65000,
+    FROM: 20000,
+    TO: 60000,
+    RETRY_COUNT: 10,
 };
-
 
 const _findFreePort = () => {
     // Let 'min' be a random value in the first half of the PORT_FROM-PORT_TO range,
@@ -56,25 +56,37 @@ export const anonymizeProxy = (proxyUrl, callback) => {
     let port;
     let server;
 
-    return Promise.resolve()
-        .then(() => {
-            return _findFreePort();
-        })
-        .then((result) => {
-            port = result;
-            server = new Server({
-                // verbose: true,
-                port,
-                prepareRequestFunction: () => {
-                    return {
-                        requestAuthentication: false,
-                        upstreamProxyUrl: proxyUrl,
-                    };
-                },
-            });
+    const startServer = (maxRecursion) => {
+        return Promise.resolve()
+            .then(() => {
+                return _findFreePort();
+            })
+            .then((result) => {
+                port = result;
+                server = new Server({
+                    // verbose: true,
+                    port,
+                    prepareRequestFunction: () => {
+                        return {
+                            requestAuthentication: false,
+                            upstreamProxyUrl: proxyUrl,
+                        };
+                    },
+                });
 
-            return server.listen();
-        })
+                return server.listen();
+            })
+            .catch((err) => {
+                // It might happen that the port was taken in the meantime,
+                // in which case retry the search
+                if (err.code === 'EADDRINUSE' && maxRecursion > 0) {
+                    return startServer(maxRecursion - 1);
+                }
+                throw err;
+            });
+    };
+
+    return startServer(ANONYMIZED_PROXY_PORTS.RETRY_COUNT)
         .then(() => {
             const url = `http://127.0.0.1:${port}`;
             anonymizedProxyUrlToServer[url] = server;

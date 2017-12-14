@@ -332,15 +332,29 @@ export class Server extends EventEmitter {
      * @return {*}
      */
     listen(callback) {
-        return Promise.promisify(this.server.listen.bind(this.server))(this.port)
-            .then(() => {
-                this.log('Listening...');
-            })
-            .catch((err) => {
+        return new Promise((resolve, reject) => {
+            // Unfortunately server.listen() is not a normal function that fails on error,
+            // so we need this trickery
+            const onError = (err) => {
                 this.log(`Listen failed: ${err}`);
-                throw err;
-            })
-            .nodeify(callback);
+                removeListeners();
+                reject(err);
+            };
+            const onListening = () => {
+                this.log('Listening...');
+                removeListeners();
+                resolve();
+            };
+            const removeListeners = () => {
+                this.server.removeListener('error', onError);
+                this.server.removeListener('listening', onListening);
+            };
+
+            this.server.on('error', onError);
+            this.server.on('listening', onListening);
+            this.server.listen(this.port);
+        })
+        .nodeify(callback);
     }
 
     /**

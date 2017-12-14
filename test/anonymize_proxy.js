@@ -263,6 +263,61 @@ describe('utils.anonymizeProxy', function () {
             });
     });
 
+    it('handles many concurrent calls without port collision', () => {
+        const N = 20;
+        let proxyUrls;
+
+        return Promise.resolve()
+            .then(() => {
+                // This setting should ensure there will be a port collision,
+                // but still there will be some free ports to choose on retry
+                ANONYMIZED_PROXY_PORTS.FROM = 40000;
+                ANONYMIZED_PROXY_PORTS.TO = 40000 + N + N/2;
+                ANONYMIZED_PROXY_PORTS.RETRY_COUNT = 100;
+
+                const promises = [];
+                for (let i=0; i<N; i++) {
+                    promises.push(anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`));
+                }
+
+                return Promise.all(promises);
+            })
+            .then((results) => {
+                const promises = [];
+                proxyUrls = results;
+                for (let i=0; i<N; i++) {
+                    expect(proxyUrls[i]).to.not.contain(`${proxyPort}`);
+
+                    // Test call through proxy
+                    promises.push(requestPromised({
+                        uri: `http://localhost:${testServerPort}`,
+                        proxy: proxyUrls[i],
+                        expectBodyContainsText: 'Hello World!',
+                    }));
+                }
+
+                return Promise.all(promises);
+            })
+            .then(() => {
+                expect(wasProxyCalled).to.equal(true);
+                const promises = [];
+
+                for (let i=0; i<N; i++) {
+                    promises.push(closeAnonymizedProxy(proxyUrls[i], true));
+                }
+
+                return Promise.all(promises);
+            })
+            .then((results) => {
+                for (let i=0; i<N; i++) {
+                    expect(results[i]).to.eql(true);
+                }
+            })
+            .finally(() => {
+                Object.assign(ANONYMIZED_PROXY_PORTS, ORIG_ANONYMIZED_PROXY_PORTS);
+            });
+    });
+
     it('fails with invalid upstream proxy credentials', () => {
         let anonymousProxyUrl;
         return Promise.resolve()
