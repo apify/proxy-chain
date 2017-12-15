@@ -348,6 +348,31 @@ const createTestSuite = ({
             });
         });
 
+        // NOTE: upstream proxy cannot handle non-standard headers
+        if (!useUpstreamProxy) {
+            _it(`ignores non-standard server HTTP headers`, () => {
+                const opts = getRequestOpts('/get-non-standard-headers');
+                opts.method = 'GET';
+                return requestPromised(opts)
+                    .then((response) => {
+                        expect(response.body).to.eql('Hello sir!');
+                        expect(response.statusCode).to.eql(200);
+                        expect(response.headers).to.be.an('object');
+
+                        // The server returns two headers:
+                        //  'Invalid Header With Space': 'HeaderValue1',
+                        //  'X-Normal-Header': 'HeaderValue2',
+                        // With HTTP proxy, the invalid header should be removed, otherwise it should be present
+                        expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
+                        if (useMainProxy && !useSsl) {
+                            expect(response.headers['invalid header with space']).to.eql(undefined);
+                        } else {
+                            expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
+                        }
+                    });
+            });
+        }
+
         _it('handles large streamed POST payload', () => {
             const opts = getRequestOpts('/echo-payload');
             opts.headers['Content-Type'] = 'text/my-test';

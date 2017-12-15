@@ -1,5 +1,5 @@
 import http from 'http';
-import { isHopByHopHeader } from './tools';
+import { isHopByHopHeader, isInvalidHeader } from './tools';
 import HandlerBase from './handler_base';
 
 
@@ -143,6 +143,7 @@ export default class HandlerForward extends HandlerBase {
             const headerValue = response.rawHeaders[i + 1];
 
             if (isHopByHopHeader(headerName)) continue;
+            if (isInvalidHeader(headerName)) continue;
 
             headers[headerName] = headerValue;
         }

@@ -1,4 +1,5 @@
 import urlModule from 'url';
+import { _checkIsHttpToken, _checkInvalidHeaderChar } from '_http_common'; // eslint-disable-line
 // import through from 'through';
 
 
@@ -44,6 +45,14 @@ const HOP_BY_HOP_HEADERS = [
 const HOP_BY_HOP_HEADERS_REGEX = new RegExp(`^(${HOP_BY_HOP_HEADERS.join('|')})$`, 'i');
 
 export const isHopByHopHeader = header => HOP_BY_HOP_HEADERS_REGEX.test(header);
+
+export const isInvalidHeader = (header) => {
+    // NOTE: These are internal Node.js APIs, they might stop working in the future!
+    return typeof header !== 'string'
+        || !header
+        || !_checkIsHttpToken(header)
+        || _checkInvalidHeaderChar(header);
+};
 
 
 /**

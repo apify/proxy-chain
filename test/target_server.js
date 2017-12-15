@@ -30,6 +30,7 @@ export class TargetServer {
         this.app.get('/get-1m-a-chars-together', this.get1MACharsTogether.bind(this));
         this.app.get('/get-1m-a-chars-streamed', this.get1MACharsStreamed.bind(this));
         this.app.get('/basic-auth', this.getBasicAuth.bind(this));
+        this.app.get('/get-non-standard-headers', this.getNonStandardHeaders.bind(this));
 
         this.app.all('*', this.handleHttpRequest.bind(this));
 
@@ -103,7 +104,6 @@ export class TargetServer {
         }
     }
 
-
     handleHttpRequest(request, response) {
         console.log('Received request');
 
@@ -112,6 +112,29 @@ export class TargetServer {
 
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         response.end('It works!');
+    }
+
+    getNonStandardHeaders(request, response) {
+        const headers = {
+            'Invalid Header With Space': 'HeaderValue1',
+            'X-Normal-Header': 'HeaderValue2',
+        };
+
+        let msg = `HTTP/1.1 200 OK\r\n`;
+        _.each(headers, (value, key) => {
+            msg += `${key}: ${value}\r\n`;
+        });
+        msg += `\r\nHello sir!`;
+
+        request.socket.write(msg, () => {
+            request.socket.end();
+
+            // Unfortunately calling end() will not close the socket
+            // if client refuses to close it. Hence calling destroy after a short while.
+            setTimeout(() => {
+                request.socket.destroy();
+            }, 100);
+        });
     }
 
     onWsConnection(ws) {

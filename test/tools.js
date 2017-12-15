@@ -1,7 +1,7 @@
 import _ from 'underscore';
 import urlModule from 'url';
 import { expect } from 'chai';
-import { parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, parseProxyAuthorizationHeader } from '../build/tools';
+import { parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader, parseProxyAuthorizationHeader } from '../build/tools';
 
 /* global process, describe, it */
 
@@ -125,6 +125,21 @@ describe('tools.isHopByHopHeader()', () => {
     });
 });
 
+describe('tools.isInvalidHeader()', () => {
+    it('works', () => {
+        expect(isInvalidHeader('With space')).to.eql(true);
+        expect(isInvalidHeader('')).to.eql(true);
+        expect(isInvalidHeader(null)).to.eql(true);
+        expect(isInvalidHeader(1234)).to.eql(true);
+        expect(isInvalidHeader('\n')).to.eql(true);
+
+        expect(isInvalidHeader('connection')).to.eql(false);
+        expect(isInvalidHeader('Proxy-Authorization')).to.eql(false);
+        expect(isInvalidHeader('upGrade')).to.eql(false);
+        expect(isInvalidHeader('Host')).to.eql(false);
+        expect(isInvalidHeader('Whatever')).to.eql(false);
+    });
+});
 
 const authStr = (type, usernameAndPassword) => {
     return `${type} ${Buffer.from(usernameAndPassword).toString('base64')}`;
