@@ -61,7 +61,7 @@ export default class HandlerForward extends HandlerBase {
             }
             */
 
-            reqOpts.headers[headerName] = headerValue;
+            this.addHeader(reqOpts.headers, headerName, headerValue);
         }
 
         /*
@@ -145,7 +145,7 @@ export default class HandlerForward extends HandlerBase {
             if (isHopByHopHeader(headerName)) continue;
             if (isInvalidHeader(headerName)) continue;
 
-            headers[headerName] = headerValue;
+            this.addHeader(headers, headerName, headerValue);
         }
 
         this.srcResponse.writeHead(response.statusCode, headers);
