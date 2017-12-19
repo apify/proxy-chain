@@ -1,5 +1,5 @@
 import http from 'http';
-import { isHopByHopHeader, isInvalidHeader } from './tools';
+import { isHopByHopHeader, isInvalidHeader, addHeader } from './tools';
 import HandlerBase from './handler_base';
 
 
@@ -61,7 +61,7 @@ export default class HandlerForward extends HandlerBase {
             }
             */
 
-            this.addHeader(reqOpts.headers, headerName, headerValue);
+            addHeader(reqOpts.headers, headerName, headerValue);
         }
 
         /*
@@ -145,13 +145,12 @@ export default class HandlerForward extends HandlerBase {
             if (isHopByHopHeader(headerName)) continue;
             if (isInvalidHeader(headerName)) continue;
 
-            this.addHeader(headers, headerName, headerValue);
+            addHeader(headers, headerName, headerValue);
         }
 
         this.srcResponse.writeHead(response.statusCode, headers);
         response.pipe(this.srcResponse);
     }
-
 
     onTrgError(err) {
         this.log(`Target socket failed: ${err.stack || err}`);

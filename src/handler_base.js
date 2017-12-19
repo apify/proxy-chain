@@ -117,21 +117,6 @@ export default class HandlerBase extends EventEmitter {
         }
     }
 
-    addHeader(headers, name, value) {
-        if (headers[name] === undefined) {
-            headers[name] = value;
-        } else {
-            if (Array.isArray(headers[name])) {
-                headers[name].push(value);
-            } else {
-                headers[name] = [
-                    headers[name],
-                    value
-                ];
-            }
-        }
-    }
-
     /**
      * Checks whether response from upstream proxy is 407 Proxy Authentication Required
      * and if so, responds 502 Bad Gateway to client.

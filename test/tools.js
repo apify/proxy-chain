@@ -1,7 +1,10 @@
 import _ from 'underscore';
 import urlModule from 'url';
 import { expect } from 'chai';
-import { parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader, parseProxyAuthorizationHeader } from '../build/tools';
+import {
+    parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
+    parseProxyAuthorizationHeader, addHeader,
+} from '../build/tools';
 
 /* global process, describe, it */
 
@@ -58,7 +61,6 @@ describe('tools.parseUrl()', () => {
     });
 });
 
-
 describe('tools.redactUrl()', () => {
     it('works', () => {
         expect(redactUrl('https://username:password@www.example.com:1234/path#hash'))
@@ -80,7 +82,6 @@ describe('tools.redactUrl()', () => {
             .to.eql('ftp://example.com/');
     });
 });
-
 
 describe('tools.parseHostHeader()', () => {
     it('works with valid input', () => {
@@ -169,5 +170,48 @@ describe('tools.parseProxyAuthorizationHeader()', () => {
         expect(parse('bla bla bla')).to.eql(null);
         expect(parse(authStr('Basic', ''))).to.eql(null);
         expect(parse('123124')).to.eql(null);
+    });
+});
+
+describe('tools.addHeader()', () => {
+    it('works for new header', () => {
+        const headers = {
+            foo: 'bar',
+        };
+
+        addHeader(headers, 'someHeaderName', 'someHeaderValue');
+
+        expect(headers).to.be.eql({
+            foo: 'bar',
+            someHeaderName: 'someHeaderValue',
+        });
+    });
+
+    it('works for existing single header with the same name', () => {
+        const headers = {
+            foo: 'bar',
+            someHeaderName: 'originalValue',
+        };
+
+        addHeader(headers, 'someHeaderName', 'newValue');
+
+        expect(headers).to.be.eql({
+            foo: 'bar',
+            someHeaderName: ['originalValue', 'newValue'],
+        });
+    });
+
+    it('works for existing multiple headers with the same name', () => {
+        const headers = {
+            foo: 'bar',
+            someHeaderName: ['originalValue1', 'originalValue2'],
+        };
+
+        addHeader(headers, 'someHeaderName', 'newValue');
+
+        expect(headers).to.be.eql({
+            foo: 'bar',
+            someHeaderName: ['originalValue1', 'originalValue2', 'newValue'],
+        });
     });
 });

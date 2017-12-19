@@ -171,3 +171,17 @@ export const tee = (name, initialOnly = true) => {
     return duplex;
 };
 */
+
+
+export const addHeader = (headers, name, value) => {
+    if (headers[name] === undefined) {
+        headers[name] = value;
+    } else if (Array.isArray(headers[name])) {
+        headers[name].push(value);
+    } else {
+        headers[name] = [
+            headers[name],
+            value,
+        ];
+    }
+};
