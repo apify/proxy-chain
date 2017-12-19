@@ -373,6 +373,25 @@ const createTestSuite = ({
             });
         }
 
+        _it(`save repeating server HTTP headers`, () => {
+            const opts = getRequestOpts('/get-repeating-headers');
+            opts.method = 'GET';
+            return requestPromised(opts)
+                .then((response) => {
+                    expect(response.body).to.eql('Hooray!');
+                    expect(response.statusCode).to.eql(200);
+                    expect(response.headers).to.be.an('object');
+
+                    // The server returns two headers with same names:
+                    //  ... 'Repeating-Header', 'HeaderValue1' ... 'Repeating-Header', 'HeaderValue2' ...
+                    // All headers should be present
+                    let firstIndex = response.rawHeaders.indexOf('Repeating-Header');
+                    expect(response.rawHeaders[firstIndex + 1]).to.eql('HeaderValue1');
+                    let secondIndex = response.rawHeaders.indexOf('Repeating-Header', firstIndex + 1);
+                    expect(response.rawHeaders[secondIndex + 1]).to.eql('HeaderValue2');
+                });
+        });
+
         _it('handles large streamed POST payload', () => {
             const opts = getRequestOpts('/echo-payload');
             opts.headers['Content-Type'] = 'text/my-test';

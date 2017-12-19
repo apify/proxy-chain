@@ -113,7 +113,7 @@ export default class HandlerBase extends EventEmitter {
         if (parsed && parsed.username) {
             let auth = parsed.username;
             if (parsed.password) auth += `:${parsed.password}`;
-            this.addHeader(headers, 'Proxy-Authorization', `Basic ${Buffer.from(auth).toString('base64')}`);
+            headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
         }
     }
 
