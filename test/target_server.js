@@ -31,6 +31,7 @@ export class TargetServer {
         this.app.get('/get-1m-a-chars-streamed', this.get1MACharsStreamed.bind(this));
         this.app.get('/basic-auth', this.getBasicAuth.bind(this));
         this.app.get('/get-non-standard-headers', this.getNonStandardHeaders.bind(this));
+        this.app.get('/get-repeating-headers', this.getRepeatingHeaders.bind(this));
 
         this.app.all('*', this.handleHttpRequest.bind(this));
 
@@ -135,6 +136,14 @@ export class TargetServer {
                 request.socket.destroy();
             }, 100);
         });
+    }
+
+    getRepeatingHeaders(request, response) {
+        response.writeHead(200, {
+            'Content-Type': 'text/plain',
+            'Repeating-Header': ['HeaderValue1', 'HeaderValue2'],
+        });
+        response.end('Hooray!');
     }
 
     onWsConnection(ws) {
