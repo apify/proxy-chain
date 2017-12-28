@@ -92,6 +92,7 @@ The package also provides several utility functions.
 
 Parses and validates a HTTP proxy URL. If the proxy requires authentication,
 then the function starts an open local proxy server that forwards to the proxy.
+The port is chosen randomly.
 
 The function takes optional callback that receives the anonymous proxy URL.
 If no callback is supplied, the function returns a promise that resolves to a String with
