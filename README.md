@@ -14,6 +14,9 @@ With this library, you can setup a local proxy server without any password
 that will forward requests to the upstream proxy with password.
 For this very purpose the package is used by the [Apify web scraping platform](https://www.apify.com).
 
+To learn more about the rationale behind this package,
+read [How to make headless Chrome and Puppeteer use a proxy server with authentication](https://medium.com/@jancurn/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212).
+
 
 ## Run a simple HTTP/HTTPS proxy server
 
