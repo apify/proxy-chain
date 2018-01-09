@@ -114,6 +114,8 @@ const createTestSuite = ({
         let upstreamProxyRequestCount = 0;
 
         let mainProxyServer;
+        let mainProxyServerStatisticsInterval;
+        const mainProxyServerHandlers = {};
         let mainProxyServerPort;
         const mainProxyRequestCount = 0;
 
@@ -198,7 +200,7 @@ const createTestSuite = ({
 
                     if (mainProxyAuth || useUpstreamProxy) {
                         opts.prepareRequestFunction = ({
-                            request, username, password, hostname, port, isHttp,
+                            request, username, password, hostname, port, isHttp, handlerId
                         }) => {
                             const result = {
                                 requestAuthentication: false,
@@ -245,6 +247,12 @@ const createTestSuite = ({
                                 result.upstreamProxyUrl = upstreamProxyUrl;
                             }
 
+                            mainProxyServerHandlers[handlerId] = {
+                                groups: username ? username.replace('groups-', '').split('+') : [],
+                                token: password,
+                                hostname,
+                            };
+
                             // Sometimes return a promise, sometimes the result directly
                             if (counter++ % 2 === 0) return result;
                             return Promise.resolve(result);
@@ -275,7 +283,6 @@ const createTestSuite = ({
         // Tests for 502 Bad gateway or 407 Proxy Authenticate
         // Unfortunately the request library throws for HTTPS and sends status code for HTTP
         const testForErrorResponse = (opts, expectedStatusCode) => {
-
             let requestError = null;
             const onRequestFailed = (err) => {
                 requestError = err;
@@ -433,10 +440,29 @@ const createTestSuite = ({
                 .then((response) => {
                     expect(response.body).to.match(/^a{1000000}$/);
                     expect(response.statusCode).to.eql(200);
+                    const expectedSize = 1000000; // "a" takes one byte, so one 1 milion "a" should be 1MB
+
+                    // this if is here because some tests do not use prepareRequestFunction and therefore are not
+                    // trackable
+                    if (mainProxyServerHandlers && Object.keys(mainProxyServerHandlers).length) {
+                        const sortedIds = Object.keys(mainProxyServerHandlers).sort((a, b) => {
+                            if (Number(a) < Number(b)) return -1;
+                            if (Number(a) > Number(b)) return 1;
+                            return 0;
+                        });
+                        const lastHandler = sortedIds[sortedIds.length - 1];
+                        const stats = mainProxyServer.getStatisticsForHandler(lastHandler);
+
+                        // 5% range because network negotiation adds to network trafic
+                        expect(stats.srcTxBytes).to.be.within(expectedSize, expectedSize * 1.05);
+                        expect(stats.trgRxBytes).to.be.within(expectedSize, expectedSize * 1.05);
+                    }
                 });
         };
         _it('handles large GET response', test1MAChars);
-        _it('handles large streamed GET response', test1MAChars);
+
+        // TODO: Test streamed GET
+        // _it('handles large streamed GET response', test1MAChars);
 
         _it('handles 301 redirect', () => {
             const opts = getRequestOpts('/redirect-to-hello-world');
@@ -632,6 +658,7 @@ const createTestSuite = ({
 
         after(function () {
             this.timeout(2 * 1000);
+            if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
 
             // Shutdown all servers
             return Promise.resolve().then(() => {
@@ -735,4 +762,3 @@ useSslVariants.forEach((useSsl) => {
         });
     });
 });
-

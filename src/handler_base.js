@@ -170,6 +170,15 @@ export default class HandlerBase extends EventEmitter {
         }
     }
 
+    getStatistics() {
+        return {
+            srcTxBytes: this.srcSocket ? this.srcSocket.bytesWritten : undefined,
+            srcRxBytes: this.srcSocket ? this.srcSocket.bytesRead : undefined,
+            trgTxBytes: this.trgSocket ? this.trgSocket.bytesWritten : undefined,
+            trgRxBytes: this.trgSocket ? this.trgSocket.bytesRead : undefined,
+        };
+    }
+
     /**
      * Detaches all listeners and destroys all sockets.
      */

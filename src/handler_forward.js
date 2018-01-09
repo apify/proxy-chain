@@ -115,6 +115,8 @@ export default class HandlerForward extends HandlerBase {
         this.trgRequest.on('socket', (socket) => {
             this.log('Target socket assigned');
 
+            this.trgSocket = socket;
+
             socket.once('close', () => {
                 this.log('Target socket closed');
             });

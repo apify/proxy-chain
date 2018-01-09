@@ -131,7 +131,6 @@ export class Server extends EventEmitter {
      */
     onConnect(request) {
         this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
-        // console.dir(request.headers);
 
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
@@ -209,6 +208,7 @@ export class Server extends EventEmitter {
                 socket.pause();
 
                 const funcOpts = {
+                    handlerId: result.id,
                     request,
                     username: null,
                     password: null,
@@ -256,6 +256,7 @@ export class Server extends EventEmitter {
         handler.once('destroy', () => {
             delete this.handlers[handler.id];
         });
+
         handler.run();
     }
 
@@ -355,6 +356,18 @@ export class Server extends EventEmitter {
             this.server.listen(this.port);
         })
         .nodeify(callback);
+    }
+
+
+    /**
+     * Calls handler by ID and reads it's usage statistics.
+     * @return {Object} statistics { srcTxBytes, srcRxBytes, trgTxBytes, trgRxBytes }
+     */
+    getStatisticsForHandler(handlerId) {
+        const handler = this.handlers && this.handlers[handlerId];
+        if (!handler) return undefined;
+
+        return handler.getStatistics();
     }
 
     /**
