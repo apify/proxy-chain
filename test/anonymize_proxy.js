@@ -67,9 +67,9 @@ before(() => {
                 app.listen(testServerPort, (err) => {
                     if (err) reject(err);
                     resolve();
-                })
+                });
             });
-        })
+        });
 });
 
 after(function () {
@@ -85,9 +85,6 @@ const requestPromised = (opts) => {
         request(opts, (error, response, body) => {
             if (error) return reject(error);
             if (response.statusCode !== 200) {
-                //console.log('ERROR VOLE');
-                // console.dir(response);
-                //console.dir(body);
                 return reject(new Error(`Received invalid response code: ${response.statusCode}`));
             }
             if (opts.expectBodyContainsText) expect(body).to.contain(opts.expectBodyContainsText);
