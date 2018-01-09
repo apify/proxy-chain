@@ -1,3 +1,7 @@
+0.1.16 / 2018-01-09
+==================
+- added measuring of proxy stats - see `getConnectionStats()`` function
+
 0.1.14 / 2017-12-19
 ==================
 - added support for multiple headers with the same name (thx shershennm)

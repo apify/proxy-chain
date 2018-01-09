@@ -61,7 +61,7 @@ export class Server extends EventEmitter {
      * @param [options.port] Port where the server the server will listen. By default 8000.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests
      * and provide URL to chained upstream proxy. It accepts a single parameter which is an object:
-     * `{ request: Object, username: String, password: String, hostname: String, port: Number, isHttp: Boolean }`
+     * `{ connectionId: Number, request: Object, username: String, password: String, hostname: String, port: Number, isHttp: Boolean }`
      * and returns an object (or promise resolving to the object) with following form:
      * `{ requestAuthentication: Boolean, upstreamProxyUrl: String }`
      * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
@@ -360,8 +360,9 @@ export class Server extends EventEmitter {
 
 
     /**
-     * Calls handler by ID and reads it's connection statistics.
-     * @param {Number} connectionId ID of the connection handler
+     * Gets data transfer statistics of a specific proxy connection.
+     * @param {Number} connectionId ID of the connection handler.
+     * It is passed to `prepareRequestFunction` function.
      * @return {Object} statistics { srcTxBytes, srcRxBytes, trgTxBytes, trgRxBytes }
      */
     getConnectionStats(connectionId) {
