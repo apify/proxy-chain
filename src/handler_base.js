@@ -170,7 +170,7 @@ export default class HandlerBase extends EventEmitter {
         }
     }
 
-    getStatistics() {
+    getStats() {
         return {
             srcTxBytes: this.srcSocket ? this.srcSocket.bytesWritten : undefined,
             srcRxBytes: this.srcSocket ? this.srcSocket.bytesRead : undefined,

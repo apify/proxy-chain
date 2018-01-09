@@ -115,7 +115,7 @@ const createTestSuite = ({
 
         let mainProxyServer;
         let mainProxyServerStatisticsInterval;
-        const mainProxyServerHandlers = {};
+        const mainProxyServerConnections = {};
         let mainProxyServerPort;
         const mainProxyRequestCount = 0;
 
@@ -200,7 +200,7 @@ const createTestSuite = ({
 
                     if (mainProxyAuth || useUpstreamProxy) {
                         opts.prepareRequestFunction = ({
-                            request, username, password, hostname, port, isHttp, handlerId
+                            request, username, password, hostname, port, isHttp, connectionId
                         }) => {
                             const result = {
                                 requestAuthentication: false,
@@ -247,7 +247,7 @@ const createTestSuite = ({
                                 result.upstreamProxyUrl = upstreamProxyUrl;
                             }
 
-                            mainProxyServerHandlers[handlerId] = {
+                            mainProxyServerConnections[connectionId] = {
                                 groups: username ? username.replace('groups-', '').split('+') : [],
                                 token: password,
                                 hostname,
@@ -392,9 +392,9 @@ const createTestSuite = ({
                     // The server returns two headers with same names:
                     //  ... 'Repeating-Header', 'HeaderValue1' ... 'Repeating-Header', 'HeaderValue2' ...
                     // All headers should be present
-                    let firstIndex = response.rawHeaders.indexOf('Repeating-Header');
+                    const firstIndex = response.rawHeaders.indexOf('Repeating-Header');
                     expect(response.rawHeaders[firstIndex + 1]).to.eql('HeaderValue1');
-                    let secondIndex = response.rawHeaders.indexOf('Repeating-Header', firstIndex + 1);
+                    const secondIndex = response.rawHeaders.indexOf('Repeating-Header', firstIndex + 1);
                     expect(response.rawHeaders[secondIndex + 1]).to.eql('HeaderValue2');
                 });
         });
@@ -442,16 +442,16 @@ const createTestSuite = ({
                     expect(response.statusCode).to.eql(200);
                     const expectedSize = 1000000; // "a" takes one byte, so one 1 milion "a" should be 1MB
 
-                    // this if is here because some tests do not use prepareRequestFunction and therefore are not
-                    // trackable
-                    if (mainProxyServerHandlers && Object.keys(mainProxyServerHandlers).length) {
-                        const sortedIds = Object.keys(mainProxyServerHandlers).sort((a, b) => {
+                    // this condition is here because some tests do not use prepareRequestFunction
+                    // and therefore are not trackable
+                    if (mainProxyServerConnections && Object.keys(mainProxyServerConnections).length) {
+                        const sortedIds = Object.keys(mainProxyServerConnections).sort((a, b) => {
                             if (Number(a) < Number(b)) return -1;
                             if (Number(a) > Number(b)) return 1;
                             return 0;
                         });
                         const lastHandler = sortedIds[sortedIds.length - 1];
-                        const stats = mainProxyServer.getStatisticsForHandler(lastHandler);
+                        const stats = mainProxyServer.getConnectionStats(lastHandler);
 
                         // 5% range because network negotiation adds to network trafic
                         expect(stats.srcTxBytes).to.be.within(expectedSize, expectedSize * 1.05);

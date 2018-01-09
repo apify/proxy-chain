@@ -208,7 +208,7 @@ export class Server extends EventEmitter {
                 socket.pause();
 
                 const funcOpts = {
-                    handlerId: result.id,
+                    connectionId: result.id,
                     request,
                     username: null,
                     password: null,
@@ -360,14 +360,15 @@ export class Server extends EventEmitter {
 
 
     /**
-     * Calls handler by ID and reads it's usage statistics.
+     * Calls handler by ID and reads it's connection statistics.
+     * @param {Number} connectionId ID of the connection handler
      * @return {Object} statistics { srcTxBytes, srcRxBytes, trgTxBytes, trgRxBytes }
      */
-    getStatisticsForHandler(handlerId) {
-        const handler = this.handlers && this.handlers[handlerId];
+    getConnectionStats(connectionId) {
+        const handler = this.handlers && this.handlers[connectionId];
         if (!handler) return undefined;
 
-        return handler.getStatistics();
+        return handler.getStats();
     }
 
     /**
