@@ -50,9 +50,11 @@ export default class HandlerTunnelChain extends HandlerBase {
 
             socket.once('close', () => {
                 this.log('Target socket closed');
+                this.emit('handlerClosed');
             });
             socket.once('end', () => {
                 this.log('Target socket ended');
+                this.emit('handlerClosed');
             });
         });
         this.trgRequest.on('timeout', () => {

@@ -53,6 +53,7 @@ export class RequestError extends Error {
 /**
  * Represents the proxy server.
  * It emits 'requestFailed' event on unexpected request errors.
+ * It emits 'connectionClosed' event when connection to proxy server is closed.
  */
 export class Server extends EventEmitter {
     /**
@@ -113,14 +114,16 @@ export class Server extends EventEmitter {
         // console.log("MAIN REQUEST");
         // console.dir(_.pick(request, 'headers', 'url', 'method', 'httpVersion'));
 
+        let handlerOptions;
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
                 handlerOpts.srcResponse = response;
+                handlerOptions = handlerOpts;
                 const handler = new HandlerForward(handlerOpts);
                 this.handlerRun(handler);
             })
             .catch((err) => {
-                this.failRequest(request, err);
+                this.failRequest(request, err, handlerOptions);
             });
     }
 
@@ -132,15 +135,17 @@ export class Server extends EventEmitter {
     onConnect(request) {
         this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
+        let handlerOptions;
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
+                handlerOptions = handlerOpts;
                 const handler = handlerOpts.upstreamProxyUrl
                     ? new HandlerTunnelChain(handlerOpts)
                     : new HandlerTunnelDirect(handlerOpts);
                 this.handlerRun(handler);
             })
             .catch((err) => {
-                this.failRequest(request, err);
+                this.failRequest(request, err, handlerOptions);
             });
     }
 
@@ -226,17 +231,23 @@ export class Server extends EventEmitter {
                     if (auth.type !== 'Basic') {
                         throw new RequestError('The "Proxy-Authorization" header must have the "Basic" type.', 400);
                     }
-
                     funcOpts.username = auth.username;
                     funcOpts.password = auth.password;
                 }
-
                 // User function returns a result directly or a promise
                 return this.prepareRequestFunction(funcOpts);
             })
             .then((funcResult) => {
+                this.log(`${result.id} - open connection`);
+
                 // If not authenticated, request client to authenticate
                 if (funcResult && funcResult.requestAuthentication) {
+                    // connection was closed immediately
+                    this.log(`${result.id} - closed connection`);
+                    this.emit('connectionClosed', {
+                        connectionId: result.id,
+                        stats: { srcTxBytes: 0, srcRxBytes: 0 },
+                    });
                     throw new RequestError('Proxy credentials required.', 407);
                 }
 
@@ -253,8 +264,24 @@ export class Server extends EventEmitter {
 
     handlerRun(handler) {
         this.handlers[handler.id] = handler;
+
         handler.once('destroy', () => {
+            this.log(`${handler.id} - closed connection`);
+            const stats = handler.getStats();
+            this.emit('connectionClosed', {
+                connectionId: handler.id,
+                stats,
+            });
             delete this.handlers[handler.id];
+        });
+
+        handler.once('handlerClosed', () => {
+            this.log(`${handler.id} - closed connection`);
+            const stats = handler.getStats();
+            this.emit('connectionClosed', {
+                connectionId: handler.id,
+                stats,
+            });
         });
 
         handler.run();
@@ -265,7 +292,7 @@ export class Server extends EventEmitter {
      * @param request
      * @param err
      */
-    failRequest(request, err) {
+    failRequest(request, err, handlerOptions) {
         if (err.name === REQUEST_ERROR_NAME) {
             this.log(`Request failed (status ${err.statusCode}): ${err.message}`);
             this.sendResponse(request.socket, err.statusCode, err.headers, err.message);
@@ -273,6 +300,14 @@ export class Server extends EventEmitter {
             this.log(`Request failed with unknown error: ${err.stack || err}`);
             this.sendResponse(request.socket, 500, null, 'Internal error in proxy server');
             this.emit('requestFailed', err);
+        }
+        // emit connection closed if request fails and connection was already reported
+        if (handlerOptions) {
+            console.log(`${handlerOptions.id} - closed connection`);
+            this.emit('connectionClosed', {
+                connectionId: handlerOptions.id,
+                stats: { srcTxBytes: 0, srcRxBytes: 0 },
+            });
         }
     }
 
