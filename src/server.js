@@ -265,6 +265,8 @@ export class Server extends EventEmitter {
                 stats,
             });
         });
+
+        // TODO: Find out if this event is needed and if it's not, move removal to handlerClosed
         handler.once('destroy', () => {
             delete this.handlers[handler.id];
         });
