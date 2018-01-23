@@ -1,6 +1,10 @@
+0.1.17 / 2018-01-23
+==================
+- added `connectionClosed` event to notify users about closed proxy connections
+
 0.1.16 / 2018-01-09
 ==================
-- added measuring of proxy stats - see `getConnectionStats()`` function
+- added measuring of proxy stats - see `getConnectionStats()` function
 
 0.1.14 / 2017-12-19
 ==================
