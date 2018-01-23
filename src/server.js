@@ -259,7 +259,7 @@ export class Server extends EventEmitter {
         this.handlers[handler.id] = handler;
 
         handler.once('handlerClosed', ({ stats }) => {
-            this.log(`${handler.id} - closed connection`);
+            this.log(`${handler.id} - handler closed connection`);
             this.emit('connectionClosed', {
                 connectionId: handler.id,
                 stats,
@@ -290,7 +290,7 @@ export class Server extends EventEmitter {
         }
         // emit connection closed if request fails and connection was already reported
         if (handlerOptions) {
-            this.log(`${handlerOptions.id} - closed connection`);
+            this.log(`${handlerOptions.id} - closed connection because request failed with error`);
             this.emit('connectionClosed', {
                 connectionId: handlerOptions.id,
                 stats: { srcTxBytes: 0, srcRxBytes: 0 },

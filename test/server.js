@@ -118,7 +118,8 @@ const createTestSuite = ({
         const mainProxyServerConnections = {};
         let mainProxyServerPort;
         const mainProxyRequestCount = 0;
-        let mainProxyServerConnectionIds = [];
+        const mainProxyServerConnectionIds = [];
+        const mainProxyServerConnectionsClosed = [];
 
         let baseUrl;
         let mainProxyUrl;
@@ -268,6 +269,7 @@ const createTestSuite = ({
                     mainProxyServer = new Server(opts);
 
                     mainProxyServer.on('connectionClosed', ({ connectionId }) => {
+                        mainProxyServerConnectionsClosed.push(connectionId);
                         const index = mainProxyServerConnectionIds.indexOf(connectionId);
                         mainProxyServerConnectionIds.splice(index, 1);
                     });
@@ -670,6 +672,15 @@ const createTestSuite = ({
             return wait(1000)
                 .then(() => {
                     expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
+                    const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
+                        .reduce((duplicateConnections, id, index) => {
+                            if (index > 0 && mainProxyServerConnectionsClosed[index - 1] === id) {
+                                duplicateConnections.push(id);
+                            }
+                            return duplicateConnections;
+                        }, []);
+
+                    expect(closedSomeConnectionsTwice).to.be.deep.eql([]);
                     if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
                     if (mainProxyServer) {
                         // NOTE: we need to forcibly close pending connections,
