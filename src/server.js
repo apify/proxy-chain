@@ -290,7 +290,7 @@ export class Server extends EventEmitter {
         }
         // emit connection closed if request fails and connection was already reported
         if (handlerOptions) {
-            console.log(`${handlerOptions.id} - closed connection`);
+            this.log(`${handlerOptions.id} - closed connection`);
             this.emit('connectionClosed', {
                 connectionId: handlerOptions.id,
                 stats: { srcTxBytes: 0, srcRxBytes: 0 },
