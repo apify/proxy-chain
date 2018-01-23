@@ -39,6 +39,7 @@ export default class HandlerBase extends EventEmitter {
         this.srcGotResponse = false;
 
         this.isDestroyed = false;
+        this.emittedHandlerClosedEvent = false;
 
         if (upstreamProxyUrl) {
             if (!this.upstreamProxyUrlParsed.hostname || !this.upstreamProxyUrlParsed.port) {
@@ -180,6 +181,15 @@ export default class HandlerBase extends EventEmitter {
     }
 
     /**
+     * Makes sure that 'handlerClosed' event is emitted only once
+     */
+    emitHandlerClosed() {
+        if (this.emittedHandlerClosedEvent) return;
+        this.emittedHandlerClosedEvent = true;
+        this.emit('handlerClosed', { stats: this.getStats() });
+    }
+
+    /**
      * Detaches all listeners and destroys all sockets.
      */
     destroy() {
@@ -208,7 +218,6 @@ export default class HandlerBase extends EventEmitter {
             }
 
             this.isDestroyed = true;
-
             this.emit('destroy');
         }
     }

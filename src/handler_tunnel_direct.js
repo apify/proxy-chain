@@ -66,6 +66,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
     }
 
     removeListeners() {
+        super.emitHandlerClosed();
         super.removeListeners();
 
         if (this.trgSocket) {

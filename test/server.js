@@ -23,8 +23,6 @@ import { TargetServer } from './target_server';
 /*
 TODO - add following tests:
 - websockets - direct SSL connection
-- test chain = main proxy loop
-- test memory is not leaking - run GC before and after test, mem size should be roughly the same
 - IPv6 !!!
 */
 
@@ -68,6 +66,8 @@ const requestPromised = (opts) => {
         });
     });
 };
+
+const wait = timeout => new Promise(resolve => setTimeout(resolve, timeout));
 
 // Opens web page in phantomjs and returns the HTML content
 const phantomGet = (url, proxyUrl) => {
@@ -118,6 +118,8 @@ const createTestSuite = ({
         const mainProxyServerConnections = {};
         let mainProxyServerPort;
         const mainProxyRequestCount = 0;
+        const mainProxyServerConnectionIds = [];
+        const mainProxyServerConnectionsClosed = [];
 
         let baseUrl;
         let mainProxyUrl;
@@ -133,7 +135,7 @@ const createTestSuite = ({
         let counter = 0;
 
         before(() => {
-            return portastic.find({ min: 50000, max: 50100 }).then((ports) => {
+            return portastic.find({ min: 50000, max: 50500 }).then((ports) => {
                 freePorts = ports;
 
                 // Setup target HTTP server
@@ -195,7 +197,7 @@ const createTestSuite = ({
 
                     const opts = {
                         port: mainProxyServerPort,
-                        // verbose: true,
+                        // verbose: true, // enable this if you want verbose logs
                     };
 
                     if (mainProxyAuth || useUpstreamProxy) {
@@ -247,11 +249,14 @@ const createTestSuite = ({
                                 result.upstreamProxyUrl = upstreamProxyUrl;
                             }
 
-                            mainProxyServerConnections[connectionId] = {
-                                groups: username ? username.replace('groups-', '').split('+') : [],
-                                token: password,
-                                hostname,
-                            };
+                            if (!result.requestAuthentication) {
+                                mainProxyServerConnectionIds.push(connectionId);
+                                mainProxyServerConnections[connectionId] = {
+                                    groups: username ? username.replace('groups-', '').split('+') : [],
+                                    token: password,
+                                    hostname,
+                                };
+                            }
 
                             // Sometimes return a promise, sometimes the result directly
                             if (counter++ % 2 === 0) return result;
@@ -262,6 +267,12 @@ const createTestSuite = ({
                     opts.authRealm = AUTH_REALM;
 
                     mainProxyServer = new Server(opts);
+
+                    mainProxyServer.on('connectionClosed', ({ connectionId }) => {
+                        mainProxyServerConnectionsClosed.push(connectionId);
+                        const index = mainProxyServerConnectionIds.indexOf(connectionId);
+                        mainProxyServerConnectionIds.splice(index, 1);
+                    });
 
                     return mainProxyServer.listen();
                 }
@@ -357,7 +368,7 @@ const createTestSuite = ({
 
         // NOTE: upstream proxy cannot handle non-standard headers
         if (!useUpstreamProxy) {
-            _it(`ignores non-standard server HTTP headers`, () => {
+            _it('ignores non-standard server HTTP headers', () => {
                 const opts = getRequestOpts('/get-non-standard-headers');
                 opts.method = 'GET';
                 return requestPromised(opts)
@@ -380,7 +391,7 @@ const createTestSuite = ({
             });
         }
 
-        _it(`save repeating server HTTP headers`, () => {
+        _it('save repeating server HTTP headers', () => {
             const opts = getRequestOpts('/get-repeating-headers');
             opts.method = 'GET';
             return requestPromised(opts)
@@ -503,12 +514,12 @@ const createTestSuite = ({
                 return Promise.resolve()
                     .then(() => {
                         // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
-                        const url = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                        return phantomGet(url, mainProxyUrl);
+                        const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                        return phantomGet(phantomUrl, mainProxyUrl);
                     })
                     .then((response) => {
                         expect(response).to.contain('Hello world!');
-                    })
+                    });
             });
         }
 
@@ -533,7 +544,7 @@ const createTestSuite = ({
                 ws.on('open', () => {
                     ws.send('hello world');
                 });
-                ws.on('message', (data, flags) => {
+                ws.on('message', (data) => {
                     ws.close();
                     resolve(data);
                 });
@@ -657,21 +668,28 @@ const createTestSuite = ({
         }
 
         after(function () {
-            this.timeout(2 * 1000);
-            if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
-
-            // Shutdown all servers
-            return Promise.resolve().then(() => {
-                // console.log('mainProxyServer');
-                if (mainProxyServer) {
-                    // NOTE: we need to forcibly close pending connections,
-                    // because e.g. on 502 errors in HTTPS mode, the request library
-                    // doesn't close the connection and this would timeout
-                    return mainProxyServer.close(true);
-                }
-            })
+            this.timeout(3 * 1000);
+            return wait(1000)
                 .then(() => {
-                // console.log('upstreamProxyServer');
+                    expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
+                    const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
+                        .reduce((duplicateConnections, id, index) => {
+                            if (index > 0 && mainProxyServerConnectionsClosed[index - 1] === id) {
+                                duplicateConnections.push(id);
+                            }
+                            return duplicateConnections;
+                        }, []);
+
+                    expect(closedSomeConnectionsTwice).to.be.deep.eql([]);
+                    if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
+                    if (mainProxyServer) {
+                        // NOTE: we need to forcibly close pending connections,
+                        // because e.g. on 502 errors in HTTPS mode, the request library
+                        // doesn't close the connection and this would timeout
+                        return mainProxyServer.close(true);
+                    }
+                })
+                .then(() => {
                     if (upstreamProxyServer) {
                         return Promise.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
                     }
