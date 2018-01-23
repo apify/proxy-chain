@@ -39,6 +39,7 @@ export default class HandlerBase extends EventEmitter {
         this.srcGotResponse = false;
 
         this.isDestroyed = false;
+        this.emittedHandlerClosedEvent = false;
 
         if (upstreamProxyUrl) {
             if (!this.upstreamProxyUrlParsed.hostname || !this.upstreamProxyUrlParsed.port) {
@@ -177,6 +178,15 @@ export default class HandlerBase extends EventEmitter {
             trgTxBytes: this.trgSocket ? this.trgSocket.bytesWritten : null,
             trgRxBytes: this.trgSocket ? this.trgSocket.bytesRead : null,
         };
+    }
+
+    /**
+     * Makes sure that 'handlerClosed' event is emitted only once
+     */
+    emitHandlerClosed() {
+        if (this.emittedHandlerClosedEvent) return;
+        this.emittedHandlerClosedEvent = true;
+        this.emit('handlerClosed');
     }
 
     /**

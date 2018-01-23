@@ -53,13 +53,11 @@ export default class HandlerTunnelDirect extends HandlerBase {
         this.log('Target socket closed');
         this.removeListeners();
         this.srcSocket.destroy();
-        this.emit('handlerClosed');
     }
 
     onTrgSocketEnd() {
         this.log('Target socket ended');
         this.removeListeners();
-        this.emit('handlerClosed');
     }
 
     onTrgSocketError(err) {
@@ -68,6 +66,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
     }
 
     removeListeners() {
+        super.emitHandlerClosed();
         super.removeListeners();
 
         if (this.trgSocket) {

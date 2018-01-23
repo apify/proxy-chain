@@ -119,11 +119,11 @@ export default class HandlerForward extends HandlerBase {
 
             socket.once('close', () => {
                 this.log('Target socket closed');
-                this.emit('handlerClosed');
+                super.emitHandlerClosed();
             });
             socket.once('end', () => {
                 this.log('Target socket ended');
-                this.emit('handlerClosed');
+                super.emitHandlerClosed();
             });
         });
 
