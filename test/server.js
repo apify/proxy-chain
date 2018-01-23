@@ -248,12 +248,14 @@ const createTestSuite = ({
                                 result.upstreamProxyUrl = upstreamProxyUrl;
                             }
 
-                            mainProxyServerConnectionIds.push(connectionId);
-                            mainProxyServerConnections[connectionId] = {
-                                groups: username ? username.replace('groups-', '').split('+') : [],
-                                token: password,
-                                hostname,
-                            };
+                            if (!result.requestAuthentication) {
+                                mainProxyServerConnectionIds.push(connectionId);
+                                mainProxyServerConnections[connectionId] = {
+                                    groups: username ? username.replace('groups-', '').split('+') : [],
+                                    token: password,
+                                    hostname,
+                                };
+                            }
 
                             // Sometimes return a promise, sometimes the result directly
                             if (counter++ % 2 === 0) return result;
@@ -364,7 +366,7 @@ const createTestSuite = ({
 
         // NOTE: upstream proxy cannot handle non-standard headers
         if (!useUpstreamProxy) {
-            _it(`ignores non-standard server HTTP headers`, () => {
+            _it('ignores non-standard server HTTP headers', () => {
                 const opts = getRequestOpts('/get-non-standard-headers');
                 opts.method = 'GET';
                 return requestPromised(opts)
@@ -387,7 +389,7 @@ const createTestSuite = ({
             });
         }
 
-        _it(`save repeating server HTTP headers`, () => {
+        _it('save repeating server HTTP headers', () => {
             const opts = getRequestOpts('/get-repeating-headers');
             opts.method = 'GET';
             return requestPromised(opts)
@@ -510,8 +512,8 @@ const createTestSuite = ({
                 return Promise.resolve()
                     .then(() => {
                         // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
-                        const url = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                        return phantomGet(url, mainProxyUrl);
+                        const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                        return phantomGet(phantomUrl, mainProxyUrl);
                     })
                     .then((response) => {
                         expect(response).to.contain('Hello world!');
@@ -540,7 +542,7 @@ const createTestSuite = ({
                 ws.on('open', () => {
                     ws.send('hello world');
                 });
-                ws.on('message', (data, flags) => {
+                ws.on('message', (data) => {
                     ws.close();
                     resolve(data);
                 });

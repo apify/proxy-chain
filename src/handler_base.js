@@ -186,7 +186,7 @@ export default class HandlerBase extends EventEmitter {
     emitHandlerClosed() {
         if (this.emittedHandlerClosedEvent) return;
         this.emittedHandlerClosedEvent = true;
-        this.emit('handlerClosed');
+        this.emit('handlerClosed', { stats: this.getStats() });
     }
 
     /**
@@ -218,7 +218,6 @@ export default class HandlerBase extends EventEmitter {
             }
 
             this.isDestroyed = true;
-
             this.emit('destroy');
         }
     }

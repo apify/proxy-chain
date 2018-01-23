@@ -239,15 +239,8 @@ export class Server extends EventEmitter {
             })
             .then((funcResult) => {
                 this.log(`${result.id} - open connection`);
-
                 // If not authenticated, request client to authenticate
                 if (funcResult && funcResult.requestAuthentication) {
-                    // connection was closed immediately
-                    this.log(`${result.id} - closed connection`);
-                    this.emit('connectionClosed', {
-                        connectionId: result.id,
-                        stats: { srcTxBytes: 0, srcRxBytes: 0 },
-                    });
                     throw new RequestError('Proxy credentials required.', 407);
                 }
 
@@ -265,23 +258,15 @@ export class Server extends EventEmitter {
     handlerRun(handler) {
         this.handlers[handler.id] = handler;
 
-        handler.once('destroy', () => {
+        handler.once('handlerClosed', ({ stats }) => {
             this.log(`${handler.id} - closed connection`);
-            const stats = handler.getStats();
             this.emit('connectionClosed', {
                 connectionId: handler.id,
                 stats,
             });
-            delete this.handlers[handler.id];
         });
-
-        handler.once('handlerClosed', () => {
-            this.log(`${handler.id} - closed connection`);
-            const stats = handler.getStats();
-            this.emit('connectionClosed', {
-                connectionId: handler.id,
-                stats,
-            });
+        handler.once('destroy', () => {
+            delete this.handlers[handler.id];
         });
 
         handler.run();
