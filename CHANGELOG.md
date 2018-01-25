@@ -1,3 +1,7 @@
+0.1.18 / 2018-01-25
+==================
+- fixed a memory leak, improved logging and consolidated code
+
 0.1.17 / 2018-01-23
 ==================
 - added `connectionClosed` event to notify users about closed proxy connections
