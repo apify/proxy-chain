@@ -120,6 +120,7 @@ const createTestSuite = ({
         const mainProxyRequestCount = 0;
         const mainProxyServerConnectionIds = [];
         const mainProxyServerConnectionsClosed = [];
+        const mainProxyServerConnectionId2Stats = {};
 
         let baseUrl;
         let mainProxyUrl;
@@ -197,7 +198,7 @@ const createTestSuite = ({
 
                     const opts = {
                         port: mainProxyServerPort,
-                        // verbose: true, // enable this if you want verbose logs
+                        verbose: true, // enable this if you want verbose logs
                     };
 
                     if (mainProxyAuth || useUpstreamProxy) {
@@ -268,10 +269,11 @@ const createTestSuite = ({
 
                     mainProxyServer = new Server(opts);
 
-                    mainProxyServer.on('connectionClosed', ({ connectionId }) => {
+                    mainProxyServer.on('connectionClosed', ({ connectionId, stats }) => {
                         mainProxyServerConnectionsClosed.push(connectionId);
                         const index = mainProxyServerConnectionIds.indexOf(connectionId);
                         mainProxyServerConnectionIds.splice(index, 1);
+                        mainProxyServerConnectionId2Stats[connectionId] = stats;
                     });
 
                     return mainProxyServer.listen();
@@ -461,8 +463,9 @@ const createTestSuite = ({
                             if (Number(a) > Number(b)) return 1;
                             return 0;
                         });
-                        const lastHandler = sortedIds[sortedIds.length - 1];
-                        const stats = mainProxyServer.getConnectionStats(lastHandler);
+                        const lastConnectionId = sortedIds[sortedIds.length - 1];
+                        const stats = mainProxyServer.getConnectionStats(lastConnectionId)
+                            || mainProxyServerConnectionId2Stats[lastConnectionId];
 
                         // 5% range because network negotiation adds to network trafic
                         expect(stats.srcTxBytes).to.be.within(expectedSize, expectedSize * 1.05);
@@ -671,7 +674,11 @@ const createTestSuite = ({
             this.timeout(3 * 1000);
             return wait(1000)
                 .then(() => {
+
+                    if (mainProxyServer) console.dir(_.keys(mainProxyServer.handlers));
                     expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
+
+
                     const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
                         .reduce((duplicateConnections, id, index) => {
                             if (index > 0 && mainProxyServerConnectionsClosed[index - 1] === id) {

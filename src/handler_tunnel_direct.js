@@ -8,21 +8,16 @@ export default class HandlerTunnelDirect extends HandlerBase {
     constructor(options) {
         super(options);
 
-        this.bindHandlersToThis(['onTrgSocketConnect', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError']);
-    }
-
-    log(str) {
-        if (this.verbose) console.log(`HandlerTunnelDirect[${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
+        this.bindHandlersToThis(['onTrgSocketConnect']);
     }
 
     run() {
-        this.log('Connecting to target...');
+        this.log(`Connecting to target ${this.trgParsed.hostname}:${this.trgParsed.port}`);
 
-        this.trgSocket = net.createConnection(this.trgParsed.port, this.trgParsed.hostname);
-        this.trgSocket.once('connect', this.onTrgSocketConnect);
-        this.trgSocket.once('close', this.onTrgSocketClose);
-        this.trgSocket.once('end', this.onTrgSocketEnd);
-        this.trgSocket.once('error', this.onTrgSocketError);
+        const socket = net.createConnection(this.trgParsed.port, this.trgParsed.hostname);
+        socket.once('connect', this.onTrgSocketConnect);
+
+        this.onTrgSocket(socket);
     }
 
     onTrgSocketConnect() {
@@ -49,31 +44,11 @@ export default class HandlerTunnelDirect extends HandlerBase {
         // this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
     }
 
-    onTrgSocketClose() {
-        this.log('Target socket closed');
-        this.removeListeners();
-        this.srcSocket.destroy();
-    }
-
-    onTrgSocketEnd() {
-        this.log('Target socket ended');
-        this.removeListeners();
-    }
-
-    onTrgSocketError(err) {
-        this.log(`Target socket failed: ${err.stack || err}`);
-        super.fail(err);
-    }
-
     removeListeners() {
-        super.emitHandlerClosed();
         super.removeListeners();
 
         if (this.trgSocket) {
             this.trgSocket.removeListener('connect', this.onTrgSocketConnect);
-            this.trgSocket.removeListener('close', this.onTrgSocketClose);
-            this.trgSocket.removeListener('end', this.onTrgSocketEnd);
-            this.trgSocket.removeListener('error', this.onTrgSocketError);
         }
     }
 }

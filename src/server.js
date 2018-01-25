@@ -2,8 +2,7 @@ import http from 'http';
 import EventEmitter from 'events';
 import _ from 'underscore';
 import Promise from 'bluebird';
-
-import { parseHostHeader, parseProxyAuthorizationHeader, parseUrl } from './tools';
+import { parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl } from './tools';
 import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
@@ -96,12 +95,15 @@ export class Server extends EventEmitter {
         };
     }
 
-    log(str) {
-        if (this.verbose) console.log(`Server[${this.port}]: ${str}`);
+    log(handlerId, str) {
+        if (this.verbose) {
+            const logPrefix = handlerId ? `${handlerId} | ` : '';
+            console.log(`Server[${this.port}]: ${logPrefix}${str}`);
+        }
     }
 
     onClientError(err, socket) {
-        this.log(`onClientError: ${err}`);
+        this.log(null, `onClientError: ${err}`);
         this.sendResponse(socket, 400, null, 'Invalid request');
     }
 
@@ -109,16 +111,12 @@ export class Server extends EventEmitter {
      * Handles normal HTTP request by forwarding it to target host or the upstream proxy.
      */
     onRequest(request, response) {
-        this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
-
-        // console.log("MAIN REQUEST");
-        // console.dir(_.pick(request, 'headers', 'url', 'method', 'httpVersion'));
-
         let handlerOptions;
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
                 handlerOpts.srcResponse = response;
                 handlerOptions = handlerOpts;
+                this.log(handlerOpts.id, 'Using HandlerForward');
                 const handler = new HandlerForward(handlerOpts);
                 this.handlerRun(handler);
             })
@@ -133,15 +131,20 @@ export class Server extends EventEmitter {
      * @param head
      */
     onConnect(request) {
-        this.log(`${request.method} ${request.url} HTTP/${request.httpVersion}`);
-
         let handlerOptions;
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
                 handlerOptions = handlerOpts;
-                const handler = handlerOpts.upstreamProxyUrl
-                    ? new HandlerTunnelChain(handlerOpts)
-                    : new HandlerTunnelDirect(handlerOpts);
+
+                let handler;
+                if (handlerOpts.upstreamProxyUrlParsed) {
+                    this.log(handlerOpts.id, 'Using HandlerTunnelChain');
+                    handler = new HandlerTunnelChain(handlerOpts);
+                } else {
+                    this.log(handlerOpts.id, 'Using HandlerTunnelDirect');
+                    handler = new HandlerTunnelDirect(handlerOpts);
+                }
+
                 this.handlerRun(handler);
             })
             .catch((err) => {
@@ -161,12 +164,14 @@ export class Server extends EventEmitter {
         // console.dir(url.parse(request.url));
 
         const result = {
+            server: this,
             id: ++this.lastHandlerId,
             srcRequest: request,
             trgParsed: null,
-            upstreamProxyUrl: null,
-            verbose: this.verbose,
+            upstreamProxyUrlParsed: null,
         };
+
+        this.log(result.id, `!!! Received ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
         const socket = request.socket;
         let isHttp = false;
@@ -207,7 +212,7 @@ export class Server extends EventEmitter {
                 result.trgParsed.port = result.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using a user function (if provided)
-                if (!this.prepareRequestFunction) return { requestAuthentication: false, upstreamProxyUrl: null };
+                if (!this.prepareRequestFunction) return { requestAuthentication: false, upstreamProxyUrlParsed: null };
 
                 // Pause the socket so that no data is lost
                 socket.pause();
@@ -238,14 +243,26 @@ export class Server extends EventEmitter {
                 return this.prepareRequestFunction(funcOpts);
             })
             .then((funcResult) => {
-                this.log(`${result.id} - open connection`);
                 // If not authenticated, request client to authenticate
                 if (funcResult && funcResult.requestAuthentication) {
                     throw new RequestError('Proxy credentials required.', 407);
                 }
 
                 if (funcResult && funcResult.upstreamProxyUrl) {
-                    result.upstreamProxyUrl = funcResult.upstreamProxyUrl;
+                    result.upstreamProxyUrlParsed = parseUrl(funcResult.upstreamProxyUrl);
+
+                    if (result.upstreamProxyUrlParsed) {
+                        if (!result.upstreamProxyUrlParsed.hostname || !result.upstreamProxyUrlParsed.port) {
+                            throw new Error('Invalid "upstreamProxyUrl" provided: URL must have hostname and port');
+                        }
+                        if (result.upstreamProxyUrlParsed.scheme !== 'http') {
+                            throw new Error('Invalid "upstreamProxyUrl" provided: URL must have the "http" scheme');
+                        }
+                    }
+                }
+
+                if (result.upstreamProxyUrlParsed) {
+                    this.log(result.id, `Using upstream proxy ${redactParsedUrl(result.upstreamProxyUrlParsed)}`);
                 }
 
                 return result;
@@ -258,17 +275,13 @@ export class Server extends EventEmitter {
     handlerRun(handler) {
         this.handlers[handler.id] = handler;
 
-        handler.once('handlerClosed', ({ stats }) => {
-            this.log(`${handler.id} - handler closed connection`);
+        handler.once('close', ({ stats }) => {
             this.emit('connectionClosed', {
                 connectionId: handler.id,
                 stats,
             });
-        });
-
-        // TODO: Find out if this event is needed and if it's not, move removal to handlerClosed
-        handler.once('destroy', () => {
             delete this.handlers[handler.id];
+            this.log(handler.id, '!!! Closed and removed from server');
         });
 
         handler.run();
@@ -280,17 +293,18 @@ export class Server extends EventEmitter {
      * @param err
      */
     failRequest(request, err, handlerOptions) {
+        const handlerId = handlerOptions ? handlerOptions.id : null;
         if (err.name === REQUEST_ERROR_NAME) {
-            this.log(`Request failed (status ${err.statusCode}): ${err.message}`);
+            this.log(handlerId, `Request failed (status ${err.statusCode}): ${err.message}`);
             this.sendResponse(request.socket, err.statusCode, err.headers, err.message);
         } else {
-            this.log(`Request failed with unknown error: ${err.stack || err}`);
+            this.log(handlerId, `Request failed with unknown error: ${err.stack || err}`);
             this.sendResponse(request.socket, 500, null, 'Internal error in proxy server');
             this.emit('requestFailed', err);
         }
         // emit connection closed if request fails and connection was already reported
         if (handlerOptions) {
-            this.log(`${handlerOptions.id} - closed connection because request failed with error`);
+            this.log(handlerId, `Closed because request failed with error`);
             this.emit('connectionClosed', {
                 connectionId: handlerOptions.id,
                 stats: { srcTxBytes: 0, srcRxBytes: 0 },
@@ -344,7 +358,7 @@ export class Server extends EventEmitter {
                 }, 100);
             });
         } catch (err) {
-            this.log(`Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
+            this.log(null, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
         }
     }
 
@@ -359,12 +373,12 @@ export class Server extends EventEmitter {
             // Unfortunately server.listen() is not a normal function that fails on error,
             // so we need this trickery
             const onError = (err) => {
-                this.log(`Listen failed: ${err}`);
+                this.log(null, `Listen failed: ${err}`);
                 removeListeners();
                 reject(err);
             };
             const onListening = () => {
-                this.log('Listening...');
+                this.log(null, 'Listening...');
                 removeListeners();
                 resolve();
             };
@@ -407,13 +421,13 @@ export class Server extends EventEmitter {
         }
 
         if (closeConnections) {
-            this.log('Destroying pending handlers');
+            this.log(null, 'Closing pending handlers');
             let count = 0;
             _.each(this.handlers, (handler) => {
                 count++;
-                handler.destroy();
+                handler.close();
             });
-            this.log(`Destroyed ${count} pending handlers`);
+            this.log(null, `Destroyed ${count} pending handlers`);
         }
 
         // TODO: keep track of all handlers and close them if closeConnections=true
