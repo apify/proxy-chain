@@ -171,7 +171,7 @@ export class Server extends EventEmitter {
             upstreamProxyUrlParsed: null,
         };
 
-        this.log(result.id, `!!! Received ${request.method} ${request.url} HTTP/${request.httpVersion}`);
+        this.log(result.id, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
         const socket = request.socket;
         let isHttp = false;

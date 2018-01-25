@@ -198,7 +198,7 @@ const createTestSuite = ({
 
                     const opts = {
                         port: mainProxyServerPort,
-                        verbose: true, // enable this if you want verbose logs
+                        // verbose: true, // enable this if you want verbose logs
                     };
 
                     if (mainProxyAuth || useUpstreamProxy) {
@@ -674,10 +674,11 @@ const createTestSuite = ({
             this.timeout(3 * 1000);
             return wait(1000)
                 .then(() => {
-
-                    if (mainProxyServer) console.dir(_.keys(mainProxyServer.handlers));
+                    // Ensure all handlers are removed
+                    if (mainProxyServer) {
+                        expect(mainProxyServer.handlers).to.be.deep.eql({});
+                    }
                     expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
-
 
                     const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
                         .reduce((duplicateConnections, id, index) => {
