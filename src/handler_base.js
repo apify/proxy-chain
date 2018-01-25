@@ -1,6 +1,5 @@
 import http from 'http';
 import EventEmitter from 'events';
-import { parseUrl, redactParsedUrl } from './tools';
 
 /* globals Buffer */
 
@@ -10,14 +9,16 @@ import { parseUrl, redactParsedUrl } from './tools';
  */
 export default class HandlerBase extends EventEmitter {
     constructor({
-        id, srcRequest, srcResponse, trgParsed, verbose, upstreamProxyUrl,
+        server, id, srcRequest, srcResponse, trgParsed, upstreamProxyUrlParsed,
     }) {
         super();
 
+        if (!server) throw new Error('The "server" option is required');
         if (!id) throw new Error('The "id" option is required');
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
         if (!trgParsed.hostname) throw new Error('The "trgParsed.hostname" option is required');
 
+        this.server = server;
         this.id = id;
 
         this.srcRequest = srcRequest;
@@ -29,26 +30,12 @@ export default class HandlerBase extends EventEmitter {
         this.trgParsed = trgParsed;
         this.trgParsed.port = this.trgParsed.port || DEFAULT_TARGET_PORT;
 
-        this.verbose = !!verbose;
-        this.upstreamProxyUrl = upstreamProxyUrl;
-
-        this.upstreamProxyUrlParsed = upstreamProxyUrl ? parseUrl(upstreamProxyUrl) : null;
-        this.upstreamProxyUrlRedacted = upstreamProxyUrl ? redactParsedUrl(this.upstreamProxyUrlParsed) : null;
-
         // Indicates that source socket might have received some data already
         this.srcGotResponse = false;
 
-        this.isDestroyed = false;
-        this.emittedHandlerClosedEvent = false;
+        this.isClosed = false;
 
-        if (upstreamProxyUrl) {
-            if (!this.upstreamProxyUrlParsed.hostname || !this.upstreamProxyUrlParsed.port) {
-                throw new Error('Invalid "upstreamProxyUrl" option: URL must have hostname and port');
-            }
-            if (this.upstreamProxyUrlParsed.scheme !== 'http') {
-                throw new Error('Invalid "upstreamProxyUrl" option: URL must have the "http" scheme');
-            }
-        }
+        this.upstreamProxyUrlParsed = upstreamProxyUrlParsed;
 
         // Create ServerResponse for the client HTTP request if it doesn't exist
         // NOTE: This is undocummented API, it might break in the future
@@ -61,7 +48,10 @@ export default class HandlerBase extends EventEmitter {
         }
 
         // Bind all event handlers to this instance
-        this.bindHandlersToThis(['onSrcResponseFinish', 'onSrcSocketClose', 'onSrcSocketEnd', 'onSrcSocketError']);
+        this.bindHandlersToThis([
+            'onSrcResponseFinish', 'onSrcSocketClose', 'onSrcSocketEnd', 'onSrcSocketError',
+            'onTrgSocket', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError',
+        ]);
 
         // called for the ServerResponse's "finish" event
         // XXX: normally, node's "http" module has a "finish" event listener that would
@@ -81,32 +71,60 @@ export default class HandlerBase extends EventEmitter {
         });
     }
 
-    // Abstract method, needs to be overridden
-    log() {} // eslint-disable-line
+    log(str) {
+        this.server.log(this.id, str);
+    }
 
     // Abstract method, needs to be overridden
     run() {} // eslint-disable-line
 
-    // if the client closes the connection prematurely,
-    // then close the upstream socket
+    // If the client closes the connection prematurely,
+    // then immediately destroy the upstream socket, there's nothing we can do with it
     onSrcSocketClose() {
         this.log('Source socket closed');
-        this.destroy();
+        this.close();
     }
 
     onSrcSocketEnd() {
         this.log('Source socket ended');
-        this.destroy();
+        this.close();
     }
 
     onSrcSocketError(err) {
         this.log(`Source socket failed: ${err.stack || err}`);
-        this.destroy();
+        this.close();
     }
 
     onSrcResponseFinish() {
         this.log('Source response finished');
-        this.removeListeners();
+        this.close();
+    }
+
+    onTrgSocket(socket) {
+        this.log('Target socket assigned');
+
+        this.trgSocket = socket;
+
+        socket.once('close', this.onTrgSocketClose);
+        socket.once('end', this.onTrgSocketEnd);
+        socket.once('error', this.onTrgSocketError);
+    }
+
+    // Once target socket closes, we need to give time
+    // to source socket to receive pending data, so we only call end()
+    onTrgSocketClose() {
+        this.log('Target socket closed');
+        if (this.srcSocket) this.srcSocket.end();
+    }
+
+    onTrgSocketEnd() {
+        this.log('Target socket ended');
+        if (this.srcSocket) this.srcSocket.end();
+    }
+
+    onTrgSocketError(err) {
+        this.log(`Target socket failed: ${err.stack || err}`);
+        this.fail(err);
     }
 
     maybeAddProxyAuthorizationHeader(headers) {
@@ -125,7 +143,7 @@ export default class HandlerBase extends EventEmitter {
      * @return {boolean}
      */
     checkUpstreamProxy407(response) {
-        if (this.upstreamProxyUrl && response.statusCode === 407) {
+        if (this.upstreamProxyUrlParsed && response.statusCode === 407) {
             this.fail('Upstream proxy need different credentials', 502);
             return true;
         }
@@ -133,21 +151,19 @@ export default class HandlerBase extends EventEmitter {
     }
 
     fail(err, statusCode) {
-        this.removeListeners();
-
         if (this.srcGotResponse) {
             this.log('Source already received a response, just destroying the socket...');
-            this.destroy();
+            this.close();
         } else if (statusCode) {
             // Manual error
             this.log(`${err}, responding with custom status code ${statusCode} to client`);
             this.srcResponse.writeHead(statusCode);
             this.srcResponse.end(`${err}`);
-        } else if (err.code === 'ENOTFOUND' && this.upstreamProxyUrl) {
+        } else if (err.code === 'ENOTFOUND' && this.upstreamProxyUrlParsed) {
             this.log('Upstream proxy not found, sending 502 to client');
             this.srcResponse.writeHead(502);
             this.srcResponse.end('Upstream proxy was not found');
-        } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrl) {
+        } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrlParsed) {
             this.log('Target server not found, sending 404 to client');
             this.srcResponse.writeHead(404);
             this.srcResponse.end('Target server not found');
@@ -169,6 +185,14 @@ export default class HandlerBase extends EventEmitter {
         if (this.srcResponse) {
             this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
         }
+        if (this.trgRequest) {
+            this.trgRequest.removeListener('socket', this.onTrgSocket);
+        }
+        if (this.trgSocket) {
+            this.trgSocket.removeListener('socket', this.onTrgSocketClose);
+            this.trgSocket.removeListener('socket', this.onTrgSocketEnd);
+            this.trgSocket.removeListener('socket', this.onTrgSocketError);
+        }
     }
 
     getStats() {
@@ -181,21 +205,15 @@ export default class HandlerBase extends EventEmitter {
     }
 
     /**
-     * Makes sure that 'handlerClosed' event is emitted only once
-     */
-    emitHandlerClosed() {
-        if (this.emittedHandlerClosedEvent) return;
-        this.emittedHandlerClosedEvent = true;
-        this.emit('handlerClosed', { stats: this.getStats() });
-    }
-
-    /**
      * Detaches all listeners and destroys all sockets.
      */
-    destroy() {
-        if (!this.isDestroyed) {
-            this.log('Destroying');
+    close() {
+        if (!this.isClosed) {
+            this.log('Closing handler');
             this.removeListeners();
+
+            // Save stats before sockets are destroyed
+            const stats = this.getStats();
 
             if (this.srcRequest) {
                 this.srcRequest.destroy();
@@ -217,8 +235,9 @@ export default class HandlerBase extends EventEmitter {
                 this.trgSocket = null;
             }
 
-            this.isDestroyed = true;
-            this.emit('destroy');
+            this.isClosed = true;
+
+            this.emit('close', { stats });
         }
     }
 }

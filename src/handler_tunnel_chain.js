@@ -11,15 +11,9 @@ export default class HandlerTunnelChain extends HandlerBase {
     constructor(options) {
         super(options);
 
-        if (!this.upstreamProxyUrl) throw new Error('The "upstreamProxyUrl" option is required');
+        if (!this.upstreamProxyUrlParsed) throw new Error('The "upstreamProxyUrlParsed" option is required');
 
         this.bindHandlersToThis(['onTrgRequestConnect', 'onTrgRequestAbort', 'onTrgRequestError']);
-    }
-
-    log(str) {
-        if (this.verbose) {
-            console.log(`HandlerTunnelChain[${this.upstreamProxyUrlRedacted} -> ${this.trgParsed.hostname}:${this.trgParsed.port}]: ${str}`);
-        }
     }
 
     run() {
@@ -40,26 +34,7 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.trgRequest.once('connect', this.onTrgRequestConnect);
         this.trgRequest.once('abort', this.onTrgRequestAbort);
         this.trgRequest.once('error', this.onTrgRequestError);
-
-        // TODO: remove these...
-        this.trgRequest.on('continue', () => {
-            this.log('Target continue');
-        });
-        this.trgRequest.on('socket', (socket) => {
-            this.log('Target socket assigned');
-
-            socket.once('close', () => {
-                this.log('Target socket closed');
-                super.emitHandlerClosed();
-            });
-            socket.once('end', () => {
-                this.log('Target socket ended');
-                super.emitHandlerClosed();
-            });
-        });
-        this.trgRequest.on('timeout', () => {
-            this.log('Target timeout');
-        });
+        this.trgRequest.on('socket', this.onTrgSocket);
 
         // Send the data
         this.trgRequest.end();
@@ -99,7 +74,7 @@ export default class HandlerTunnelChain extends HandlerBase {
 
     onTrgRequestAbort() {
         this.log('Target aborted');
-        this.destroy();
+        this.close();
     }
 
     onTrgRequestError(err) {
@@ -114,6 +89,7 @@ export default class HandlerTunnelChain extends HandlerBase {
             this.trgRequest.removeListener('connect', this.onTrgRequestConnect);
             this.trgRequest.removeListener('close', this.onTrgRequestAbort);
             this.trgRequest.removeListener('end', this.onTrgRequestError);
+            this.trgRequest.removeListener('socket', this.onTrgSocket);
         }
     }
 }

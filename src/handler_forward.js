@@ -13,15 +13,6 @@ export default class HandlerForward extends HandlerBase {
         this.bindHandlersToThis(['onTrgResponse', 'onTrgError']);
     }
 
-    log(str) {
-        if (this.verbose) {
-            const srcReq = this.srcRequest || {};
-            if (!srcReq.method) console.log('WARNING: no method ???');
-            const urlRedacted = this.upstreamProxyUrlRedacted ? `${this.upstreamProxyUrlRedacted} -> ` : '';
-            console.log(`HandlerForward[${urlRedacted}${srcReq.method} ${srcReq.url}]: ${str}`);
-        }
-    }
-
     run() {
         const reqOpts = this.trgParsed;
         reqOpts.method = this.srcRequest.method;
@@ -100,33 +91,17 @@ export default class HandlerForward extends HandlerBase {
 
             this.maybeAddProxyAuthorizationHeader(reqOpts.headers);
 
-            this.log('Connecting to upstream proxy...');
+            this.log(`Connecting to upstream proxy ${reqOpts.host}:${reqOpts.port}`);
         } else {
-            this.log('Connecting to target...');
+            this.log(`Connecting to target ${reqOpts.host}`);
         }
-
 
         // console.dir(requestOptions);
 
         this.trgRequest = http.request(reqOpts);
         this.trgRequest.on('response', this.onTrgResponse);
         this.trgRequest.on('error', this.onTrgError);
-
-        this.trgRequest.on('socket', (socket) => {
-            this.log('Target socket assigned');
-
-            this.trgSocket = socket;
-
-            socket.once('close', () => {
-                this.log('Target socket closed');
-                super.emitHandlerClosed();
-            });
-            socket.once('end', () => {
-                this.log('Target socket ended');
-                super.emitHandlerClosed();
-            });
-        });
-
+        this.trgRequest.on('socket', this.onTrgSocket);
 
         // this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
         this.srcRequest.pipe(this.trgRequest);
@@ -165,8 +140,9 @@ export default class HandlerForward extends HandlerBase {
         super.removeListeners();
 
         if (this.trgRequest) {
-            this.trgRequest.on('response', this.onTrgResponse);
-            this.trgRequest.on('error', this.onTrgError);
+            this.trgRequest.removeListener('response', this.onTrgResponse);
+            this.trgRequest.removeListener('error', this.onTrgError);
+            this.trgRequest.removeListener('socket', this.onTrgSocket);
         }
     }
 }
