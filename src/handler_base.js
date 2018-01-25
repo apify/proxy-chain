@@ -81,26 +81,31 @@ export default class HandlerBase extends EventEmitter {
     // If the client closes the connection prematurely,
     // then immediately destroy the upstream socket, there's nothing we can do with it
     onSrcSocketClose() {
+        if (this.isClosed) return;
         this.log('Source socket closed');
         this.close();
     }
 
     onSrcSocketEnd() {
+        if (this.isClosed) return;
         this.log('Source socket ended');
         this.close();
     }
 
     onSrcSocketError(err) {
+        if (this.isClosed) return;
         this.log(`Source socket failed: ${err.stack || err}`);
         this.close();
     }
 
     onSrcResponseFinish() {
+        if (this.isClosed) return;
         this.log('Source response finished');
         this.close();
     }
 
     onTrgSocket(socket) {
+        if (this.isClosed) return;
         this.log('Target socket assigned');
 
         this.trgSocket = socket;
@@ -113,16 +118,19 @@ export default class HandlerBase extends EventEmitter {
     // Once target socket closes, we need to give time
     // to source socket to receive pending data, so we only call end()
     onTrgSocketClose() {
+        if (this.isClosed) return;
         this.log('Target socket closed');
         if (this.srcSocket) this.srcSocket.end();
     }
 
     onTrgSocketEnd() {
+        if (this.isClosed) return;
         this.log('Target socket ended');
         if (this.srcSocket) this.srcSocket.end();
     }
 
     onTrgSocketError(err) {
+        if (this.isClosed) return;
         this.log(`Target socket failed: ${err.stack || err}`);
         this.fail(err);
     }
@@ -174,27 +182,6 @@ export default class HandlerBase extends EventEmitter {
         }
     }
 
-    removeListeners() {
-        this.log('Removing listeners');
-
-        if (this.srcSocket) {
-            this.srcSocket.removeListener('close', this.onSrcSocketClose);
-            this.srcSocket.removeListener('end', this.onSrcSocketEnd);
-            this.srcSocket.removeListener('error', this.onSrcSocketError);
-        }
-        if (this.srcResponse) {
-            this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
-        }
-        if (this.trgRequest) {
-            this.trgRequest.removeListener('socket', this.onTrgSocket);
-        }
-        if (this.trgSocket) {
-            this.trgSocket.removeListener('socket', this.onTrgSocketClose);
-            this.trgSocket.removeListener('socket', this.onTrgSocketEnd);
-            this.trgSocket.removeListener('socket', this.onTrgSocketError);
-        }
-    }
-
     getStats() {
         return {
             srcTxBytes: this.srcSocket ? this.srcSocket.bytesWritten : null,
@@ -210,7 +197,6 @@ export default class HandlerBase extends EventEmitter {
     close() {
         if (!this.isClosed) {
             this.log('Closing handler');
-            this.removeListeners();
 
             // Save stats before sockets are destroyed
             const stats = this.getStats();

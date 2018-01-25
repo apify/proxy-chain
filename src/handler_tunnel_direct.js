@@ -21,6 +21,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
     }
 
     onTrgSocketConnect() {
+        if (this.isClosed) return;
         this.log('Connected');
 
         this.srcGotResponse = true;
@@ -42,13 +43,5 @@ export default class HandlerTunnelDirect extends HandlerBase {
         this.srcSocket.pipe(this.trgSocket);
         // this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
         // this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
-    }
-
-    removeListeners() {
-        super.removeListeners();
-
-        if (this.trgSocket) {
-            this.trgSocket.removeListener('connect', this.onTrgSocketConnect);
-        }
     }
 }

@@ -41,6 +41,7 @@ export default class HandlerTunnelChain extends HandlerBase {
     }
 
     onTrgRequestConnect(response, socket) {
+        if (this.isClosed) return;
         this.log('Connected to upstream proxy');
 
         if (this.checkUpstreamProxy407(response)) return;
@@ -73,23 +74,14 @@ export default class HandlerTunnelChain extends HandlerBase {
     }
 
     onTrgRequestAbort() {
+        if (this.isClosed) return;
         this.log('Target aborted');
         this.close();
     }
 
     onTrgRequestError(err) {
+        if (this.isClosed) return;
         this.log(`Target request failed: ${err.stack || err}`);
         this.fail(err);
-    }
-
-    removeListeners() {
-        super.removeListeners();
-
-        if (this.trgRequest) {
-            this.trgRequest.removeListener('connect', this.onTrgRequestConnect);
-            this.trgRequest.removeListener('close', this.onTrgRequestAbort);
-            this.trgRequest.removeListener('end', this.onTrgRequestError);
-            this.trgRequest.removeListener('socket', this.onTrgSocket);
-        }
     }
 }
