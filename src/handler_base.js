@@ -50,7 +50,7 @@ export default class HandlerBase extends EventEmitter {
         // Bind all event handlers to this instance
         this.bindHandlersToThis([
             'onSrcResponseFinish', 'onSrcSocketClose', 'onSrcSocketEnd', 'onSrcSocketError',
-            'onTrgSocket', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError'
+            'onTrgSocket', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError',
         ]);
 
         // called for the ServerResponse's "finish" event
