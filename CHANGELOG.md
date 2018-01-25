@@ -1,3 +1,7 @@
+0.1.19 / 2018-01-25
+==================
+- fixed uncaught error events, code improved
+
 0.1.18 / 2018-01-25
 ==================
 - fixed a memory leak, improved logging and consolidated code
