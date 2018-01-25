@@ -108,6 +108,7 @@ export default class HandlerForward extends HandlerBase {
     }
 
     onTrgResponse(response) {
+        if (this.isClosed) return;
         this.log(`Received response from target (${response.statusCode})`);
         // console.dir(response);
 
@@ -132,17 +133,8 @@ export default class HandlerForward extends HandlerBase {
     }
 
     onTrgError(err) {
+        if (this.isClosed) return;
         this.log(`Target socket failed: ${err.stack || err}`);
         this.fail(err);
-    }
-
-    removeListeners() {
-        super.removeListeners();
-
-        if (this.trgRequest) {
-            this.trgRequest.removeListener('response', this.onTrgResponse);
-            this.trgRequest.removeListener('error', this.onTrgError);
-            this.trgRequest.removeListener('socket', this.onTrgSocket);
-        }
     }
 }
