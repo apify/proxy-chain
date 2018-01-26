@@ -394,6 +394,13 @@ export class Server extends EventEmitter {
         .nodeify(callback);
     }
 
+    /**
+     * Gets array of IDs of all active connections.
+     * @returns {*}
+     */
+    getConnectionIds() {
+        return _.keys(this.handlers);
+    }
 
     /**
      * Gets data transfer statistics of a specific proxy connection.

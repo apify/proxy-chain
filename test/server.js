@@ -270,6 +270,7 @@ const createTestSuite = ({
                     mainProxyServer = new Server(opts);
 
                     mainProxyServer.on('connectionClosed', ({ connectionId, stats }) => {
+                        assert.include(mainProxyServer.getConnectionIds(), connectionId.toString());
                         mainProxyServerConnectionsClosed.push(connectionId);
                         const index = mainProxyServerConnectionIds.indexOf(connectionId);
                         mainProxyServerConnectionIds.splice(index, 1);
@@ -679,7 +680,7 @@ const createTestSuite = ({
                 .then(() => {
                     // Ensure all handlers are removed
                     if (mainProxyServer) {
-                        expect(mainProxyServer.handlers).to.be.deep.eql({});
+                        expect(mainProxyServer.getConnectionIds()).to.be.deep.eql([]);
                     }
                     expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
 
