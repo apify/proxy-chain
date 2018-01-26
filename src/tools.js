@@ -46,14 +46,16 @@ const HOP_BY_HOP_HEADERS_REGEX = new RegExp(`^(${HOP_BY_HOP_HEADERS.join('|')})$
 
 export const isHopByHopHeader = header => HOP_BY_HOP_HEADERS_REGEX.test(header);
 
-export const isInvalidHeader = (header) => {
-    // NOTE: These are internal Node.js APIs, they might stop working in the future!
-    return typeof header !== 'string'
-        || !header
-        || !_checkIsHttpToken(header)
-        || _checkInvalidHeaderChar(header);
+// This code is based on Node.js' validateHeader() function from _http_outgoing.js module
+// (see https://github.com/nodejs/node/blob/189d29f39e6de9ccf10682bfd1341819b4a2291f/lib/_http_outgoing.js#L485)
+export const isInvalidHeader = (name, value) => {
+    // NOTE: These are internal Node.js functions, they might stop working in the future!
+    return typeof name !== 'string'
+        || !name
+        || !_checkIsHttpToken(name)
+        || value === undefined
+        || _checkInvalidHeaderChar(value);
 };
-
 
 /**
  * Sames are Node's url.parse() just adds the 'username', 'password' and 'scheme' fields.

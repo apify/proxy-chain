@@ -119,13 +119,13 @@ export default class HandlerForward extends HandlerBase {
         // Prepare response headers
         const headers = {};
         for (let i = 0; i < response.rawHeaders.length; i += 2) {
-            const headerName = response.rawHeaders[i];
-            const headerValue = response.rawHeaders[i + 1];
+            const name = response.rawHeaders[i];
+            const value = response.rawHeaders[i + 1];
 
-            if (isHopByHopHeader(headerName)) continue;
-            if (isInvalidHeader(headerName)) continue;
+            if (isHopByHopHeader(name)) continue;
+            if (isInvalidHeader(name, value)) continue;
 
-            addHeader(headers, headerName, headerValue);
+            addHeader(headers, name, value);
         }
 
         this.srcResponse.writeHead(response.statusCode, headers);

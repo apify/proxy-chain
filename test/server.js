@@ -379,15 +379,18 @@ const createTestSuite = ({
                         expect(response.statusCode).to.eql(200);
                         expect(response.headers).to.be.an('object');
 
-                        // The server returns two headers:
+                        // The server returns three headers:
                         //  'Invalid Header With Space': 'HeaderValue1',
                         //  'X-Normal-Header': 'HeaderValue2',
-                        // With HTTP proxy, the invalid header should be removed, otherwise it should be present
+                        //  'Invalid-Header-Value': 'some\value',
+                        // With HTTP proxy, the invalid headers should be removed, otherwise they should be present
                         expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
                         if (useMainProxy && !useSsl) {
                             expect(response.headers['invalid header with space']).to.eql(undefined);
+                            expect(response.headers['invalid-header-value']).to.eql(undefined);
                         } else {
                             expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
+                            expect(response.headers['invalid-header-value']).to.eql('some\value');
                         }
                     });
             });

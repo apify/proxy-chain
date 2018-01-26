@@ -119,6 +119,9 @@ export class TargetServer {
         const headers = {
             'Invalid Header With Space': 'HeaderValue1',
             'X-Normal-Header': 'HeaderValue2',
+            // This is a regression test for "TypeError: The header content contains invalid characters"
+            // that occurred in production
+            'Invalid-Header-Value': 'some\value',
         };
 
         let msg = `HTTP/1.1 200 OK\r\n`;

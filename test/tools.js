@@ -128,17 +128,41 @@ describe('tools.isHopByHopHeader()', () => {
 
 describe('tools.isInvalidHeader()', () => {
     it('works', () => {
-        expect(isInvalidHeader('With space')).to.eql(true);
-        expect(isInvalidHeader('')).to.eql(true);
-        expect(isInvalidHeader(null)).to.eql(true);
-        expect(isInvalidHeader(1234)).to.eql(true);
-        expect(isInvalidHeader('\n')).to.eql(true);
+        expect(isInvalidHeader('With space', 'a')).to.eql(true);
+        expect(isInvalidHeader('', 'a')).to.eql(true);
+        expect(isInvalidHeader(null, 'a')).to.eql(true);
+        expect(isInvalidHeader(1234, 'a')).to.eql(true);
+        expect(isInvalidHeader('\n', 'a')).to.eql(true);
+        expect(isInvalidHeader('', 'a')).to.eql(true);
+        expect(isInvalidHeader(' ', 'a')).to.eql(true);
+        expect(isInvalidHeader('\u3042', 'a')).to.eql(true);
+        expect(isInvalidHeader('\u3042a', 'a')).to.eql(true);
+        expect(isInvalidHeader('aaaa\u3042aaaa', 'a')).to.eql(true);
 
-        expect(isInvalidHeader('connection')).to.eql(false);
-        expect(isInvalidHeader('Proxy-Authorization')).to.eql(false);
-        expect(isInvalidHeader('upGrade')).to.eql(false);
-        expect(isInvalidHeader('Host')).to.eql(false);
-        expect(isInvalidHeader('Whatever')).to.eql(false);
+        expect(isInvalidHeader('connection', 'a')).to.eql(false);
+        expect(isInvalidHeader('Proxy-Authorization', 'a')).to.eql(false);
+        expect(isInvalidHeader('upGrade', 'a')).to.eql(false);
+        expect(isInvalidHeader('Host', 'a')).to.eql(false);
+        expect(isInvalidHeader('Whatever', 'a')).to.eql(false);
+        expect(isInvalidHeader('t', 'a')).to.eql(false);
+        expect(isInvalidHeader('tt', 'a')).to.eql(false);
+        expect(isInvalidHeader('ttt', 'a')).to.eql(false);
+        expect(isInvalidHeader('tttt', 'a')).to.eql(false);
+        expect(isInvalidHeader('ttttt', 'a')).to.eql(false);
+
+        expect(isInvalidHeader('a', '\u3042')).to.eql(true);
+        expect(isInvalidHeader('a', 'aaaa\u3042aaaa')).to.eql(true);
+        expect(isInvalidHeader('aaa', 'bla\vbla')).to.eql(true);
+
+        expect(isInvalidHeader('a', '')).to.eql(false);
+        expect(isInvalidHeader('a', 1)).to.eql(false);
+        expect(isInvalidHeader('a', ' ')).to.eql(false);
+        expect(isInvalidHeader('a', false)).to.eql(false);
+        expect(isInvalidHeader('a', 't')).to.eql(false);
+        expect(isInvalidHeader('a', 'tt')).to.eql(false);
+        expect(isInvalidHeader('a', 'ttt')).to.eql(false);
+        expect(isInvalidHeader('a', 'tttt')).to.eql(false);
+        expect(isInvalidHeader('a', 'ttttt')).to.eql(false);
     });
 });
 
