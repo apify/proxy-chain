@@ -1,3 +1,7 @@
+0.1.20 / 2018-01-26
+==================
+- Fixed "TypeError: The header content contains invalid characters" bug
+
 0.1.19 / 2018-01-25
 ==================
 - fixed uncaught error events, code improved
