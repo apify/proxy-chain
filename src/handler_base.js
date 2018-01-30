@@ -152,7 +152,7 @@ export default class HandlerBase extends EventEmitter {
      */
     checkUpstreamProxy407(response) {
         if (this.upstreamProxyUrlParsed && response.statusCode === 407) {
-            this.fail('Upstream proxy need different credentials', 502);
+            this.fail('Invalid credentials provided for the upstream proxy.', 502);
             return true;
         }
         return false;
