@@ -19,12 +19,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/apifier/proxy-chain"
+    "url": "git+https://github.com/apifytech/proxy-chain"
   },
   "bugs": {
-    "url": "https://github.com/apifier/proxy-chain/issues"
+    "url": "https://github.com/apifytech/proxy-chain/issues"
   },
-  "homepage": "https://github.com/apifier/proxy-chain",
+  "homepage": "https://github.com/apifytech/proxy-chain",
   "files": [
     "build"
   ],
