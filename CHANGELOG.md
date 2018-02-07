@@ -1,3 +1,7 @@
+0.1.23 / 2018-02-07
+===================
+- Fixed missing variable in "Incorrect protocol" error message.
+
 0.1.22 / 2018-02-05
 ===================
 - Renamed project's GitHub organization
