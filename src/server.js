@@ -201,7 +201,7 @@ export class Server extends EventEmitter {
                     }
                     // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
                     if (parsed.protocol !== 'http:') {
-                        throw new RequestError(`Only HTTP protocol is supported (was ${requestOptions.protocol})`, 400);
+                        throw new RequestError(`Only HTTP protocol is supported (was ${parsed.protocol})`, 400);
                     }
 
                     result.trgParsed = parsed;
