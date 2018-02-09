@@ -1,3 +1,7 @@
+0.1.24 / 2018-02-09
+===================
+- Fixed incorrect closing of ServerResponse object which caused phantomjs to mark resource requests as errors.
+
 0.1.23 / 2018-02-07
 ===================
 - Fixed missing variable in "Incorrect protocol" error message.
