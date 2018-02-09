@@ -7,6 +7,11 @@ if (typeof(phantom)==='object') {
     var settings = {
         resourceTimeout: 10 * 1000,
     };
+    /*
+    page.onResourceRequested = function (request) {
+        system.stdout.writeLine('= onResourceRequested()');
+        system.stdout.writeLine('  request: ' + JSON.stringify(request, undefined, 4));
+    };
 
     if (system.args.length < 2) {
         console.log('Opens a web page and prints its content');
@@ -40,4 +45,3 @@ if (typeof(phantom)==='object') {
         });
     }
 }
-
