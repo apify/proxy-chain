@@ -122,6 +122,8 @@ export default class HandlerBase extends EventEmitter {
         this.log('Target socket closed');
         // If socket is closed here instead of response, phantomjs does not properly parse the response as http response.
         if (this.srcResponse) this.srcResponse.end();
+        // Handler tunnel chain does not use srcResponse, but needs to close srcSocket
+        else if (this.srcSocket) this.srcSocket.end();
     }
 
     onTrgSocketEnd() {
@@ -129,6 +131,8 @@ export default class HandlerBase extends EventEmitter {
         this.log('Target socket ended');
         // If socket is closed here instead of response, phantomjs does not properly parse the response as http response.
         if (this.srcResponse) this.srcResponse.end();
+        // Handler tunnel chain does not use srcResponse, but needs to close srcSocket
+        else if (this.srcSocket) this.srcSocket.end();
     }
 
     onTrgSocketError(err) {

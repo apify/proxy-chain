@@ -1,3 +1,7 @@
+0.1.25 / 2018-02-12
+===================
+- When connection is only through socket, close srcSocket when trgSocket ends
+
 0.1.24 / 2018-02-09
 ===================
 - Fixed incorrect closing of ServerResponse object which caused phantomjs to mark resource requests as errors.
