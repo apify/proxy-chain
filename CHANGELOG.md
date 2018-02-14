@@ -1,3 +1,7 @@
+0.1.26 / 2018-02-14
+===================
+- If connection is denied because of authentication error, optionally "prepareRequestFunction" can provide error message.
+
 0.1.25 / 2018-02-12
 ===================
 - When connection is only through socket, close srcSocket when trgSocket ends
