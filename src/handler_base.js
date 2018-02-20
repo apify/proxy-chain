@@ -9,7 +9,7 @@ import EventEmitter from 'events';
  */
 export default class HandlerBase extends EventEmitter {
     constructor({
-        server, id, srcRequest, srcResponse, trgParsed, upstreamProxyUrlParsed,
+        server, id, srcRequest, srcHead, srcResponse, trgParsed, upstreamProxyUrlParsed,
     }) {
         super();
 
@@ -22,6 +22,7 @@ export default class HandlerBase extends EventEmitter {
         this.id = id;
 
         this.srcRequest = srcRequest;
+        this.srcHead = srcHead;
         this.srcResponse = srcResponse;
         this.srcSocket = srcRequest.socket;
 
@@ -38,7 +39,7 @@ export default class HandlerBase extends EventEmitter {
         this.upstreamProxyUrlParsed = upstreamProxyUrlParsed;
 
         // Create ServerResponse for the client HTTP request if it doesn't exist
-        // NOTE: This is undocummented API, it might break in the future
+        // NOTE: This is undocumented API, it might break in the future
         if (!this.srcResponse) {
             this.srcResponse = new http.ServerResponse(srcRequest);
             this.srcResponse.shouldKeepAlive = false;

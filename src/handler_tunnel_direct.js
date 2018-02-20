@@ -20,7 +20,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
         this.onTrgSocket(socket);
     }
 
-    onTrgSocketConnect() {
+    onTrgSocketConnect(response, socket, head) {
         if (this.isClosed) return;
         this.log('Connected');
 
@@ -29,7 +29,9 @@ export default class HandlerTunnelDirect extends HandlerBase {
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
         this.srcResponse.writeHead(200, 'Connection established');
 
-        // HACK: force a flush of the HTTP header
+        // HACK: force a flush of the HTTP header. This is to ensure 'head' is empty to avoid
+        // assert at https://github.com/request/tunnel-agent/blob/master/index.js#L160
+        // See also https://github.com/nodejs/node/blob/master/lib/_http_outgoing.js#L217
         this.srcResponse._send('');
 
         // Relinquish control of the socket from the ServerResponse instance
@@ -38,10 +40,16 @@ export default class HandlerTunnelDirect extends HandlerBase {
         // ServerResponse is no longer needed
         this.srcResponse = null;
 
+        // Forward pre-parsed parts of the first packets (if any)
+        if (head && head.length > 0) {
+            this.srcSocket.write(head);
+        }
+        if (this.srcHead && this.srcHead.length > 0) {
+            this.trgSocket.write(this.srcHead);
+        }
+
         // Setup bi-directional tunnel
         this.trgSocket.pipe(this.srcSocket);
         this.srcSocket.pipe(this.trgSocket);
-        // this.trgSocket.pipe(tee('to src')).pipe(this.srcSocket);
-        // this.srcSocket.pipe(tee('to trg')).pipe(this.trgSocket);
     }
 }
