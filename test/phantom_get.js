@@ -40,4 +40,3 @@ if (typeof(phantom)==='object') {
         });
     }
 }
-

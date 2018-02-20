@@ -248,7 +248,7 @@ export class Server extends EventEmitter {
             .then((funcResult) => {
                 // If not authenticated, request client to authenticate
                 if (funcResult && funcResult.requestAuthentication) {
-                    throw new RequestError('Proxy credentials required.', 407);
+                    throw new RequestError(funcResult.failMsg || 'Proxy credentials required.', 407);
                 }
 
                 if (funcResult && funcResult.upstreamProxyUrl) {

@@ -1,3 +1,15 @@
+0.1.26 / 2018-02-14
+===================
+- If connection is denied because of authentication error, optionally "prepareRequestFunction" can provide error message.
+
+0.1.25 / 2018-02-12
+===================
+- When connection is only through socket, close srcSocket when trgSocket ends
+
+0.1.24 / 2018-02-09
+===================
+- Fixed incorrect closing of ServerResponse object which caused phantomjs to mark resource requests as errors.
+
 0.1.23 / 2018-02-07
 ===================
 - Fixed missing variable in "Incorrect protocol" error message.

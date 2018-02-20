@@ -24,6 +24,7 @@ import { TargetServer } from './target_server';
 TODO - add following tests:
 - websockets - direct SSL connection
 - IPv6 !!!
+- HandlerForward when connected through shader proxy threw error if source socket was closed instead of response, test why.
 */
 
 // See README.md for details
