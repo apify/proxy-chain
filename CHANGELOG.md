@@ -1,3 +1,8 @@
+0.1.27 / 2018-03-05
+===================
+- Better error messages for common network errors
+- Pass headers from target socket in https tunnel chains
+
 0.1.26 / 2018-02-14
 ===================
 - If connection is denied because of authentication error, optionally "prepareRequestFunction" can provide error message.
