@@ -174,14 +174,30 @@ export default class HandlerBase extends EventEmitter {
             this.log(`${err}, responding with custom status code ${statusCode} to client`);
             this.srcResponse.writeHead(statusCode);
             this.srcResponse.end(`${err}`);
-        } else if (err.code === 'ENOTFOUND' && this.upstreamProxyUrlParsed) {
-            this.log('Upstream proxy not found, sending 502 to client');
-            this.srcResponse.writeHead(502);
-            this.srcResponse.end('Upstream proxy was not found');
         } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrlParsed) {
             this.log('Target server not found, sending 404 to client');
             this.srcResponse.writeHead(404);
             this.srcResponse.end('Target server not found');
+        } else if (err.code === 'ENOTFOUND' && this.upstreamProxyUrlParsed) {
+            this.log('Upstream proxy not found, sending 502 to client');
+            this.srcResponse.writeHead(502);
+            this.srcResponse.end('Upstream proxy was not found');
+        } else if (err.code === 'ECONNREFUSED') {
+            this.log('Upstream proxy refused connection, sending 502 to client');
+            this.srcResponse.writeHead(502);
+            this.srcResponse.end('Upstream proxy refused connection');
+        } else if (err.code === 'ETIMEDOUT') {
+            this.log('Connection timed out, sending 502 to client');
+            this.srcResponse.writeHead(502);
+            this.srcResponse.end('Connection to upstream proxy timed out');
+        } else if (err.code === 'ECONNRESET') {
+            this.log('Connection lost, sending 502 to client');
+            this.srcResponse.writeHead(502);
+            this.srcResponse.end('Connection lost');
+        } else if (err.code === 'EPIPE') {
+            this.log('Socket closed before write, sending 502 to client');
+            this.srcResponse.writeHead(502);
+            this.srcResponse.end('Connection interrupted');
         } else {
             this.log('Unknown error, sending 500 to client');
             this.srcResponse.writeHead(500);
