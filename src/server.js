@@ -128,13 +128,15 @@ export class Server extends EventEmitter {
     /**
      * Handles HTTP CONNECT request by setting up a tunnel either to target host or to the upstream proxy.
      * @param request
-     * @param head
+     * @param socket
+     * @param head The first packet of the tunneling stream (may be empty)
      */
-    onConnect(request) {
+    onConnect(request, socket, head) {
         let handlerOptions;
         this.prepareRequestHandling(request)
             .then((handlerOpts) => {
                 handlerOptions = handlerOpts;
+                handlerOptions.srcHead = head;
 
                 let handler;
                 if (handlerOpts.upstreamProxyUrlParsed) {
@@ -167,6 +169,7 @@ export class Server extends EventEmitter {
             server: this,
             id: ++this.lastHandlerId,
             srcRequest: request,
+            srcHead: null,
             trgParsed: null,
             upstreamProxyUrlParsed: null,
         };
