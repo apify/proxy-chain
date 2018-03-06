@@ -66,7 +66,7 @@ export class Server extends EventEmitter {
      * `{ requestAuthentication: Boolean, upstreamProxyUrl: String }`
      * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
      * If `prepareRequestFunction` is not set, the proxy server will not require any authentication
-     * and with not use any upstream proxy.
+     * and will not use any upstream proxy.
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server logs
      */
