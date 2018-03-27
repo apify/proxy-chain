@@ -1,9 +1,11 @@
 import _ from 'underscore';
 import urlModule from 'url';
 import { expect } from 'chai';
+import net from 'net';
+import portastic from 'portastic';
 import {
     parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
-    parseProxyAuthorizationHeader, addHeader,
+    parseProxyAuthorizationHeader, addHeader, findFreePort, PORT_SELECTION_CONFIG,
 } from '../build/tools';
 
 /* global process, describe, it */
@@ -237,5 +239,34 @@ describe('tools.addHeader()', () => {
             foo: 'bar',
             someHeaderName: ['originalValue1', 'originalValue2', 'newValue'],
         });
+    });
+});
+
+describe('tools.findFreePort()', () => {
+    it('throws nice error when no more free ports available', () => {
+        const server = net.createServer();
+        const startServer = ports => new Promise((resolve, reject) => {
+            server.listen(ports[0], (err) => {
+                if (err) return reject(err);
+                resolve(ports[0]);
+            });
+        });
+        const PORT_SELECTION_CONFIG_BACKUP = { ...PORT_SELECTION_CONFIG };
+        return portastic.find({ min: 50000, max: 50100 })
+            .then(startServer)
+            .then((port) => {
+                PORT_SELECTION_CONFIG.FROM = port;
+                PORT_SELECTION_CONFIG.TO = port;
+                return findFreePort();
+            })
+            .then(() => assert.fail())
+            .catch((err) => {
+                expect(err.message).to.contain('There are no more free ports');
+            })
+            .finally(() => {
+                PORT_SELECTION_CONFIG.from = PORT_SELECTION_CONFIG_BACKUP.from;
+                PORT_SELECTION_CONFIG.to = PORT_SELECTION_CONFIG_BACKUP.to;
+                if (server.listening) server.close();
+            });
     });
 });

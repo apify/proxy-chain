@@ -113,6 +113,32 @@ The `closeConnections` parameter indicates whether pending proxy connections are
 The function takes optional callback that receives the result Boolean from the function.
 If callback is not provided, the function returns a promise instead.
 
+### `createTunnel(proxyUrl, target, options, callback)`
+
+Attempts to create a network tunnel through proxy server specified in param "proxyUrl" to a network service
+specified in param "target".
+
+The function takes optional callback that receives the path to local service.
+If no callback is supplied, the function returns a promise that resolves to a String with
+the path to local service.
+
+Example usage:
+
+```javascript
+const tunnel = await createTunnel('http://<username>:<password>@<proxy-server>:<port>', '<service-host>:<service-port>');
+// tunnel will be in format "localhost:<randomly-assigned-port>" and while it's running
+// it can be used instead of '<service-host>:<service-port>' to proxy requests.
+```
+
+### `closeTunnel(tunnelString, closeConnections, callback)`
+
+Closes tunnel previously started by `createTunnel()`.
+Returns false if tunnel is not found or running. Otherwise the result is `true`.
+
+The `closeConnections` parameter indicates whether pending connections are forcibly closed.
+
+The function takes optional callback that receives the result Boolean from the function.
+If callback is not provided, the function returns a promise instead.
 
 ### `parseUrl(url)`
 

@@ -8,12 +8,12 @@ import Promise from 'bluebird';
 import request from 'request';
 import express from 'express';
 
-import { parseUrl } from '../build/tools';
-import { anonymizeProxy, closeAnonymizedProxy, ANONYMIZED_PROXY_PORTS } from '../build/anonymize_proxy';
+import { anonymizeProxy, closeAnonymizedProxy } from '../build/anonymize_proxy';
+import { PORT_SELECTION_CONFIG } from '../build/tools';
 
 /* globals process */
 
-const ORIG_ANONYMIZED_PROXY_PORTS = _.clone(ANONYMIZED_PROXY_PORTS);
+const ORIG_PORT_SELECTION_CONFIG = { ...PORT_SELECTION_CONFIG };
 
 let proxyServer;
 let proxyPort; // eslint-disable-line no-unused-vars
@@ -97,23 +97,6 @@ const requestPromised = (opts) => {
 describe('utils.anonymizeProxy', function () {
     // Need larger timeout for Travis CI
     this.timeout(5 * 1000);
-
-    it('throws nice error when no more free ports available', () => {
-        // Testing proxy is already listening on proxyPort
-        ANONYMIZED_PROXY_PORTS.FROM = proxyPort;
-        ANONYMIZED_PROXY_PORTS.TO = proxyPort;
-        return anonymizeProxy('http://username:password@whatever.com:1234')
-            .then(() => {
-                assert.fail();
-            })
-            .catch((err) => {
-                expect(err.message).to.contain('There are no more free ports');
-            })
-            .finally(() => {
-                Object.assign(ANONYMIZED_PROXY_PORTS, ORIG_ANONYMIZED_PROXY_PORTS);
-            });
-    });
-
     it('throws for invalid args', () => {
         assert.throws(() => { anonymizeProxy(null); }, Error);
         assert.throws(() => { anonymizeProxy(); }, Error);
@@ -268,9 +251,9 @@ describe('utils.anonymizeProxy', function () {
             .then(() => {
                 // This setting should ensure there will be a port collision,
                 // but still there will be some free ports to choose on retry
-                ANONYMIZED_PROXY_PORTS.FROM = 40000;
-                ANONYMIZED_PROXY_PORTS.TO = 40000 + N + N/2;
-                ANONYMIZED_PROXY_PORTS.RETRY_COUNT = 100;
+                PORT_SELECTION_CONFIG.FROM = 40000;
+                PORT_SELECTION_CONFIG.TO = 40000 + N + N/2;
+                PORT_SELECTION_CONFIG.RETRY_COUNT = 100;
 
                 const promises = [];
                 for (let i=0; i<N; i++) {
@@ -311,7 +294,7 @@ describe('utils.anonymizeProxy', function () {
                 }
             })
             .finally(() => {
-                Object.assign(ANONYMIZED_PROXY_PORTS, ORIG_ANONYMIZED_PROXY_PORTS);
+                Object.assign(PORT_SELECTION_CONFIG, ORIG_PORT_SELECTION_CONFIG);
             });
     });
 
@@ -346,6 +329,6 @@ describe('utils.anonymizeProxy', function () {
     });
 
     after(() => {
-        Object.assign(ANONYMIZED_PROXY_PORTS, ORIG_ANONYMIZED_PROXY_PORTS);
+        Object.assign(PORT_SELECTION_CONFIG, PORT_SELECTION_CONFIG);
     });
 });

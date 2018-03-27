@@ -1,3 +1,7 @@
+0.1.27 / 2018-03-27
+===================
+- Added option to create tunnels through http proxies for tcp network connections (eq. connection to mongodb/sql database through http proxy)
+
 0.1.27 / 2018-03-05
 ===================
 - Better error messages for common network errors
