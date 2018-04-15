@@ -8,12 +8,12 @@ import Promise from 'bluebird';
 import request from 'request';
 import express from 'express';
 
-import { parseUrl } from '../build/tools';
-import { anonymizeProxy, closeAnonymizedProxy, ANONYMIZED_PROXY_PORTS } from '../build/anonymize_proxy';
+import { anonymizeProxy, closeAnonymizedProxy } from '../build/anonymize_proxy';
+import { PORT_SELECTION_CONFIG } from '../build/tools';
 
 /* globals process */
 
-const ORIG_ANONYMIZED_PROXY_PORTS = _.clone(ANONYMIZED_PROXY_PORTS);
+const ORIG_PORT_SELECTION_CONFIG = { ...PORT_SELECTION_CONFIG };
 
 let proxyServer;
 let proxyPort; // eslint-disable-line no-unused-vars
@@ -204,6 +204,6 @@ describe('utils.anonymizeProxyNoPassword', function () {
     });
 
     after(() => {
-        Object.assign(ANONYMIZED_PROXY_PORTS, ORIG_ANONYMIZED_PROXY_PORTS);
+        Object.assign(PORT_SELECTION_CONFIG, PORT_SELECTION_CONFIG);
     });
 });
