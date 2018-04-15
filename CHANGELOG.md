@@ -1,3 +1,7 @@
+0.1.29 / 2018-04-15
+===================
+- Fix: anonymizeProxy() now supports upstream proxies with empty password
+
 0.1.27 / 2018-03-27
 ===================
 - Added option to create tunnels through http proxies for tcp network connections (eq. connection to mongodb/sql database through http proxy)
