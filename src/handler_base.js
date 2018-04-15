@@ -145,7 +145,7 @@ export default class HandlerBase extends EventEmitter {
         const parsed = this.upstreamProxyUrlParsed;
         if (parsed && parsed.username) {
             let auth = parsed.username;
-            if (parsed.password || parsed.password==='') auth += `:${parsed.password}`;
+            if (parsed.password || parsed.password === '') auth += `:${parsed.password}`;
             headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
         }
     }
