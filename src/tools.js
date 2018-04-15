@@ -212,3 +212,11 @@ export const findFreePort = () => {
             return ports[0];
         });
 };
+
+export const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
+    if (parsedUrl && parsedUrl.username) {
+        let auth = parsedUrl.username;
+        if (parsedUrl.password || parsedUrl.password === '') auth += `:${parsedUrl.password}`;
+        headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
+    }
+};

@@ -142,15 +142,6 @@ export default class HandlerBase extends EventEmitter {
         this.fail(err);
     }
 
-    maybeAddProxyAuthorizationHeader(headers) {
-        const parsed = this.upstreamProxyUrlParsed;
-        if (parsed && parsed.username) {
-            let auth = parsed.username;
-            if (parsed.password || parsed.password === '') auth += `:${parsed.password}`;
-            headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
-        }
-    }
-
     /**
      * Checks whether response from upstream proxy is 407 Proxy Authentication Required
      * and if so, responds 502 Bad Gateway to client.
