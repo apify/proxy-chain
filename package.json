@@ -1,6 +1,6 @@
 {
   "name": "proxy-chain",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
   "main": "build/index.js",
   "keywords": [
@@ -25,7 +25,7 @@
   "bugs": {
     "url": "https://github.com/apifytech/proxy-chain/issues"
   },
-  "homepage": "https://github.com/apifytech/proxy-chain",
+  "homepage": "https://blog.apify.com/249a21a79212",
   "files": [
     "build"
   ],

@@ -1,3 +1,7 @@
+0.1.30 / 2018-05-18
+===================
+- Updated project homepage in package.json
+
 0.1.29 / 2018-04-15
 ===================
 - Fix: anonymizeProxy() now supports upstream proxies with empty password
