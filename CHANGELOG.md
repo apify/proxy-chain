@@ -1,4 +1,4 @@
-0.1.30 / 2018-05-18
+0.1.31 / 2018-05-21
 ===================
 - Updated project homepage in package.json
 
