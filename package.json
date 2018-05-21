@@ -25,7 +25,7 @@
   "bugs": {
     "url": "https://github.com/apifytech/proxy-chain/issues"
   },
-  "homepage": "https://blog.apify.com/249a21a79212",
+  "homepage": "https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212",
   "files": [
     "build"
   ],
