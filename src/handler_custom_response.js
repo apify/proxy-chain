@@ -28,6 +28,10 @@ export default class HandlerCustomResponse extends HandlerBase {
             .then((customResponse) => {
                 if (this.isClosed) return;
 
+                if (!customResponse) {
+                    throw new Error('The user-provided customResponseFunc must return an object.');
+                }
+
                 const statusCode = customResponse.statusCode || 200;
                 const length = customResponse.body ? customResponse.body.length : null;
 
