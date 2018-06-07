@@ -98,7 +98,7 @@ const phantomGet = (url, proxyUrl) => {
 };
 
 const createTestSuite = ({
-    useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy, upstreamProxyAuth,
+    useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy, upstreamProxyAuth, testCustomResponse,
 }) => {
     return function () {
         this.timeout(30 * 1000);
@@ -202,7 +202,7 @@ const createTestSuite = ({
                         // verbose: true, // enable this if you want verbose logs
                     };
 
-                    if (mainProxyAuth || useUpstreamProxy) {
+                    if (mainProxyAuth || useUpstreamProxy || testCustomResponse) {
                         opts.prepareRequestFunction = ({
                             request, username, password, hostname, port, isHttp, connectionId
                         }) => {
@@ -210,6 +210,8 @@ const createTestSuite = ({
                                 requestAuthentication: false,
                                 upstreamProxyUrl: null,
                             };
+                            // If prepareRequestFunction() will cause error, don't add to this test array as it will fail in after()
+                            let addToMainProxyServerConnectionIds = true;
 
                             expect(port).to.be.an('number');
 
@@ -227,9 +229,69 @@ const createTestSuite = ({
                                 throw new RequestError('Known error 2', 501);
                             }
 
+                            if (hostname === 'test-custom-response-simple') {
+                                result.customResponseFunc = ({ srcRequest, trgParsed }) => {
+                                    expect(srcRequest).to.be.an('object');
+                                    expect(trgParsed).to.be.an('object');
+                                    expect(trgParsed).to.deep.include({
+                                        host: hostname,
+                                        port,
+                                        path: '/some/path'
+                                    });
+                                    return {
+                                        body: 'TEST CUSTOM RESPONSE SIMPLE',
+                                    };
+                                };
+                                if (useSsl) addToMainProxyServerConnectionIds = false;
+                            }
+
+                            if (hostname === 'test-custom-response-complex') {
+                                result.customResponseFunc = ({ srcRequest, trgParsed }) => {
+                                    expect(srcRequest).to.be.an('object');
+                                    expect(trgParsed).to.be.an('object');
+                                    expect(trgParsed).to.deep.include({
+                                        hostname,
+                                        port,
+                                        path: '/some/path?query=456',
+                                    });
+                                    expect(port).to.be.eql(1234);
+                                    return {
+                                        statusCode: 201,
+                                        headers: {
+                                            'My-Test-Header1': 'bla bla bla',
+                                            'My-Test-Header2': 'bla bla bla2',
+                                        },
+                                        body: 'TEST CUSTOM RESPONSE COMPLEX',
+                                    };
+                                };
+                            }
+
+                            if (hostname === 'test-custom-response-promised') {
+                                result.customResponseFunc = ({ srcRequest, trgParsed }) => {
+                                    expect(srcRequest).to.be.an('object');
+                                    expect(trgParsed).to.be.an('object');
+                                    expect(trgParsed).to.deep.include({
+                                        host: hostname,
+                                        port,
+                                        path: '/some/path'
+                                    });
+                                    return Promise.resolve().then(() => {
+                                        return {
+                                            body: 'TEST CUSTOM RESPONSE PROMISED',
+                                        };
+                                    });
+                                };
+                            }
+
+                            if (hostname === 'test-custom-response-invalid') {
+                                result.customResponseFunc = 'THIS IS NOT A FUNCTION';
+                                addToMainProxyServerConnectionIds = false;
+                            }
+
                             if (mainProxyAuth) {
                                 if (mainProxyAuth.username !== username || mainProxyAuth.password !== password) {
                                     result.requestAuthentication = true;
+                                    addToMainProxyServerConnectionIds = false;
                                     // Now that authentication is requested, upstream proxy should not get used to try some invalid one
                                     result.upstreamProxyUrl = 'http://dummy-hostname:4567';
                                 }
@@ -251,7 +313,7 @@ const createTestSuite = ({
                                 result.upstreamProxyUrl = upstreamProxyUrl;
                             }
 
-                            if (!result.requestAuthentication) {
+                            if (addToMainProxyServerConnectionIds) {
                                 mainProxyServerConnectionIds.push(connectionId);
                                 mainProxyServerConnections[connectionId] = {
                                     groups: username ? username.replace('groups-', '').split('+') : [],
@@ -673,6 +735,51 @@ const createTestSuite = ({
                     });
                 }
             }
+
+            if (testCustomResponse) {
+                if (!useSsl) {
+                    it('supports custom response - simple', () => {
+                        const opts = getRequestOpts('http://test-custom-response-simple/some/path');
+                        return requestPromised(opts)
+                            .then((response) => {
+                                expect(response.statusCode).to.eql(200);
+                                expect(response.body).to.eql('TEST CUSTOM RESPONSE SIMPLE');
+                            });
+                    });
+
+                    it('supports custom response - complex', () => {
+                        const opts = getRequestOpts('http://test-custom-response-complex:1234/some/path?query=456');
+                        return requestPromised(opts)
+                            .then((response) => {
+                                expect(response.statusCode).to.eql(201);
+                                expect(response.headers).to.deep.include({
+                                    'my-test-header1': 'bla bla bla',
+                                    'my-test-header2': 'bla bla bla2',
+                                });
+                                expect(response.body).to.eql('TEST CUSTOM RESPONSE COMPLEX');
+                            });
+                    });
+
+                    it('supports custom response - promised', () => {
+                        const opts = getRequestOpts('http://test-custom-response-promised/some/path');
+                        return requestPromised(opts)
+                            .then((response) => {
+                                expect(response.statusCode).to.eql(200);
+                                expect(response.body).to.eql('TEST CUSTOM RESPONSE PROMISED');
+                            });
+                    });
+
+                    it('fails on invalid custom response function', () => {
+                        const opts = getRequestOpts('http://test-custom-response-invalid');
+                        return testForErrorResponse(opts, 500);
+                    });
+                } else {
+                    it('does not support custom response in SSL mode', () => {
+                        const opts = getRequestOpts('https://test-custom-response-simple/some/path');
+                        return testForErrorResponse(opts, 500);
+                    });
+                }
+            }
         }
 
         after(function () {
@@ -759,13 +866,24 @@ const upstreamProxyAuthVariants = [
 
 useSslVariants.forEach((useSsl) => {
     mainProxyAuthVariants.forEach((mainProxyAuth) => {
+
+        const baseDesc = `Server (${useSsl ? 'HTTPS' : 'HTTP'} -> Main proxy`;
+
+        // Test custom response separately (it doesn't use upstream proxies)
+        describe(`${baseDesc} - custom response)`, createTestSuite({
+            useMainProxy: true,
+            useSsl,
+            mainProxyAuth,
+            testCustomResponse: true,
+        }));
+
         useUpstreamProxyVariants.forEach((useUpstreamProxy) => {
             // If useUpstreamProxy is not used, only try one variant of upstreamProxyAuth
             let variants = upstreamProxyAuthVariants;
             if (!useUpstreamProxy) variants = [null];
 
             variants.forEach((upstreamProxyAuth) => {
-                let desc = `Server (${useSsl ? 'HTTPS' : 'HTTP'} -> Main proxy `;
+                let desc = `${baseDesc} `;
 
                 if (mainProxyAuth) {
                     if (!mainProxyAuth) {

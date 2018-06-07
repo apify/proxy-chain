@@ -6,6 +6,7 @@ import { parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedU
 import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
+import HandlerCustomResponse from './handler_custom_response';
 
 
 // TODO:
@@ -59,14 +60,29 @@ export class Server extends EventEmitter {
      * Initializes a new instance of Server class.
      * @param options
      * @param [options.port] Port where the server the server will listen. By default 8000.
-     * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests
-     * and provide URL to chained upstream proxy. It accepts a single parameter which is an object:
-     * `{ connectionId: Number, request: Object, username: String, password: String, hostname: String, port: Number, isHttp: Boolean }`
+     * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests,
+     * provide URL to chained upstream proxy or potentially provide function that generates a custom response to HTTP requests.
+     * It accepts a single parameter which is an object:
+     * ```{
+     *   connectionId: Number,
+     *   request: Object,
+     *   username: String,
+     *   password: String,
+     *   hostname: String,
+     *   port: Number,
+     *   isHttp: Boolean
+     * }```
      * and returns an object (or promise resolving to the object) with following form:
-     * `{ requestAuthentication: Boolean, upstreamProxyUrl: String }`
+     * ```{
+     *   requestAuthentication: Boolean,
+     *   upstreamProxyUrl: String,
+     *   customResponseFunc: Function
+     * }```
      * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
      * If `prepareRequestFunction` is not set, the proxy server will not require any authentication
      * and will not use any upstream proxy.
+     * If `customResponseFunc` is set, it will be called to generate a custom response to the HTTP request.
+     * It should not be used together with `upstreamProxyUrl`.
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server logs
      */
@@ -116,8 +132,15 @@ export class Server extends EventEmitter {
             .then((result) => {
                 handlerOpts = result;
                 handlerOpts.srcResponse = response;
-                this.log(handlerOpts.id, 'Using HandlerForward');
-                const handler = new HandlerForward(handlerOpts);
+
+                let handler;
+                if (handlerOpts.customResponseFunc) {
+                    this.log(handlerOpts.id, 'Using HandlerCustomResponse');
+                    handler = new HandlerCustomResponse(handlerOpts);
+                } else {
+                    this.log(handlerOpts.id, 'Using HandlerForward');
+                    handler = new HandlerForward(handlerOpts);
+                }
 
                 this.handlerRun(handler);
             })
@@ -266,11 +289,16 @@ export class Server extends EventEmitter {
                     }
                 }
 
-                //if (funcResult && funcResult.customHandler) {
-                //    // TODO: check funcResult.customHandler ?
-                //    this.log(handlerOpts.id, `Using custom handler`);
-                //    handlerOpts.customHandler = funcResult.customHandler;
-                //}
+                if (funcResult && funcResult.customResponseFunc) {
+                    this.log(handlerOpts.id, 'Using custom response function');
+                    handlerOpts.customResponseFunc = funcResult.customResponseFunc;
+                    if (!isHttp) {
+                        throw new Error('The "customResponseFunc" option can only be used for HTTP requests.');
+                    }
+                    if (typeof (handlerOpts.customResponseFunc) !== 'function') {
+                        throw new Error('The "customResponseFunc" option must be a function.');
+                    }
+                }
 
                 if (handlerOpts.upstreamProxyUrlParsed) {
                     this.log(handlerOpts.id, `Using upstream proxy ${redactParsedUrl(handlerOpts.upstreamProxyUrlParsed)}`);
