@@ -1,3 +1,7 @@
+XXX
+===================
+- Added `customResponseFunc` option to `prepareRequestFunction` to support custom response to HTTP requests
+
 0.1.31 / 2018-05-21
 ===================
 - Updated project homepage in package.json
