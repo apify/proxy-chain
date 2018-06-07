@@ -115,12 +115,12 @@ If callback is not provided, the function returns a promise instead.
 
 ### `createTunnel(proxyUrl, target, options, callback)`
 
-Attempts to create a network tunnel through proxy server specified in param "proxyUrl" to a network service
-specified in param "target".
+Attempts to create a network tunnel through proxy server specified in the `proxyUrl` parameter to a network service
+specified as the `target` parameter.
 
-The function takes optional callback that receives the path to local service.
+The function accepts an optional Node.js-style callback that receives the path to the local service.
 If no callback is supplied, the function returns a promise that resolves to a String with
-the path to local service.
+the path to the local service.
 
 Example usage:
 

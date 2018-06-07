@@ -111,17 +111,18 @@ export class Server extends EventEmitter {
      * Handles normal HTTP request by forwarding it to target host or the upstream proxy.
      */
     onRequest(request, response) {
-        let handlerOptions;
+        let handlerOpts;
         this.prepareRequestHandling(request)
-            .then((handlerOpts) => {
+            .then((result) => {
+                handlerOpts = result;
                 handlerOpts.srcResponse = response;
-                handlerOptions = handlerOpts;
                 this.log(handlerOpts.id, 'Using HandlerForward');
                 const handler = new HandlerForward(handlerOpts);
+
                 this.handlerRun(handler);
             })
             .catch((err) => {
-                this.failRequest(request, err, handlerOptions);
+                this.failRequest(request, err, handlerOpts);
             });
     }
 
@@ -132,11 +133,11 @@ export class Server extends EventEmitter {
      * @param head The first packet of the tunneling stream (may be empty)
      */
     onConnect(request, socket, head) {
-        let handlerOptions;
+        let handlerOpts;
         this.prepareRequestHandling(request)
-            .then((handlerOpts) => {
-                handlerOptions = handlerOpts;
-                handlerOptions.srcHead = head;
+            .then((result) => {
+                handlerOpts = result;
+                handlerOpts.srcHead = head;
 
                 let handler;
                 if (handlerOpts.upstreamProxyUrlParsed) {
@@ -150,7 +151,7 @@ export class Server extends EventEmitter {
                 this.handlerRun(handler);
             })
             .catch((err) => {
-                this.failRequest(request, err, handlerOptions);
+                this.failRequest(request, err, handlerOpts);
             });
     }
 
@@ -165,7 +166,7 @@ export class Server extends EventEmitter {
         // console.dir(_.pick(request, 'url', 'method'));
         // console.dir(url.parse(request.url));
 
-        const result = {
+        const handlerOpts = {
             server: this,
             id: ++this.lastHandlerId,
             srcRequest: request,
@@ -174,7 +175,7 @@ export class Server extends EventEmitter {
             upstreamProxyUrlParsed: null,
         };
 
-        this.log(result.id, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
+        this.log(handlerOpts.id, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
         const socket = request.socket;
         let isHttp = false;
@@ -187,7 +188,7 @@ export class Server extends EventEmitter {
                     // The request should look like:
                     //   CONNECT server.example.com:80 HTTP/1.1
                     // Note that request.url contains the "server.example.com:80" part
-                    result.trgParsed = parseHostHeader(request.url);
+                    handlerOpts.trgParsed = parseHostHeader(request.url);
                     this.stats.connectRequestCount++;
                 } else {
                     // The request should look like:
@@ -207,12 +208,12 @@ export class Server extends EventEmitter {
                         throw new RequestError(`Only HTTP protocol is supported (was ${parsed.protocol})`, 400);
                     }
 
-                    result.trgParsed = parsed;
+                    handlerOpts.trgParsed = parsed;
                     isHttp = true;
 
                     this.stats.httpRequestCount++;
                 }
-                result.trgParsed.port = result.trgParsed.port || DEFAULT_TARGET_PORT;
+                handlerOpts.trgParsed.port = handlerOpts.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using a user function (if provided)
                 if (!this.prepareRequestFunction) return { requestAuthentication: false, upstreamProxyUrlParsed: null };
@@ -221,12 +222,12 @@ export class Server extends EventEmitter {
                 socket.pause();
 
                 const funcOpts = {
-                    connectionId: result.id,
+                    connectionId: handlerOpts.id,
                     request,
                     username: null,
                     password: null,
-                    hostname: result.trgParsed.hostname,
-                    port: result.trgParsed.port,
+                    hostname: handlerOpts.trgParsed.hostname,
+                    port: handlerOpts.trgParsed.port,
                     isHttp,
                 };
 
@@ -242,6 +243,7 @@ export class Server extends EventEmitter {
                     funcOpts.username = auth.username;
                     funcOpts.password = auth.password;
                 }
+
                 // User function returns a result directly or a promise
                 return this.prepareRequestFunction(funcOpts);
             })
@@ -252,23 +254,29 @@ export class Server extends EventEmitter {
                 }
 
                 if (funcResult && funcResult.upstreamProxyUrl) {
-                    result.upstreamProxyUrlParsed = parseUrl(funcResult.upstreamProxyUrl);
+                    handlerOpts.upstreamProxyUrlParsed = parseUrl(funcResult.upstreamProxyUrl);
 
-                    if (result.upstreamProxyUrlParsed) {
-                        if (!result.upstreamProxyUrlParsed.hostname || !result.upstreamProxyUrlParsed.port) {
+                    if (handlerOpts.upstreamProxyUrlParsed) {
+                        if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
                             throw new Error('Invalid "upstreamProxyUrl" provided: URL must have hostname and port');
                         }
-                        if (result.upstreamProxyUrlParsed.scheme !== 'http') {
+                        if (handlerOpts.upstreamProxyUrlParsed.scheme !== 'http') {
                             throw new Error('Invalid "upstreamProxyUrl" provided: URL must have the "http" scheme');
                         }
                     }
                 }
 
-                if (result.upstreamProxyUrlParsed) {
-                    this.log(result.id, `Using upstream proxy ${redactParsedUrl(result.upstreamProxyUrlParsed)}`);
+                //if (funcResult && funcResult.customHandler) {
+                //    // TODO: check funcResult.customHandler ?
+                //    this.log(handlerOpts.id, `Using custom handler`);
+                //    handlerOpts.customHandler = funcResult.customHandler;
+                //}
+
+                if (handlerOpts.upstreamProxyUrlParsed) {
+                    this.log(handlerOpts.id, `Using upstream proxy ${redactParsedUrl(handlerOpts.upstreamProxyUrlParsed)}`);
                 }
 
-                return result;
+                return handlerOpts;
             })
             .finally(() => {
                 if (this.prepareRequestFunction) socket.resume();
@@ -295,8 +303,9 @@ export class Server extends EventEmitter {
      * @param request
      * @param err
      */
-    failRequest(request, err, handlerOptions) {
-        const handlerId = handlerOptions ? handlerOptions.id : null;
+    failRequest(request, err, handlerOpts) {
+        const handlerId = handlerOpts ? handlerOpts.id : null;
+
         if (err.name === REQUEST_ERROR_NAME) {
             this.log(handlerId, `Request failed (status ${err.statusCode}): ${err.message}`);
             this.sendResponse(request.socket, err.statusCode, err.headers, err.message);
@@ -305,11 +314,12 @@ export class Server extends EventEmitter {
             this.sendResponse(request.socket, 500, null, 'Internal error in proxy server');
             this.emit('requestFailed', err);
         }
+
         // emit connection closed if request fails and connection was already reported
-        if (handlerOptions) {
+        if (handlerOpts) {
             this.log(handlerId, 'Closed because request failed with error');
             this.emit('connectionClosed', {
-                connectionId: handlerOptions.id,
+                connectionId: handlerOpts.id,
                 stats: { srcTxBytes: 0, srcRxBytes: 0 },
             });
         }
