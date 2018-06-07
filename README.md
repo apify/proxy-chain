@@ -3,7 +3,8 @@
 [![npm version](https://badge.fury.io/js/proxy-chain.svg)](http://badge.fury.io/js/proxy-chain)
 [![Build Status](https://travis-ci.org/apifytech/proxy-chain.svg)](https://travis-ci.org/apifytech/proxy-chain)
 
-Node.js implementation of a proxy server (think Squid) with support for SSL, authentication and upstream proxy chaining.
+Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining
+and custom HTTP responses.
 The authentication and proxy chaining configuration is defined in code and can be dynamic.
 Note that the proxy server only supports Basic authentication
 (see [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization) for details).
@@ -68,7 +69,61 @@ const server = new ProxyChain.Server({
 });
 
 server.listen(() => {
-  console.log(`Proxy server is listening on port ${8000}`);
+  console.log(`Proxy server is listening on port ${server.port}`);
+});
+```
+
+## Run a HTTP proxy server with custom responses
+
+Custom responses allow you to override the response to a HTTP requests to the proxy, without contacting any target hoste.
+For example, this is useful if you want to provide a HTTP proxy-style interface
+to an external API or respond with some custom page to certain requests.
+Note that this feature is only available for HTTP connections. That's because HTTPS
+connections cannot be intercepted without access to target host's private key.
+
+To provide a custom response, the result of the `prepareRequestFunction` function must
+define the `prepareRequestFunction` property, which contains a function that generates the custom response.
+The function must return an object (or a promise resolving to an object) with the following properties:
+
+```javascript
+{
+  // Optional HTTP status code of the response. By default it is 200.
+  statusCode: 200,
+
+  // Optional HTTP headers of the response
+  headers: {}
+    'X-My-Header': 'bla bla',
+  }
+
+  // Optional string with the body of the HTTP response
+  body: 'My custom response',
+
+  // Optional encoding of the body. If not provided, defaults to 'UTF-8'
+  encoding: 'UTF-8',
+}
+```
+
+Here is a simple example:
+
+```javascript
+const ProxyChain = require('proxy-chain');
+
+const server = new ProxyChain.Server({
+    port: 8000,
+    prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
+        return {
+            customResponseFunc: () => {
+                return {
+                    statusCode: 200,
+                    body: `My custom response to ${request.url}',
+                }
+            },
+        };
+    },
+});
+
+server.listen(() => {
+  console.log(`Proxy server is listening on port ${server.port}`);
 });
 ```
 
