@@ -10,14 +10,15 @@ XXX
 ===================
 - Fix: anonymizeProxy() now supports upstream proxies with empty password
 
-0.1.27 / 2018-03-27
+0.1.28 / 2018-03-27
 ===================
-- Added option to create tunnels through http proxies for tcp network connections (eq. connection to mongodb/sql database through http proxy)
+- Added `createTunnel()` function to create tunnels through HTTP proxies for arbitrary TCP network connections
+  (eq. connection to mongodb/sql database through HTTP proxy)
 
 0.1.27 / 2018-03-05
 ===================
 - Better error messages for common network errors
-- Pass headers from target socket in https tunnel chains
+- Pass headers from target socket in HTTPS tunnel chains
 
 0.1.26 / 2018-02-14
 ===================
