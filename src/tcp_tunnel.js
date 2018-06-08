@@ -5,11 +5,10 @@ import { parseUrl, findFreePort } from './tools';
 
 const runningServers = {};
 
-// TODO: Id rename 'target' to 'targetHost' to make it more clear
-export function createTunnel(proxyUrl, target, providedOptions = {}, callback) {
+export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
     // TODO: More and better validations - yeah, make sure targetHost is really a hostname
-    const [trgHost, trgPort] = target.split(':');
-    if (!trgHost || !trgPort) throw new Error('target needs to include both hostname and port.');
+    const [trgHostname, trgPort] = targetHost.split(':');
+    if (!trgHostname || !trgPort) throw new Error('target needs to include both hostname and port.');
 
     const parsedProxyUrl = parseUrl(proxyUrl);
     if (!parsedProxyUrl.hostname) throw new Error('proxyUrl needs to include atleast hostname');
@@ -43,7 +42,7 @@ export function createTunnel(proxyUrl, target, providedOptions = {}, callback) {
                 srcSocket,
                 upstreamProxyUrlParsed: parsedProxyUrl,
                 trgParsed: {
-                    hostname: trgHost,
+                    hostname: trgHostname,
                     port: trgPort,
                 },
                 log,
@@ -77,7 +76,6 @@ export function createTunnel(proxyUrl, target, providedOptions = {}, callback) {
             });
         });
     })
-    .catch((err) => { throw err; }) // TODO: remove?
     .nodeify(callback);
 }
 
@@ -85,7 +83,7 @@ export function closeTunnel(serverPath, closeConnections, callback) {
     const [hostname, port] = serverPath.split(':');
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
-    if (!runningServers[port]) resolve(false); // TODO: this is redundant so I'd remove it
+
     return new Promise((resolve) => {
         if (!runningServers[port]) return resolve(false);
         if (!closeConnections) return resolve();
