@@ -447,7 +447,8 @@ export class Server extends EventEmitter {
      * Gets data transfer statistics of a specific proxy connection.
      * @param {Number} connectionId ID of the connection handler.
      * It is passed to `prepareRequestFunction` function.
-     * @return {Object} statistics { srcTxBytes, srcRxBytes, trgTxBytes, trgRxBytes }
+     * @return {Object} An object with statistics { srcTxBytes, srcRxBytes, trgTxBytes, trgRxBytes },
+     * or null if connection does not exist or has been closed.
      */
     getConnectionStats(connectionId) {
         const handler = this.handlers && this.handlers[connectionId];
