@@ -1,3 +1,7 @@
+0.1.34 / 2018-06-08
+===================
+- Minor improvement: HandlerBase.fail() now supports RequestError
+
 0.1.33 / 2018-06-08
 ===================
 - Renamed `customResponseFunc` to `customResponseFunction` and changed parameters for more clarity
