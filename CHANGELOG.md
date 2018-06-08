@@ -1,3 +1,11 @@
+0.1.31 / 2018-05-21
+===================
+- Updated project homepage in package.json
+
+0.1.29 / 2018-04-15
+===================
+- Fix: anonymizeProxy() now supports upstream proxies with empty password
+
 0.1.28 / 2018-03-27
 ===================
 - Added `createTunnel()` function to create tunnels through HTTP proxies for arbitrary TCP network connections

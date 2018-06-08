@@ -1,5 +1,6 @@
 import http from 'http';
 import HandlerBase from './handler_base';
+import { maybeAddProxyAuthorizationHeader } from './tools';
 // import { tee } from './tools';
 
 /* globals Buffer */
@@ -27,7 +28,7 @@ export default class HandlerTunnelChain extends HandlerBase {
             headers: {},
         };
 
-        this.maybeAddProxyAuthorizationHeader(options.headers);
+        maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, options.headers);
 
         this.trgRequest = http.request(options);
 

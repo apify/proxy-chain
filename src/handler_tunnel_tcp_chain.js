@@ -1,4 +1,5 @@
 import http from 'http';
+import { maybeAddProxyAuthorizationHeader } from './tools';
 
 /* globals Buffer */
 
@@ -53,7 +54,7 @@ export default class HandlerTunnelTcpChain {
             headers: {},
         };
 
-        this.maybeAddProxyAuthorizationHeader(options.headers);
+        maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, options.headers);
 
         this.trgRequest = http.request(options);
 
@@ -145,15 +146,6 @@ export default class HandlerTunnelTcpChain {
         if (this.isClosed) return;
         this.log(`Target request failed: ${err.stack || err}`);
         this.fail(err);
-    }
-
-    maybeAddProxyAuthorizationHeader(headers) {
-        const parsed = this.upstreamProxyUrlParsed;
-        if (parsed && parsed.username) {
-            let auth = parsed.username;
-            if (parsed.password) auth += `:${parsed.password}`;
-            headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
-        }
     }
 
     /**

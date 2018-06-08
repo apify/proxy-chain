@@ -1,5 +1,5 @@
 import http from 'http';
-import { isHopByHopHeader, isInvalidHeader, addHeader } from './tools';
+import { isHopByHopHeader, isInvalidHeader, addHeader, maybeAddProxyAuthorizationHeader } from './tools';
 import HandlerBase from './handler_base';
 
 
@@ -89,7 +89,7 @@ export default class HandlerForward extends HandlerBase {
             // So we need to replicate it here
             reqOpts.path = this.srcRequest.url;
 
-            this.maybeAddProxyAuthorizationHeader(reqOpts.headers);
+            maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, reqOpts.headers);
 
             this.log(`Connecting to upstream proxy ${reqOpts.host}:${reqOpts.port}`);
         } else {
