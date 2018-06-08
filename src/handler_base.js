@@ -1,5 +1,6 @@
 import http from 'http';
 import EventEmitter from 'events';
+import { RequestError } from './server';
 
 /* globals Buffer */
 
@@ -150,20 +151,20 @@ export default class HandlerBase extends EventEmitter {
      */
     checkUpstreamProxy407(response) {
         if (this.upstreamProxyUrlParsed && response.statusCode === 407) {
-            this.fail('Invalid credentials provided for the upstream proxy.', 502);
+            this.fail(new RequestError('Invalid credentials provided for the upstream proxy.', 502));
             return true;
         }
         return false;
     }
 
-    fail(err, statusCode) {
+    fail(err) {
         if (this.srcGotResponse) {
             this.log('Source already received a response, just destroying the socket...');
             this.close();
-        } else if (statusCode) {
-            // Manual error
-            this.log(`${err}, responding with custom status code ${statusCode} to client`);
-            this.srcResponse.writeHead(statusCode);
+        } else if (err.statusCode) {
+            // Error is RequestError with HTTP status code
+            this.log(`${err}, responding with custom status code ${err.statusCode} to client`);
+            this.srcResponse.writeHead(err.statusCode);
             this.srcResponse.end(`${err}`);
         } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrlParsed) {
             this.log('Target server not found, sending 404 to client');
