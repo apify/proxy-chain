@@ -92,7 +92,7 @@ with the following properties:
   statusCode: 200,
 
   // Optional HTTP headers of the response
-  headers: {}
+  headers: {
     'X-My-Header': 'bla bla',
   }
 
