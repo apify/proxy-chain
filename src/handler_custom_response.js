@@ -11,8 +11,8 @@ export default class HandlerCustomResponse extends HandlerBase {
     constructor(options) {
         super(options);
 
-        this.customResponseFunc = options.customResponseFunc;
-        if (!this.customResponseFunc) throw new Error('The "customResponseFunc" option is required');
+        this.customResponseFunction = options.customResponseFunction;
+        if (!this.customResponseFunction) throw new Error('The "customResponseFunction" option is required');
     }
 
     run() {
@@ -22,14 +22,13 @@ export default class HandlerCustomResponse extends HandlerBase {
 
         Promise.resolve()
             .then(() => {
-                const opts = _.pick(this, 'srcRequest', 'trgParsed');
-                return this.customResponseFunc(opts);
+                return this.customResponseFunction();
             })
             .then((customResponse) => {
                 if (this.isClosed) return;
 
                 if (!customResponse) {
-                    throw new Error('The user-provided customResponseFunc must return an object.');
+                    throw new Error('The user-provided "customResponseFunction" must return an object.');
                 }
 
                 const statusCode = customResponse.statusCode || 200;

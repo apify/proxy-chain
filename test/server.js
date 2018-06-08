@@ -204,7 +204,7 @@ const createTestSuite = ({
 
                     if (mainProxyAuth || useUpstreamProxy || testCustomResponse) {
                         opts.prepareRequestFunction = ({
-                            request, username, password, hostname, port, isHttp, connectionId
+                            request, username, password, hostname, port, isHttp, connectionId,
                         }) => {
                             const result = {
                                 requestAuthentication: false,
@@ -213,6 +213,7 @@ const createTestSuite = ({
                             // If prepareRequestFunction() will cause error, don't add to this test array as it will fail in after()
                             let addToMainProxyServerConnectionIds = true;
 
+                            expect(request).to.be.an('object');
                             expect(port).to.be.an('number');
 
                             if (hostname === 'activate-error-in-prep-req-func-throw') {
@@ -230,12 +231,10 @@ const createTestSuite = ({
                             }
 
                             if (hostname === 'test-custom-response-simple') {
-                                result.customResponseFunc = ({ srcRequest, trgParsed }) => {
-                                    expect(srcRequest).to.be.an('object');
-                                    expect(trgParsed).to.be.an('object');
+                                result.customResponseFunction = () => {
+                                    const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
                                         host: hostname,
-                                        port,
                                         path: '/some/path'
                                     });
                                     return {
@@ -246,12 +245,10 @@ const createTestSuite = ({
                             }
 
                             if (hostname === 'test-custom-response-complex') {
-                                result.customResponseFunc = ({ srcRequest, trgParsed }) => {
-                                    expect(srcRequest).to.be.an('object');
-                                    expect(trgParsed).to.be.an('object');
+                                result.customResponseFunction = () => {
+                                    const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
                                         hostname,
-                                        port,
                                         path: '/some/path?query=456',
                                     });
                                     expect(port).to.be.eql(1234);
@@ -267,12 +264,10 @@ const createTestSuite = ({
                             }
 
                             if (hostname === 'test-custom-response-promised') {
-                                result.customResponseFunc = ({ srcRequest, trgParsed }) => {
-                                    expect(srcRequest).to.be.an('object');
-                                    expect(trgParsed).to.be.an('object');
+                                result.customResponseFunction = () => {
+                                    const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
                                         host: hostname,
-                                        port,
                                         path: '/some/path'
                                     });
                                     return Promise.resolve().then(() => {
@@ -284,7 +279,7 @@ const createTestSuite = ({
                             }
 
                             if (hostname === 'test-custom-response-invalid') {
-                                result.customResponseFunc = 'THIS IS NOT A FUNCTION';
+                                result.customResponseFunction = 'THIS IS NOT A FUNCTION';
                                 addToMainProxyServerConnectionIds = false;
                             }
 

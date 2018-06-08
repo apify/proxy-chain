@@ -76,12 +76,12 @@ export class Server extends EventEmitter {
      * ```{
      *   requestAuthentication: Boolean,
      *   upstreamProxyUrl: String,
-     *   customResponseFunc: Function
+     *   customResponseFunction: Function
      * }```
      * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
      * If `prepareRequestFunction` is not set, the proxy server will not require any authentication
      * and will not use any upstream proxy.
-     * If `customResponseFunc` is set, it will be called to generate a custom response to the HTTP request.
+     * If `customResponseFunction` is set, it will be called to generate a custom response to the HTTP request.
      * It should not be used together with `upstreamProxyUrl`.
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server logs
@@ -134,7 +134,7 @@ export class Server extends EventEmitter {
                 handlerOpts.srcResponse = response;
 
                 let handler;
-                if (handlerOpts.customResponseFunc) {
+                if (handlerOpts.customResponseFunction) {
                     this.log(handlerOpts.id, 'Using HandlerCustomResponse');
                     handler = new HandlerCustomResponse(handlerOpts);
                 } else {
@@ -289,14 +289,14 @@ export class Server extends EventEmitter {
                     }
                 }
 
-                if (funcResult && funcResult.customResponseFunc) {
+                if (funcResult && funcResult.customResponseFunction) {
                     this.log(handlerOpts.id, 'Using custom response function');
-                    handlerOpts.customResponseFunc = funcResult.customResponseFunc;
+                    handlerOpts.customResponseFunction = funcResult.customResponseFunction;
                     if (!isHttp) {
-                        throw new Error('The "customResponseFunc" option can only be used for HTTP requests.');
+                        throw new Error('The "customResponseFunction" option can only be used for HTTP requests.');
                     }
-                    if (typeof (handlerOpts.customResponseFunc) !== 'function') {
-                        throw new Error('The "customResponseFunc" option must be a function.');
+                    if (typeof (handlerOpts.customResponseFunction) !== 'function') {
+                        throw new Error('The "customResponseFunction" option must be a function.');
                     }
                 }
 

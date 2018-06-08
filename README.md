@@ -82,8 +82,9 @@ Note that this feature is only available for HTTP connections. That's because HT
 connections cannot be intercepted without access to target host's private key.
 
 To provide a custom response, the result of the `prepareRequestFunction` function must
-define the `prepareRequestFunction` property, which contains a function that generates the custom response.
-The function must return an object (or a promise resolving to an object) with the following properties:
+define the `customResponseFunction` property, which contains a function that generates the custom response.
+The function is passed no parameters and it must return an object (or a promise resolving to an object)
+with the following properties:
 
 ```javascript
 {
@@ -112,7 +113,7 @@ const server = new ProxyChain.Server({
     port: 8000,
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         return {
-            customResponseFunc: () => {
+            customResponseFunction: () => {
                 return {
                     statusCode: 200,
                     body: `My custom response to ${request.url}',

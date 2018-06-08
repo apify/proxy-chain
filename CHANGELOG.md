@@ -1,3 +1,7 @@
+0.1.33 / 2018-06-08
+===================
+- Renamed `customResponseFunc` to `customResponseFunction` and changed parameters for more clarity
+
 0.1.32 / 2018-06-08
 ===================
 - Added `customResponseFunc` option to `prepareRequestFunction` to support custom response to HTTP requests
