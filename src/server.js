@@ -212,6 +212,13 @@ export class Server extends EventEmitter {
                     //   CONNECT server.example.com:80 HTTP/1.1
                     // Note that request.url contains the "server.example.com:80" part
                     handlerOpts.trgParsed = parseHostHeader(request.url);
+
+                    // If srcRequest.url does not match the regexp tools.HOST_HEADER_REGEX
+                    // or the url is too long it will not be parsed so we throw error here.
+                    if (!handlerOpts.trgParsed) {
+                        throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
+                    }
+
                     this.stats.connectRequestCount++;
                 } else {
                     // The request should look like:
@@ -221,6 +228,12 @@ export class Server extends EventEmitter {
                     //  OPTIONS request (as detailed below), a client MUST send the target
                     //  URI in absolute-form as the request-target"
                     const parsed = parseUrl(request.url);
+
+                    // If srcRequest.url does not match the regexp tools.HOST_HEADER_REGEX
+                    // or the url is too long it will not be parsed so we throw error here.
+                    if (!parsed) {
+                        throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
+                    }
 
                     // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
                     if (!parsed.protocol) {
@@ -236,9 +249,7 @@ export class Server extends EventEmitter {
 
                     this.stats.httpRequestCount++;
                 }
-                if (!handlerOpts.trgParsed) {
-                    throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
-                }
+
                 handlerOpts.trgParsed.port = handlerOpts.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using a user function (if provided)
