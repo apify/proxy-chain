@@ -236,6 +236,9 @@ export class Server extends EventEmitter {
 
                     this.stats.httpRequestCount++;
                 }
+                if (!handlerOpts.trgParsed) {
+                    throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
+                }
                 handlerOpts.trgParsed.port = handlerOpts.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using a user function (if provided)

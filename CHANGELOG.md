@@ -1,3 +1,7 @@
+0.1.35 / 2018-06-12
+===================
+- Bugfix: When target URL cannot be parsed instead of crashing, throw RequestError
+
 0.1.34 / 2018-06-08
 ===================
 - Minor improvement: HandlerBase.fail() now supports RequestError
