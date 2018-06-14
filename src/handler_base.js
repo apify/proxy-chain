@@ -165,7 +165,7 @@ export default class HandlerBase extends EventEmitter {
             // Error is RequestError with HTTP status code
             this.log(`${err}, responding with custom status code ${err.statusCode} to client`);
             this.srcResponse.writeHead(err.statusCode);
-            this.srcResponse.end(`${err}`);
+            this.srcResponse.end(`${err.message}`);
         } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrlParsed) {
             this.log('Target server not found, sending 404 to client');
             this.srcResponse.writeHead(404);
