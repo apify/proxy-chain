@@ -38,8 +38,8 @@ const server = new Server({
     },
 });
 
-server.on('requestFailed', (err) => {
-    console.error(`Request failed: ${err.stack || err}`);
+server.on('requestFailed', ({ err, request }) => {
+    console.error(`Request failed (${request ? request.url : 'N/A'}): ${err.stack || err}`);
 });
 
 server.listen()

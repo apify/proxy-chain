@@ -52,8 +52,8 @@ export class RequestError extends Error {
 
 /**
  * Represents the proxy server.
- * It emits 'requestFailed' event on unexpected request errors.
- * It emits 'connectionClosed' event when connection to proxy server is closed.
+ * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
+ * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
  */
 export class Server extends EventEmitter {
     /**
@@ -340,7 +340,7 @@ export class Server extends EventEmitter {
         } else {
             this.log(handlerId, `Request failed with unknown error: ${err.stack || err}`);
             this.sendResponse(request.socket, 500, null, 'Internal error in proxy server');
-            this.emit('requestFailed', err);
+            this.emit('requestFailed', { err, request });
         }
 
         // emit connection closed if request fails and connection was already reported
