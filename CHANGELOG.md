@@ -1,3 +1,7 @@
+0.2.1 / 2018-06-19
+===================
+- BREAKING: The 'requestFailed' event now emits object `{ request, error }` instead of just `error`
+
 0.1.35 / 2018-06-12
 ===================
 - Bugfix: When target URL cannot be parsed instead of crashing, throw RequestError
