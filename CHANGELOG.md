@@ -1,4 +1,4 @@
-0.2.1 / 2018-06-19
+0.2.2 / 2018-06-19
 ===================
 - BREAKING: The 'requestFailed' event now emits object `{ request, error }` instead of just `error`
 
