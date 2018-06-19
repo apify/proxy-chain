@@ -356,8 +356,10 @@ const createTestSuite = ({
         // Unfortunately the request library throws for HTTPS and sends status code for HTTP
         const testForErrorResponse = (opts, expectedStatusCode) => {
             let requestError = null;
-            const onRequestFailed = (err) => {
+            let failedRequest = null;
+            const onRequestFailed = ({ err, request }) => {
                 requestError = err;
+                failedRequest = request;
             };
 
             mainProxyServer.on('requestFailed', onRequestFailed);
@@ -377,8 +379,10 @@ const createTestSuite = ({
                 expect(response.statusCode).to.eql(expectedStatusCode);
                 if (expectedStatusCode === 500) {
                     expect(requestError).to.have.own.property('message');
+                    expect(failedRequest).to.have.own.property('url');
                 } else {
                     expect(requestError).to.eql(null);
+                    expect(failedRequest).to.eql(null);
                 }
                 return response;
             })
