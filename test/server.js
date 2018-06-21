@@ -357,8 +357,8 @@ const createTestSuite = ({
         const testForErrorResponse = (opts, expectedStatusCode) => {
             let requestError = null;
             let failedRequest = null;
-            const onRequestFailed = ({ err, request }) => {
-                requestError = err;
+            const onRequestFailed = ({ error, request }) => {
+                requestError = error;
                 failedRequest = request;
             };
 

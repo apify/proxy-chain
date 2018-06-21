@@ -1,3 +1,7 @@
+0.2.3 / 2018-06-21
+===================
+- Bugfix: 'requestFailed' was emitting `{ request, err }` instead of `{ request, error }`
+
 0.2.2 / 2018-06-19
 ===================
 - BREAKING: The 'requestFailed' event now emits object `{ request, error }` instead of just `error`
