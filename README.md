@@ -116,8 +116,8 @@ const server = new ProxyChain.Server({
             customResponseFunction: () => {
                 return {
                     statusCode: 200,
-                    body: `My custom response to ${request.url}',
-                }
+                    body: `My custom response to ${request.url}`,
+                };
             },
         };
     },
