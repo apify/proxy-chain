@@ -1,6 +1,6 @@
 {
   "name": "proxy-chain",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
   "main": "build/index.js",
   "keywords": [
@@ -46,7 +46,7 @@
   "devDependencies": {
     "babel-cli": "^6.6.5",
     "babel-core": "^6.1.21",
-    "babel-eslint": "^7.2.2",
+    "babel-eslint": "^8.2.6",
     "babel-preset-es2015": "^6.1.18",
     "babel-preset-stage-0": "^6.1.18",
     "basic-auth": "^2.0.0",
@@ -66,10 +66,10 @@
     "phantomjs-prebuilt": "^2.1.16",
     "proxy": "^0.2.4",
     "request": "^2.83.0",
-    "sinon": "^5.1.0",
+    "sinon": "^6.1.4",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
-    "ws": "^5.2.0"
+    "ws": "^6.0.0"
   },
   "optionalDependencies": {}
 }

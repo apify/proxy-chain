@@ -55,8 +55,8 @@ export default class HandlerBase extends EventEmitter {
             'onTrgSocket', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError',
         ]);
 
-        // called for the ServerResponse's "finish" event
-        // XXX: normally, node's "http" module has a "finish" event listener that would
+        // Called for the ServerResponse's "finish" event
+        // Normally, Node's "http" module has a "finish" event listener that would
         // take care of closing the socket once the HTTP response has completed, but
         // since we're making this ServerResponse instance manually, that event handler
         // never gets hooked up, so we must manually close the socket...
@@ -102,8 +102,14 @@ export default class HandlerBase extends EventEmitter {
 
     onSrcResponseFinish() {
         if (this.isClosed) return;
-        this.log('Source response finished');
-        this.close();
+        this.log('Source response finished, ending source socket');
+        // NOTE: We cannot destroy the socket, since there might be pending data that wouldn't be delivered!
+        // This code is inspired by resOnFinish() in _http_server.js in Node.js code base.
+        if (typeof this.srcSocket.destroySoon === 'function') {
+            this.srcSocket.destroySoon();
+        } else {
+            this.srcSocket.end();
+        }
     }
 
     onTrgSocket(socket) {
@@ -123,18 +129,24 @@ export default class HandlerBase extends EventEmitter {
         if (this.isClosed) return;
         this.log('Target socket closed');
         // If socket is closed here instead of response, phantomjs does not properly parse the response as http response.
-        if (this.srcResponse) this.srcResponse.end();
-        // Handler tunnel chain does not use srcResponse, but needs to close srcSocket
-        else if (this.srcSocket) this.srcSocket.end();
+        if (this.srcResponse) {
+            this.srcResponse.end();
+        } else if (this.srcSocket) {
+            // Handler tunnel chain does not use srcResponse, but needs to close srcSocket
+            this.srcSocket.end();
+        }
     }
 
     onTrgSocketEnd() {
         if (this.isClosed) return;
         this.log('Target socket ended');
         // If socket is closed here instead of response, phantomjs does not properly parse the response as http response.
-        if (this.srcResponse) this.srcResponse.end();
-        // Handler tunnel chain does not use srcResponse, but needs to close srcSocket
-        else if (this.srcSocket) this.srcSocket.end();
+        if (this.srcResponse) {
+            this.srcResponse.end();
+        } else if (this.srcSocket) {
+            // Handler tunnel chain does not use srcResponse, but needs to close srcSocket
+            this.srcSocket.end();
+        }
     }
 
     onTrgSocketError(err) {

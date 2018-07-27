@@ -52,7 +52,7 @@ export default class HandlerCustomResponse extends HandlerBase {
                 });
             })
             .then(() => {
-                this.log(`Custom response sent to source (${response.statusCode})`);
+                this.log('Custom response sent to source');
             })
             .catch((err) => {
                 if (this.isClosed) return;

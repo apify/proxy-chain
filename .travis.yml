@@ -5,8 +5,8 @@ before_install:
   - printf "\n# Used by proxy-chain NPM package tests\n127.0.0.1 localhost-test\n" | sudo tee -a /etc/hosts
 language: node_js
 node_js:
+  - "9"
   - "8"
-  - "7"
   - "6"
 script:
   - npm run lint

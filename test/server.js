@@ -22,6 +22,7 @@ import { TargetServer } from './target_server';
 
 /*
 TODO - add following tests:
+- gzip Content-Encoding
 - websockets - direct SSL connection
 - IPv6 !!!
 - HandlerForward when connected through shader proxy threw error if source socket was closed instead of response, test why.
@@ -131,6 +132,7 @@ const createTestSuite = ({
                 key: sslKey,
                 proxy: mainProxyUrl,
                 headers: {},
+                timeout: 30000,
             };
         };
 
@@ -199,7 +201,7 @@ const createTestSuite = ({
 
                     const opts = {
                         port: mainProxyServerPort,
-                        // verbose: true, // enable this if you want verbose logs
+                        // verbose: true, // Enable this if you want verbose logs
                     };
 
                     if (mainProxyAuth || useUpstreamProxy || testCustomResponse) {
@@ -241,6 +243,8 @@ const createTestSuite = ({
                                         body: 'TEST CUSTOM RESPONSE SIMPLE',
                                     };
                                 };
+                                // With SSL custom responses are not supported,
+                                // we're testing this hence this below
                                 if (useSsl) addToMainProxyServerConnectionIds = false;
                             }
 
@@ -259,6 +263,19 @@ const createTestSuite = ({
                                             'My-Test-Header2': 'bla bla bla2',
                                         },
                                         body: 'TEST CUSTOM RESPONSE COMPLEX',
+                                    };
+                                };
+                            }
+
+                            if (hostname === 'test-custom-response-long') {
+                                result.customResponseFunction = () => {
+                                    const trgParsed = parseUrl(request.url);
+                                    expect(trgParsed).to.deep.include({
+                                        host: hostname,
+                                        path: '/'
+                                    });
+                                    return {
+                                        body: 'X'.repeat(5000000),
                                     };
                                 };
                             }
@@ -756,6 +773,17 @@ const createTestSuite = ({
                                     'my-test-header2': 'bla bla bla2',
                                 });
                                 expect(response.body).to.eql('TEST CUSTOM RESPONSE COMPLEX');
+                            });
+                    });
+
+                    it('supports custom response - long', () => {
+                        const opts = getRequestOpts('http://test-custom-response-long');
+                        return requestPromised(opts)
+                            .then((response) => {
+                                expect(response.statusCode).to.eql(200);
+                                expect(response.headers['content-length']).to.eql('5000000');
+                                expect(response.body.length).to.eql(5000000);
+                                expect(response.body).to.eql('X'.repeat(5000000));
                             });
                     });
 
