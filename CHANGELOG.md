@@ -1,3 +1,7 @@
+0.2.4 / 2018-07-27
+===================
+- Bugfix: large custom responses were not delivered completely because the socket was closed too early
+
 0.2.3 / 2018-06-21
 ===================
 - Bugfix: 'requestFailed' was emitting `{ request, err }` instead of `{ request, error }`
