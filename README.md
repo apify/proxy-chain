@@ -100,7 +100,7 @@ The resulting object looks like:
     srcRxBytes: Number,
     trgTxBytes: Number,
     trgRxBytes: Number,
-};
+}
 ```
 
 ## Run a HTTP proxy server with custom responses
