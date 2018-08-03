@@ -62,7 +62,8 @@ const server = new ProxyChain.Server({
             requestAuthentication: username !== 'bob' || password !== 'TopSecret',
 
             // Sets up an upstream HTTP proxy to which all the requests are forwarded.
-            // If null, the proxy works in direct mode.
+            // If null, the proxy works in direct mode, i.e. the connection is forwarded directly
+            // to the target server.
             upstreamProxyUrl: `http://username:password@proxy.example.com:3128`,
         };
     },
