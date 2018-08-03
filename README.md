@@ -87,6 +87,8 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
+## Measuring traffics statistics
+
 To get traffic statistics for a certain HTTP connection, you can use:
 ```javascript
 const stats = server.getConnectionStats(connectionId);
@@ -103,7 +105,7 @@ The resulting object looks like:
 }
 ```
 
-## Run a HTTP proxy server with custom responses
+## Custom responses
 
 Custom responses allow you to override the response to a HTTP requests to the proxy, without contacting any target host.
 For example, this is useful if you want to provide a HTTP proxy-style interface
