@@ -76,7 +76,7 @@ server.listen(() => {
 
 ## Run a HTTP proxy server with custom responses
 
-Custom responses allow you to override the response to a HTTP requests to the proxy, without contacting any target hoste.
+Custom responses allow you to override the response to a HTTP requests to the proxy, without contacting any target host.
 For example, this is useful if you want to provide a HTTP proxy-style interface
 to an external API or respond with some custom page to certain requests.
 Note that this feature is only available for HTTP connections. That's because HTTPS
