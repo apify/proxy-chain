@@ -87,7 +87,7 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
-## Measuring traffics statistics
+## Measuring traffic statistics
 
 To get traffic statistics for a certain HTTP connection, you can use:
 ```javascript
