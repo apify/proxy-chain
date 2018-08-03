@@ -59,7 +59,7 @@ export class Server extends EventEmitter {
     /**
      * Initializes a new instance of Server class.
      * @param options
-     * @param [options.port] Port where the server the server will listen. By default 8000.
+     * @param [options.port] Port where the server will listen. By default 8000.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests,
      * provide URL to chained upstream proxy or potentially provide function that generates a custom response to HTTP requests.
      * It accepts a single parameter which is an object:

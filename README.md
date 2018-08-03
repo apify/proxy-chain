@@ -37,7 +37,7 @@ server.listen(() => {
 const ProxyChain = require('proxy-chain');
 
 const server = new ProxyChain.Server({
-    // Port where the server the server will listen. By default 8000.
+    // Port where the server will listen. By default 8000.
     port: 8000,
 
     // Enables verbose logging
