@@ -11,9 +11,9 @@ Note that the proxy server only supports Basic authentication
 
 For example, this package is useful if you need to use proxies with authentication
 in the headless Chrome web browser, because it doesn't accept proxy URLs such as `http://username:password@proxy.example.com:8080`.
-With this library, you can setup a local proxy server without any password
+With this library, you can set up a local proxy server without any password
 that will forward requests to the upstream proxy with password.
-For this very purpose the package is used by the [Apify web scraping platform](https://www.apify.com).
+The package is used for this exact purpose by the [Apify web scraping platform](https://www.apify.com).
 
 To learn more about the rationale behind this package,
 read [How to make headless Chrome and Puppeteer use a proxy server with authentication](https://medium.com/@jancurn/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212).
@@ -44,9 +44,9 @@ const server = new ProxyChain.Server({
     verbose: true,
 
     // Custom function to authenticate proxy requests and provide the URL to chained upstream proxy.
-    // It must return an object (or promise resolving to the object) with following form:
+    // It must return an object (or promise resolving to the object) with the following form:
     // { requestAuthentication: Boolean, upstreamProxyUrl: String }
-    // If the function is not defined or is null, the server runs in a simple mode.
+    // If the function is not defined or is null, the server runs in simple mode.
     // Note that the function takes a single argument with the following properties:
     // * request      - An instance of http.IncomingMessage class with information about the client request
     //                  (which is either HTTP CONNECT for SSL protocol, or other HTTP request)
@@ -109,7 +109,7 @@ Custom responses allow you to override the response to a HTTP requests to the pr
 For example, this is useful if you want to provide a HTTP proxy-style interface
 to an external API or respond with some custom page to certain requests.
 Note that this feature is only available for HTTP connections. That's because HTTPS
-connections cannot be intercepted without access to target host's private key.
+connections cannot be intercepted without access to the target host's private key.
 
 To provide a custom response, the result of the `prepareRequestFunction` function must
 define the `customResponseFunction` property, which contains a function that generates the custom response.
@@ -160,7 +160,7 @@ server.listen(() => {
 
 ## Closing the server
 
-To shutdown the proxy server, call the `close([destroyConnections], [callback])` function. For example:
+To shut down the proxy server, call the `close([destroyConnections], [callback])` function. For example:
 
 ```javascript
 server.close(true, () => {
@@ -183,7 +183,7 @@ Parses and validates a HTTP proxy URL. If the proxy requires authentication,
 then the function starts an open local proxy server that forwards to the proxy.
 The port is chosen randomly.
 
-The function takes optional callback that receives the anonymous proxy URL.
+The function takes an optional callback that receives the anonymous proxy URL.
 If no callback is supplied, the function returns a promise that resolves to a String with
 anonymous proxy URL or the original URL if it was already anonymous.
 
@@ -192,11 +192,11 @@ anonymous proxy URL or the original URL if it was already anonymous.
 
 Closes anonymous proxy previously started by `anonymizeProxy()`.
 If proxy was not found or was already closed, the function has no effect
-and its result if `false`. Otherwise the result is `true`.
+and its result is `false`. Otherwise the result is `true`.
 
 The `closeConnections` parameter indicates whether pending proxy connections are forcibly closed.
 
-The function takes optional callback that receives the result Boolean from the function.
+The function takes an optional callback that receives the result Boolean from the function.
 If callback is not provided, the function returns a promise instead.
 
 ### `createTunnel(proxyUrl, targetHost, options, callback)`
@@ -204,7 +204,7 @@ If callback is not provided, the function returns a promise instead.
 Creates a TCP tunnel to `targetHost` that goes through a HTTP proxy server
 specified by the `proxyUrl` parameter.
 
-The result of the function is local endpoint in a form of `hostname:port`.
+The result of the function is a local endpoint in a form of `hostname:port`.
 All TCP connections made to the local endpoint will be tunneled through the proxy to the target host and port.
 For example, this is useful if you want to access a certain service from a specific IP address.
 
