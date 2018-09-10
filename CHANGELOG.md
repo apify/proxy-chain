@@ -1,3 +1,7 @@
+0.2.5 / 2018-09-10
+===================
+- Bugfix: Invalid request headers broke proxy chain connection. Now they will be skipped instead.
+
 0.2.4 / 2018-07-27
 ===================
 - Bugfix: large custom responses were not delivered completely because the socket was closed too early
