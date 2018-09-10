@@ -32,6 +32,8 @@ export default class HandlerForward extends HandlerBase {
                 // will detect we're not a browser and also to improve performance
             } else if (isHopByHopHeader(headerName)) {
                 continue;
+            } else if (isInvalidHeader(headerName, headerValue)) {
+                continue;
             }
 
             /*
