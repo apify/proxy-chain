@@ -1,6 +1,6 @@
 import { Server, RequestError } from './server';
 import { parseUrl, redactUrl, redactParsedUrl } from './tools';
-import { anonymizeProxy, closeAnonymizedProxy } from './anonymize_proxy';
+import { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } from './anonymize_proxy';
 import { createTunnel, closeTunnel } from './tcp_tunnel';
 
 /* globals module */
@@ -14,6 +14,7 @@ const ProxyChain = {
     redactParsedUrl,
     anonymizeProxy,
     closeAnonymizedProxy,
+    listenConnectAnonymizedProxy,
     createTunnel,
     closeTunnel,
 };

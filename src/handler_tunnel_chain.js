@@ -51,6 +51,8 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
         this.srcResponse.writeHead(200, 'Connection established');
 
+        this.emit('onTrgRequestConnect', { response, socket, head });
+
         // HACK: force a flush of the HTTP header. This is to ensure 'head' is empty to avoid
         // assert at https://github.com/request/tunnel-agent/blob/master/index.js#L160
         // See also https://github.com/nodejs/node/blob/master/lib/_http_outgoing.js#L217
