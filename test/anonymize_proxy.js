@@ -9,7 +9,7 @@ import request from 'request';
 import express from 'express';
 
 import { anonymizeProxy, closeAnonymizedProxy } from '../build/anonymize_proxy';
-import {findFreePort, PORT_SELECTION_CONFIG} from '../build/tools';
+import { findFreePort, PORT_SELECTION_CONFIG } from '../build/tools';
 
 /* globals process */
 
@@ -305,7 +305,7 @@ describe('utils.anonymizeProxy', function () {
             });
     });
 
-    it('handles https request properly', function () {
+    it('handles HTTP CONNECT request properly', function () {
 
         this.timeout(50 * 1000);
 

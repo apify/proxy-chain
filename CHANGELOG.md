@@ -1,3 +1,7 @@
+xxx
+===================
+- Bugfix: Added `Host` header to `HTTP CONNECT` requests to upstream proxies
+
 0.2.5 / 2018-09-10
 ===================
 - Bugfix: Invalid request headers broke proxy chain connection. Now they will be skipped instead.
