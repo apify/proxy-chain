@@ -9,7 +9,7 @@ import request from 'request';
 import express from 'express';
 
 import { anonymizeProxy, closeAnonymizedProxy } from '../build/anonymize_proxy';
-import { PORT_SELECTION_CONFIG } from '../build/tools';
+import {findFreePort, PORT_SELECTION_CONFIG} from '../build/tools';
 
 /* globals process */
 
@@ -20,6 +20,13 @@ let proxyPort; // eslint-disable-line no-unused-vars
 let testServerPort;
 const proxyAuth = { scheme: 'Basic', username: 'username', password: 'password' };
 let wasProxyCalled = false; // eslint-disable-line no-unused-vars
+
+const serverListen = (server, port) => new Promise((resolve, reject) => {
+    server.listen(port, (err) => {
+        if (err) return reject(err);
+        return resolve(port);
+    });
+});
 
 // Setup local proxy server and web server for the tests
 before(() => {
@@ -295,6 +302,44 @@ describe('utils.anonymizeProxy', function () {
             })
             .finally(() => {
                 Object.assign(PORT_SELECTION_CONFIG, ORIG_PORT_SELECTION_CONFIG);
+            });
+    });
+
+    it('handles https request properly', function () {
+
+        this.timeout(50 * 1000);
+
+        const host = `localhost:${testServerPort}`;
+        let proxyPort;
+        let onconnectArgs;
+        function onconnect(message, socket) {
+            onconnectArgs = message;
+            socket.write("HTTP/1.1 401 UNAUTHORIZED\r\n\r\n");
+            socket.end();
+            socket.destroy();
+        }
+        return findFreePort()
+            .then((port) => {
+                var proxy = http.createServer();
+                proxy.on('connect', onconnect);
+                proxyPort = port;
+                return serverListen(proxy, proxyPort);
+            })
+            .then(() => {
+                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`);
+            })
+            .then((proxyUrl) => {
+                return requestPromised({
+                    uri: `https://${host}`,
+                    proxy: proxyUrl,
+                })
+                    .catch(() => {
+                        return Promise.resolve();
+                    });
+            })
+            .then(() => {
+                expect(onconnectArgs.headers.host).to.equal(host);
+                expect(onconnectArgs.url).to.equal(host);
             });
     });
 
