@@ -1,4 +1,4 @@
-xxx
+0.2.6 / 2018-12-27
 ===================
 - Bugfix: Added `Host` header to `HTTP CONNECT` requests to upstream proxies
 
