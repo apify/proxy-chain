@@ -171,6 +171,7 @@ server.close(true, () => {
 ```
 
 The `closeConnections` parameter indicates whether pending proxy connections should be forcibly closed.
+If it's `false`, the function will wait until all connections are closed, which can take a long time.
 If the `callback` parameter is omitted, the function returns a promise.
 
 
@@ -223,6 +224,7 @@ If proxy was not found or was already closed, the function has no effect
 and its result is `false`. Otherwise the result is `true`.
 
 The `closeConnections` parameter indicates whether pending proxy connections are forcibly closed.
+If it's `false`, the function will wait until all connections are closed, which can take a long time.
 
 The function takes an optional callback that receives the result Boolean from the function.
 If callback is not provided, the function returns a promise instead.
@@ -256,6 +258,7 @@ Closes tunnel previously started by `createTunnel()`.
 The result value is `false` if the tunnel was not found or was already closed, otherwise it is `true`.
 
 The `closeConnections` parameter indicates whether pending connections are forcibly closed.
+If it's `false`, the function will wait until all connections are closed, which can take a long time.
 
 The function takes an optional callback that receives the result of the function.
 If the callback is not provided, the function returns a promise instead.

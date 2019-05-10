@@ -75,6 +75,7 @@ export const anonymizeProxy = (proxyUrl, callback) => {
  * and its result if `false`. Otherwise the result is `true`.
  * @param anonymizedProxyUrl
  * @param closeConnections If true, pending proxy connections are forcibly closed.
+ * If `false`, the function will wait until all connections are closed, which can take a long time.
  * @param callback Optional callback
  * @returns Returns a promise if no callback was supplied
  */
