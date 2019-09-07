@@ -1,17 +1,17 @@
-import http from 'http';
-import https from 'https';
-import express from 'express';
-import bodyParser from 'body-parser';
-import WebSocket from 'ws';
-import Promise from 'bluebird';
-import basicAuth from 'basic-auth';
-import _ from 'underscore';
+const http = require('http');
+const https = require('https');
+const express = require('express');
+const bodyParser = require('body-parser');
+const WebSocket = require('ws');
+const Promise = require('bluebird');
+const basicAuth = require('basic-auth');
+const _ = require('underscore');
 
 
 /**
  * A HTTP server used for testing. It supports HTTPS and web sockets.
  */
-export class TargetServer {
+class TargetServer {
     constructor({
         port, useSsl, sslKey, sslCrt,
     }) {
@@ -165,3 +165,5 @@ export class TargetServer {
         return Promise.promisify(this.httpServer.close).bind(this.httpServer)();
     }
 }
+
+exports.TargetServer = TargetServer;

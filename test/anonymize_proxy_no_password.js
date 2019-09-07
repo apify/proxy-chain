@@ -1,15 +1,15 @@
-import _ from 'underscore';
-import { expect, assert } from 'chai';
-import proxy from 'proxy';
-import http from 'http';
-import portastic from 'portastic';
-import basicAuthParser from 'basic-auth-parser';
-import Promise from 'bluebird';
-import request from 'request';
-import express from 'express';
+const _ = require('underscore');
+const { expect, assert } = require('chai');
+const proxy = require('proxy');
+const http = require('http');
+const portastic = require('portastic');
+const basicAuthParser = require('basic-auth-parser');
+const Promise = require('bluebird');
+const request = require('request');
+const express  = require('express');
 
-import { anonymizeProxy, closeAnonymizedProxy } from '../build/anonymize_proxy';
-import { PORT_SELECTION_CONFIG } from '../build/tools';
+const { anonymizeProxy, closeAnonymizedProxy } = require('../build/anonymize_proxy');
+const { PORT_SELECTION_CONFIG } = require('../build/tools');
 
 /* globals process */
 

@@ -32,7 +32,7 @@
   "scripts": {
     "build": "rm -rf ./build && babel src --out-dir build",
     "local-proxy": "npm run build && node ./build/run_locally.js",
-    "test": "npm run build && mocha --compilers js:babel-core/register --recursive",
+    "test": "npm run build && mocha --exit --recursive",
     "prepare": "npm run build",
     "prepublishOnly": "(test $RUNNING_FROM_SCRIPT || (echo \"You must use publish.sh instead of 'npm publish' directly!\"; exit 1)) && npm test && npm run lint",
     "clean": "rm -rf build",
@@ -63,7 +63,7 @@
     "faye-websocket": "^0.11.3",
     "https-proxy-agent": "^2.1.0",
     "isparta": "^4.0.0",
-    "mocha": "^3.2.0",
+    "mocha": "^6.2.0",
     "phantomjs-prebuilt": "^2.1.16",
     "proxy": "^0.2.4",
     "request": "^2.83.0",

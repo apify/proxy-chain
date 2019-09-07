@@ -1,21 +1,21 @@
-import fs from 'fs';
-import path from 'path';
-import stream from 'stream';
-import childProcess from 'child_process';
-import dns from 'dns';
-import _ from 'underscore';
-import { expect, assert } from 'chai';
-import proxy from 'proxy';
-import http from 'http';
-import portastic from 'portastic';
-import Promise from 'bluebird';
-import request from 'request';
-import url from 'url';
-import WebSocket from 'faye-websocket';
+const fs = require('fs');
+const path = require('path');
+const stream = require('stream');
+const childProcess = require('child_process');
+const dns = require('dns');
+const _ = require('underscore');
+const { expect, assert } = require('chai');
+const proxy = require('proxy');
+const http = require('http');
+const portastic = require('portastic');
+const Promise = require('bluebird');
+const request = require('request');
+const url = require('url');
+const WebSocket = require('faye-websocket');
 
-import { parseUrl, parseProxyAuthorizationHeader } from '../build/tools';
-import { Server, RequestError } from '../build/server';
-import { TargetServer } from './target_server';
+const { parseUrl, parseProxyAuthorizationHeader } = require('../build/tools');
+const { Server, RequestError } = require('../build/server');
+const { TargetServer } = require('./target_server');
 
 /* globals process */
 
@@ -824,7 +824,11 @@ const createTestSuite = ({
                 })
                 .then(() => {
                     if (upstreamProxyServer) {
-                        return Promise.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
+                        // NOTE: We used to wait for upstream proxy connections to close,
+                        // but for HTTPS, in Node 10+, they linger for some reason...
+                        // return Promise.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
+                        upstreamProxyServer.close();
+
                     }
                 })
                 .then(() => {
@@ -883,7 +887,7 @@ useSslVariants.forEach((useSsl) => {
         const baseDesc = `Server (${useSsl ? 'HTTPS' : 'HTTP'} -> Main proxy`;
 
         // Test custom response separately (it doesn't use upstream proxies)
-        describe(`${baseDesc} + custom response)`, createTestSuite({
+        describe(`${baseDesc} -> Target + custom responses)`, createTestSuite({
             useMainProxy: true,
             useSsl,
             mainProxyAuth,

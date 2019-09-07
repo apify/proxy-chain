@@ -1,12 +1,12 @@
-import _ from 'underscore';
-import net from 'net';
-import { expect, assert } from 'chai';
-import http from 'http';
-import proxy from 'proxy';
-import Promise from 'bluebird';
+const _ = require('underscore');
+const net = require('net');
+const { expect, assert } = require('chai');
+const http = require('http');
+const proxy = require('proxy');
+const Promise = require('bluebird');
 
-import { createTunnel, closeTunnel } from '../build/tcp_tunnel';
-import { findFreePort } from '../build/tools';
+const { createTunnel, closeTunnel } = require('../build/tcp_tunnel');
+const { findFreePort } = require('../build/tools');
 
 const destroySocket = socket => new Promise((resolve, reject) => {
     if (!socket || socket.destroyed) return resolve();

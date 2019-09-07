@@ -1,12 +1,12 @@
-import _ from 'underscore';
-import urlModule from 'url';
-import { expect } from 'chai';
-import net from 'net';
-import portastic from 'portastic';
-import {
+const _ = require('underscore');
+const urlModule = require('url');
+const { expect } = require('chai');
+const net = require('net');
+const portastic = require('portastic');
+const {
     parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
     parseProxyAuthorizationHeader, addHeader, findFreePort, PORT_SELECTION_CONFIG,
-} from '../build/tools';
+} = require('../build/tools');
 
 /* global process, describe, it */
 
