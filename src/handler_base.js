@@ -51,9 +51,11 @@ export default class HandlerBase extends EventEmitter {
 
         // Bind all event handlers to this instance
         this.bindHandlersToThis([
-            'onSrcResponseFinish', 'onSrcSocketClose', 'onSrcSocketEnd', 'onSrcSocketError',
+            'onSrcResponseFinish', 'onSrcResponseError', 'onSrcSocketClose', 'onSrcSocketEnd', 'onSrcSocketError',
             'onTrgSocket', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError',
         ]);
+
+        this.srcResponse.on('error', this.onSrcResponseError);
 
         // Called for the ServerResponse's "finish" event
         // Normally, Node's "http" module has a "finish" event listener that would
@@ -97,6 +99,15 @@ export default class HandlerBase extends EventEmitter {
     onSrcSocketError(err) {
         if (this.isClosed) return;
         this.log(`Source socket failed: ${err.stack || err}`);
+        this.close();
+    }
+
+    // This is to address https://github.com/apifytech/proxy-chain/issues/27
+    // It seems that when client closed the connection, the piped target socket
+    // can still pump data to it, which caused unhandled "write after end" error
+    onSrcResponseError(err) {
+        if (this.isClosed) return;
+        this.log(`Source response failed: ${err.stack || err}`);
         this.close();
     }
 
@@ -222,35 +233,35 @@ export default class HandlerBase extends EventEmitter {
      * Detaches all listeners and destroys all sockets.
      */
     close() {
-        if (!this.isClosed) {
-            this.log('Closing handler');
+        if (this.isClosed) return;
 
-            // Save stats before sockets are destroyed
-            const stats = this.getStats();
+        this.log('Closing handler');
 
-            if (this.srcRequest) {
-                this.srcRequest.destroy();
-                this.srcRequest = null;
-            }
+        // Save stats before sockets are destroyed
+        const stats = this.getStats();
 
-            if (this.srcSocket) {
-                this.srcSocket.destroy();
-                this.srcSocket = null;
-            }
-
-            if (this.trgRequest) {
-                this.trgRequest.abort();
-                this.trgRequest = null;
-            }
-
-            if (this.trgSocket) {
-                this.trgSocket.destroy();
-                this.trgSocket = null;
-            }
-
-            this.isClosed = true;
-
-            this.emit('close', { stats });
+        if (this.srcRequest) {
+            this.srcRequest.destroy();
+            this.srcRequest = null;
         }
+
+        if (this.srcSocket) {
+            this.srcSocket.destroy();
+            this.srcSocket = null;
+        }
+
+        if (this.trgRequest) {
+            this.trgRequest.abort();
+            this.trgRequest = null;
+        }
+
+        if (this.trgSocket) {
+            this.trgSocket.destroy();
+            this.trgSocket = null;
+        }
+
+        this.isClosed = true;
+
+        this.emit('close', { stats });
     }
 }
