@@ -108,6 +108,10 @@ describe('utils.anonymizeProxy', function () {
         assert.throws(() => { anonymizeProxy(null); }, Error);
         assert.throws(() => { anonymizeProxy(); }, Error);
         assert.throws(() => { anonymizeProxy({}); }, Error);
+
+        assert.throws(() => { closeAnonymizedProxy({}); }, Error);
+        assert.throws(() => { closeAnonymizedProxy(); }, Error);
+        assert.throws(() => { closeAnonymizedProxy(null); }, Error);
     });
 
     it('throws for unsupported proxy protocols', () => {

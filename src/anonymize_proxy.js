@@ -80,6 +80,10 @@ export const anonymizeProxy = (proxyUrl, callback) => {
  * @returns Returns a promise if no callback was supplied
  */
 export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) => {
+    if (typeof anonymizedProxyUrl !== 'string') {
+        throw new Error('The "anonymizedProxyUrl" parameter must be a string');
+    }
+
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
         return Promise

@@ -17,6 +17,7 @@ export default class HandlerBase extends EventEmitter {
         if (!server) throw new Error('The "server" option is required');
         if (!id) throw new Error('The "id" option is required');
         if (!srcRequest) throw new Error('The "srcRequest" option is required');
+        if (!srcRequest.socket) throw new Error('"srcRequest.socket" cannot be null');
         if (!trgParsed.hostname) throw new Error('The "trgParsed.hostname" option is required');
 
         this.server = server;

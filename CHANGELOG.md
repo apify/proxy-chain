@@ -1,5 +1,6 @@
 0.3.1 / 2019-09-07
 ===================
+- *BREAKING CHANGE*: `closeAnonymizedProxy` throws on invalid proxy URL
 - Changed HTTP 200 message from "Connection established" to "Connection Established"
 - Attempt to prevent the unhandled "write after end" error
 - Fixed finishing of sockets on Node 10+

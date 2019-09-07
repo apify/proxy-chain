@@ -214,6 +214,9 @@ const proxyChain = require('proxy-chain');
     await page.goto('https://www.example.com');
     await page.screenshot({ path: 'example.png' });
     await browser.close();
+
+    // Clean up
+    await proxyChain.closeAnonymizedProxy(newProxyUrl, true);
 })();
 ```
 
