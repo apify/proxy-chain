@@ -1,3 +1,12 @@
+0.3.1 / 2019-09-07
+===================
+- Changed HTTP 200 message from "Connection established" to "Connection Established"
+- Attempt to prevent the unhandled "write after end" error
+- Fixed finsing of sockets on Node 10+
+- Fixed and improve unit tests to also work on Node 10+, update dev dependencies
+- Proxy source/target sockets are set to no delay, to avoid any caching delays
+- Improved logging
+
 0.2.7 / 2018-02-19
 ===================
 - Updated README
