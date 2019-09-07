@@ -13,7 +13,7 @@ import _ from 'underscore';
  */
 export class TargetServer {
     constructor({
-        port, wsPort, useSsl, sslKey, sslCrt,
+        port, useSsl, sslKey, sslCrt,
     }) {
         this.port = port;
         this.useSsl = useSsl;
@@ -44,10 +44,6 @@ export class TargetServer {
         // Web socket server for upgraded HTTP connections
         this.wsUpgServer = new WebSocket.Server({ server: this.httpServer });
         this.wsUpgServer.on('connection', this.onWsConnection.bind(this));
-
-        // Web socket's HTTP server directly listening on some port
-        this.wsDirectServer = new WebSocket.Server({ port: wsPort });
-        this.wsDirectServer.on('connection', this.onWsConnection.bind(this));
     }
 
     listen() {

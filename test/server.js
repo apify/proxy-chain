@@ -10,9 +10,8 @@ import http from 'http';
 import portastic from 'portastic';
 import Promise from 'bluebird';
 import request from 'request';
-import WebSocket from 'ws';
 import url from 'url';
-import HttpsProxyAgent from 'https-proxy-agent';
+import WebSocket from 'faye-websocket';
 
 import { parseUrl, parseProxyAuthorizationHeader } from '../build/tools';
 import { Server, RequestError } from '../build/server';
@@ -23,8 +22,8 @@ import { TargetServer } from './target_server';
 /*
 TODO - add following tests:
 - gzip Content-Encoding
-- websockets - direct SSL connection
 - IPv6 !!!
+- raw TCP connection over proxy
 - HandlerForward when connected through shader proxy threw error if source socket was closed instead of response, test why.
 */
 
@@ -107,7 +106,6 @@ const createTestSuite = ({
         let freePorts;
 
         let targetServerPort;
-        let targetServerWsPort;
         let targetServer;
 
         let upstreamProxyServer;
@@ -144,9 +142,8 @@ const createTestSuite = ({
 
                 // Setup target HTTP server
                 targetServerPort = freePorts.shift();
-                targetServerWsPort = freePorts.shift();
                 targetServer = new TargetServer({
-                    port: targetServerPort, wsPort: targetServerWsPort, useSsl, sslKey, sslCrt,
+                    port: targetServerPort, useSsl, sslKey, sslCrt,
                 });
                 return targetServer.listen();
             }).then(() => {
@@ -609,19 +606,15 @@ const createTestSuite = ({
             });
         }
 
-        const testWsCall = (useHttpScheme) => {
+        const testWsCall = () => {
             return new Promise((resolve, reject) => {
-                // Create an instance of the `HttpsProxyAgent` class with the proxy server information
-                let agent = null;
-                if (useMainProxy) {
-                    const options = url.parse(mainProxyUrl);
-                    agent = new HttpsProxyAgent(options);
-                }
-
-                const wsUrl = useHttpScheme
-                    ? `${useSsl ? 'https' : 'http'}://127.0.0.1:${targetServerPort}`
-                    : `${useSsl ? 'wss' : 'ws'}://127.0.0.1:${targetServerWsPort}`;
-                const ws = new WebSocket(wsUrl, { agent });
+                const wsUrl = `${useSsl ? 'wss' : 'ws'}://127.0.0.1:${targetServerPort}`;
+                const ws = new WebSocket.Client(wsUrl, [], {
+                    proxy: {
+                        origin: mainProxyUrl,
+                        tls: useSsl ? { cert: sslCrt } : null,
+                    }
+                });
 
                 ws.on('error', (err) => {
                     ws.close();
@@ -630,9 +623,9 @@ const createTestSuite = ({
                 ws.on('open', () => {
                     ws.send('hello world');
                 });
-                ws.on('message', (data) => {
+                ws.on('message', (event) => {
                     ws.close();
-                    resolve(data);
+                    resolve(event.data);
                 });
             })
                 .then((data) => {
@@ -640,18 +633,9 @@ const createTestSuite = ({
                 });
         };
 
-        _it('handles web socket connection (HTTP scheme)', () => {
-            return testWsCall(true);
+        _it('handles web socket connection', () => {
+            return testWsCall(false);
         });
-
-        if (!useSsl) {
-            // TODO: make this work also for SSL connection
-            _it('handles web socket connection (WS scheme)', () => {
-                return testWsCall(false);
-            });
-        }
-
-        // TODO: Test TCP connection over proxy
 
         if (useMainProxy) {
             _it('returns 404 for non-existent hostname', () => {
