@@ -45,7 +45,7 @@ const HOP_BY_HOP_HEADERS = [
 
 const HOP_BY_HOP_HEADERS_REGEX = new RegExp(`^(${HOP_BY_HOP_HEADERS.join('|')})$`, 'i');
 
-export const isHopByHopHeader = header => HOP_BY_HOP_HEADERS_REGEX.test(header);
+export const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS_REGEX.test(header);
 
 // This code is based on Node.js' validateHeader() function from _http_outgoing.js module
 // (see https://github.com/nodejs/node/blob/189d29f39e6de9ccf10682bfd1341819b4a2291f/lib/_http_outgoing.js#L485)

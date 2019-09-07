@@ -1,15 +1,15 @@
 import http from 'http';
 import { maybeAddProxyAuthorizationHeader } from './tools';
 
-/* globals Buffer */
-
 // TODO: please rename this class to something else than "Handler", it makes it look like the class inherits from HandlerBase, which it doesn't
 
 /**
  * Represents a connection from source client to an external proxy using HTTP CONNECT tunnel, allows TCP connection.
  */
 export default class HandlerTunnelTcpChain {
-    constructor({ srcSocket, trgParsed, upstreamProxyUrlParsed, log }) {
+    constructor({
+        srcSocket, trgParsed, upstreamProxyUrlParsed, log,
+    }) {
         this.log = log;
 
         // Bind all event handlers to this instance
@@ -185,6 +185,7 @@ export default class HandlerTunnelTcpChain {
             this.log('Unknown error, sending 500 to client');
         }
     }
+
     /**
      * Detaches all listeners and destroys all sockets.
      */

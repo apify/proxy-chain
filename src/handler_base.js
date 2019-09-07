@@ -2,8 +2,6 @@ import http from 'http';
 import EventEmitter from 'events';
 import { RequestError } from './server';
 
-/* globals Buffer */
-
 /**
  * Base class for proxy connection handlers. It emits the `destroyed` event
  * when the handler is no longer used.

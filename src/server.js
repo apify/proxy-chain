@@ -2,7 +2,9 @@ import http from 'http';
 import EventEmitter from 'events';
 import _ from 'underscore';
 import Promise from 'bluebird';
-import { parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl } from './tools';
+import {
+    parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl,
+} from './tools';
 import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
@@ -200,7 +202,7 @@ export class Server extends EventEmitter {
 
         this.log(handlerOpts.id, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
-        const socket = request.socket;
+        const { socket } = request;
         let isHttp = false;
 
         return Promise.resolve()
@@ -446,7 +448,7 @@ export class Server extends EventEmitter {
             this.server.on('listening', onListening);
             this.server.listen(this.port);
         })
-        .nodeify(callback);
+            .nodeify(callback);
     }
 
     /**
@@ -495,7 +497,7 @@ export class Server extends EventEmitter {
 
         // TODO: keep track of all handlers and close them if closeConnections=true
         if (this.server) {
-            const server = this.server;
+            const { server } = this;
             this.server = null;
             return Promise.promisify(server.close).bind(server)().nodeify(callback);
         }

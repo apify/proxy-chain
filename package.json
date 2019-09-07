@@ -36,7 +36,8 @@
     "prepare": "npm run build",
     "prepublishOnly": "(test $RUNNING_FROM_SCRIPT || (echo \"You must use publish.sh instead of 'npm publish' directly!\"; exit 1)) && npm test && npm run lint",
     "clean": "rm -rf build",
-    "lint": "npm run build && eslint src"
+    "lint": "npm run build && eslint src",
+    "lint-fix": "npm run build && eslint src --fix"
   },
   "dependencies": {
     "bluebird": "^3.5.1",

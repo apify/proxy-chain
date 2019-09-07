@@ -24,6 +24,9 @@
     "import/no-extraneous-dependencies": ["error", { "devDependencies": ["**/test/*.js"] }],
     "no-underscore-dangle": 0,
     "radix": 0,
-    "no-continue": 0
+    "no-continue": 0,
+    "import/no-cycle": 1,
+    "max-classes-per-file": 0,
+    "prefer-destructuring": 0
   }
 }

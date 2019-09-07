@@ -76,7 +76,7 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
             });
         });
     })
-    .nodeify(callback);
+        .nodeify(callback);
 }
 
 export function closeTunnel(serverPath, closeConnections, callback) {
@@ -87,15 +87,15 @@ export function closeTunnel(serverPath, closeConnections, callback) {
     return new Promise((resolve) => {
         if (!runningServers[port]) return resolve(false);
         if (!closeConnections) return resolve();
-        runningServers[port].connections.forEach(connection => connection.destroy());
+        runningServers[port].connections.forEach((connection) => connection.destroy());
         resolve();
     })
-    .then(serverExists => new Promise((resolve) => {
-        if (!serverExists) return resolve(false);
-        runningServers[port].close(() => {
-            delete runningServers[port];
-            resolve(true);
-        });
-    }))
-    .nodeify(callback);
+        .then((serverExists) => new Promise((resolve) => {
+            if (!serverExists) return resolve(false);
+            runningServers[port].close(() => {
+                delete runningServers[port];
+                resolve(true);
+            });
+        }))
+        .nodeify(callback);
 }

@@ -1,5 +1,7 @@
 import http from 'http';
-import { isHopByHopHeader, isInvalidHeader, addHeader, maybeAddProxyAuthorizationHeader } from './tools';
+import {
+    isHopByHopHeader, isInvalidHeader, addHeader, maybeAddProxyAuthorizationHeader,
+} from './tools';
 import HandlerBase from './handler_base';
 
 

@@ -1,9 +1,6 @@
 import http from 'http';
 import HandlerBase from './handler_base';
 import { maybeAddProxyAuthorizationHeader } from './tools';
-// import { tee } from './tools';
-
-/* globals Buffer */
 
 /**
  * Represents a connection from source client to an external proxy using HTTP CONNECT tunnel.
