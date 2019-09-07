@@ -114,7 +114,7 @@ export class Server extends EventEmitter {
     log(handlerId, str) {
         if (this.verbose) {
             const logPrefix = handlerId ? `${handlerId} | ` : '';
-            console.log(`Server[${this.port}]: ${logPrefix}${str}`);
+            console.log(`ProxyServer[${this.port}]: ${logPrefix}${str}`);
         }
     }
 

@@ -45,7 +45,7 @@ export class TargetServer {
         this.wsUpgServer = new WebSocket.Server({ server: this.httpServer });
         this.wsUpgServer.on('connection', this.onWsConnection.bind(this));
 
-        // Web socket server directly listening on some port
+        // Web socket's HTTP server directly listening on some port
         this.wsDirectServer = new WebSocket.Server({ port: wsPort });
         this.wsDirectServer.on('connection', this.onWsConnection.bind(this));
     }

@@ -609,7 +609,7 @@ const createTestSuite = ({
             });
         }
 
-        const testWsCall = (useHttpUpgrade) => {
+        const testWsCall = (useHttpScheme) => {
             return new Promise((resolve, reject) => {
                 // Create an instance of the `HttpsProxyAgent` class with the proxy server information
                 let agent = null;
@@ -618,7 +618,7 @@ const createTestSuite = ({
                     agent = new HttpsProxyAgent(options);
                 }
 
-                const wsUrl = useHttpUpgrade
+                const wsUrl = useHttpScheme
                     ? `${useSsl ? 'https' : 'http'}://127.0.0.1:${targetServerPort}`
                     : `${useSsl ? 'wss' : 'ws'}://127.0.0.1:${targetServerWsPort}`;
                 const ws = new WebSocket(wsUrl, { agent });
@@ -640,16 +640,18 @@ const createTestSuite = ({
                 });
         };
 
-        _it('handles web socket connection (upgrade from HTTP)', () => {
+        _it('handles web socket connection (HTTP scheme)', () => {
             return testWsCall(true);
         });
 
         if (!useSsl) {
             // TODO: make this work also for SSL connection
-            _it('handles web socket connection (direct)', () => {
+            _it('handles web socket connection (WS scheme)', () => {
                 return testWsCall(false);
             });
         }
+
+        // TODO: Test TCP connection over proxy
 
         if (useMainProxy) {
             _it('returns 404 for non-existent hostname', () => {
@@ -897,7 +899,7 @@ useSslVariants.forEach((useSsl) => {
         const baseDesc = `Server (${useSsl ? 'HTTPS' : 'HTTP'} -> Main proxy`;
 
         // Test custom response separately (it doesn't use upstream proxies)
-        describe(`${baseDesc} - custom response)`, createTestSuite({
+        describe(`${baseDesc} + custom response)`, createTestSuite({
             useMainProxy: true,
             useSsl,
             mainProxyAuth,

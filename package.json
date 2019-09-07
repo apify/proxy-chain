@@ -69,7 +69,7 @@
     "sinon": "^6.1.4",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
-    "ws": "^6.0.0"
+    "ws": "^7.1.2"
   },
   "optionalDependencies": {}
 }
