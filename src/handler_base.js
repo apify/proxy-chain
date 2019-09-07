@@ -51,8 +51,9 @@ export default class HandlerBase extends EventEmitter {
 
         // Bind all event handlers to this instance
         this.bindHandlersToThis([
-            'onSrcResponseFinish', 'onSrcResponseError', 'onSrcSocketClose', 'onSrcSocketEnd', 'onSrcSocketError',
-            'onTrgSocket', 'onTrgSocketClose', 'onTrgSocketEnd', 'onTrgSocketError',
+            'onSrcResponseFinish', 'onSrcResponseError',
+            'onSrcSocketEnd', 'onSrcSocketFinish', 'onSrcSocketClose', 'onSrcSocketError',
+            'onTrgSocket', 'onTrgSocketEnd', 'onTrgSocketFinish', 'onTrgSocketClose', 'onTrgSocketError',
         ]);
 
         this.srcResponse.on('error', this.onSrcResponseError);
@@ -64,8 +65,12 @@ export default class HandlerBase extends EventEmitter {
         // never gets hooked up, so we must manually close the socket...
         this.srcResponse.once('finish', this.onSrcResponseFinish);
 
-        this.srcSocket.once('close', this.onSrcSocketClose);
+        // Forward data directly to source client without any delay
+        this.srcSocket.setNoDelay();
+
         this.srcSocket.once('end', this.onSrcSocketEnd);
+        this.srcSocket.once('close', this.onSrcSocketClose);
+        this.srcSocket.once('finish', this.onSrcSocketFinish);
         this.srcSocket.once('error', this.onSrcSocketError);
     }
 
@@ -82,17 +87,25 @@ export default class HandlerBase extends EventEmitter {
     // Abstract method, needs to be overridden
     run() {} // eslint-disable-line
 
+    onSrcSocketEnd() {
+        if (this.isClosed) return;
+        this.log('Source socket ended');
+        this.close();
+    }
+
+    // On Node 10+, the 'close' event is called only after socket is destroyed,
+    // so we also need to listen for the stream 'finish' event
+    onSrcSocketFinish() {
+        if (this.isClosed) return;
+        this.log('Source socket finished');
+        this.close();
+    }
+
     // If the client closes the connection prematurely,
     // then immediately destroy the upstream socket, there's nothing we can do with it
     onSrcSocketClose() {
         if (this.isClosed) return;
         this.log('Source socket closed');
-        this.close();
-    }
-
-    onSrcSocketEnd() {
-        if (this.isClosed) return;
-        this.log('Source socket ended');
         this.close();
     }
 
@@ -129,16 +142,20 @@ export default class HandlerBase extends EventEmitter {
 
         this.trgSocket = socket;
 
-        socket.once('close', this.onTrgSocketClose);
+        // Forward data directly to target server without any delay
+        this.trgSocket.setNoDelay();
+
         socket.once('end', this.onTrgSocketEnd);
+        socket.once('finish', this.onTrgSocketFinish);
+        socket.once('close', this.onTrgSocketClose);
         socket.once('error', this.onTrgSocketError);
     }
 
-    // Once target socket closes, we need to give time
-    // to source socket to receive pending data, so we only call end()
-    onTrgSocketClose() {
+    trgSocketShutdown(msg) {
         if (this.isClosed) return;
-        this.log('Target socket closed');
+        this.log(msg);
+        // Once target socket closes, we need to give time
+        // to source socket to receive pending data, so we only call end()
         // If socket is closed here instead of response, phantomjs does not properly parse the response as http response.
         if (this.srcResponse) {
             this.srcResponse.end();
@@ -149,15 +166,15 @@ export default class HandlerBase extends EventEmitter {
     }
 
     onTrgSocketEnd() {
-        if (this.isClosed) return;
-        this.log('Target socket ended');
-        // If socket is closed here instead of response, phantomjs does not properly parse the response as http response.
-        if (this.srcResponse) {
-            this.srcResponse.end();
-        } else if (this.srcSocket) {
-            // Handler tunnel chain does not use srcResponse, but needs to close srcSocket
-            this.srcSocket.end();
-        }
+        this.trgSocketShutdown('Target socket ended');
+    }
+
+    onTrgSocketFinish() {
+        this.trgSocketShutdown('Target socket finished');
+    }
+
+    onTrgSocketClose() {
+        this.trgSocketShutdown('Target socket closed');
     }
 
     onTrgSocketError(err) {
@@ -230,7 +247,7 @@ export default class HandlerBase extends EventEmitter {
     }
 
     /**
-     * Detaches all listeners and destroys all sockets.
+     * Detaches all listeners, destroys all sockets and emits the 'close' event.
      */
     close() {
         if (this.isClosed) return;
