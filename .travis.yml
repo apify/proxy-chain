@@ -1,9 +1,9 @@
 dist: xenial
 sudo: required
 addons:
+    hosts:
+        - localhost-test
 before_install:
-  - printf "\n# Used by proxy-chain NPM package tests\n127.0.0.1 localhost-test\n" | sudo tee -a /etc/hosts
-  - nslookup localhost-test
 language: node_js
 node_js:
   - "8"
