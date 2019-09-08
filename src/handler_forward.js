@@ -3,6 +3,7 @@ import {
     isHopByHopHeader, isInvalidHeader, addHeader, maybeAddProxyAuthorizationHeader,
 } from './tools';
 import HandlerBase from './handler_base';
+import { RequestError } from './server';
 
 
 /**
@@ -114,11 +115,8 @@ export default class HandlerForward extends HandlerBase {
     onTrgResponse(response) {
         if (this.isClosed) return;
         this.log(`Received response from target (${response.statusCode})`);
-        // console.dir(response);
 
         if (this.checkUpstreamProxy407(response)) return;
-
-        this.srcGotResponse = true;
 
         // Prepare response headers
         const headers = {};
@@ -131,6 +129,16 @@ export default class HandlerForward extends HandlerBase {
 
             addHeader(headers, name, value);
         }
+
+        // Ensure status code is in the range accepted by Node, otherwise proxy will crash with
+        // "RangeError: Invalid status code: 0" (see writeHead in Node's _http_server.js)
+        // Fixes https://github.com/apifytech/proxy-chain/issues/35
+        if (response.statusCode < 100 || response.statusCode > 999) {
+            this.fail(new RequestError(`Target server responded with an invalid HTTP status code (${response.statusCode})`, 500));
+            return;
+        }
+
+        this.srcGotResponse = true;
 
         this.srcResponse.writeHead(response.statusCode, headers);
         response.pipe(this.srcResponse);

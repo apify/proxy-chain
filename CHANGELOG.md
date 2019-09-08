@@ -1,10 +1,12 @@
 0.3.1 / 2019-09-07
 ===================
 - *BREAKING CHANGE*: `closeAnonymizedProxy` throws on invalid proxy URL
-- Changed HTTP 200 message from "Connection established" to "Connection Established"
-- Attempt to prevent the unhandled "write after end" error
+- Bugfix: Attempt to prevent the unhandled "write after end" error
+- Bugfix: Proxy no longer attempts to forward invalid
+  HTTP status codes and fails with 500 Internal Server Error
 - Fixed finishing of sockets on Node 10+
 - Fixed and improve unit tests to also work on Node 10+, update dev dependencies
+- Changed HTTP 200 message from "Connection established" to "Connection Established"
 - Proxy source/target sockets are set to no delay, to avoid any caching delays
 - Improved logging
 

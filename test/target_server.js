@@ -31,6 +31,7 @@ class TargetServer {
         this.app.get('/get-1m-a-chars-streamed', this.get1MACharsStreamed.bind(this));
         this.app.get('/basic-auth', this.getBasicAuth.bind(this));
         this.app.get('/get-non-standard-headers', this.getNonStandardHeaders.bind(this));
+        this.app.get('/get-invalid-status-code', this.getInvalidStatusCode.bind(this));
         this.app.get('/get-repeating-headers', this.getRepeatingHeaders.bind(this));
 
         this.app.all('*', this.handleHttpRequest.bind(this));
@@ -125,6 +126,21 @@ class TargetServer {
             msg += `${key}: ${value}\r\n`;
         });
         msg += `\r\nHello sir!`;
+
+        request.socket.write(msg, () => {
+            request.socket.end();
+
+            // Unfortunately calling end() will not close the socket
+            // if client refuses to close it. Hence calling destroy after a short while.
+            setTimeout(() => {
+                request.socket.destroy();
+            }, 100);
+        });
+    }
+
+    getInvalidStatusCode(request, response) {
+        let msg = `HTTP/1.1 55 OK\r\n`;
+        msg += `\r\nBad status!`;
 
         request.socket.write(msg, () => {
             request.socket.end();

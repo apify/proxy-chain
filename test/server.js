@@ -451,26 +451,43 @@ const createTestSuite = ({
                 const opts = getRequestOpts('/get-non-standard-headers');
                 opts.method = 'GET';
                 return requestPromised(opts)
-                    .then((response) => {
-                        expect(response.body).to.eql('Hello sir!');
-                        expect(response.statusCode).to.eql(200);
-                        expect(response.headers).to.be.an('object');
+                .then((response) => {
+                    expect(response.body).to.eql('Hello sir!');
+                    expect(response.statusCode).to.eql(200);
+                    expect(response.headers).to.be.an('object');
 
-                        // The server returns three headers:
-                        //  'Invalid Header With Space': 'HeaderValue1',
-                        //  'X-Normal-Header': 'HeaderValue2',
-                        //  'Invalid-Header-Value': 'some\value',
-                        // With HTTP proxy, the invalid headers should be removed, otherwise they should be present
-                        expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
-                        if (useMainProxy && !useSsl) {
-                            expect(response.headers['invalid header with space']).to.eql(undefined);
-                            expect(response.headers['invalid-header-value']).to.eql(undefined);
-                        } else {
-                            expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
-                            expect(response.headers['invalid-header-value']).to.eql('some\value');
-                        }
-                    });
+                    // The server returns three headers:
+                    //  'Invalid Header With Space': 'HeaderValue1',
+                    //  'X-Normal-Header': 'HeaderValue2',
+                    //  'Invalid-Header-Value': 'some\value',
+                    // With HTTP proxy, the invalid headers should be removed, otherwise they should be present
+                    expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
+                    if (useMainProxy && !useSsl) {
+                        expect(response.headers['invalid header with space']).to.eql(undefined);
+                        expect(response.headers['invalid-header-value']).to.eql(undefined);
+                    } else {
+                        expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
+                        expect(response.headers['invalid-header-value']).to.eql('some\value');
+                    }
+                });
             });
+
+            if (!useSsl) {
+                _it('gracefully fails on invalid HTTP status code', () => {
+                    const opts = getRequestOpts('/get-invalid-status-code');
+                    opts.method = 'GET';
+                    return requestPromised(opts)
+                        .then((response) => {
+                            if (useMainProxy) {
+                                expect(response.statusCode).to.eql(500);
+                                expect(response.body).to.match(/with an invalid HTTP status code/);
+                            } else {
+                                expect(response.statusCode).to.eql(55);
+                                expect(response.body).to.eql('Bad status!');
+                            }
+                        });
+                });
+            }
         }
 
         _it('save repeating server HTTP headers', () => {
