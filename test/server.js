@@ -448,28 +448,33 @@ const createTestSuite = ({
         // NOTE: upstream proxy cannot handle non-standard headers
         if (!useUpstreamProxy) {
             _it('ignores non-standard server HTTP headers', () => {
-                const opts = getRequestOpts('/get-non-standard-headers');
+                // Node 12+ uses a new HTTP parser (https://llhttp.org/),
+                // which throws error on HTTP headers values with invalid chars.
+                // So we skip this test for Node 12+.
+                const nodeMajorVersion = parseInt(process.versions.node.split('.')[0]);
+                const skipInvalidHeaderValue = nodeMajorVersion >= 12;
+
+                const opts = getRequestOpts(`/get-non-standard-headers?skipInvalidHeaderValue=${skipInvalidHeaderValue ? '1' : '0'}`);
                 opts.method = 'GET';
                 return requestPromised(opts)
-                .then((response) => {
-                    expect(response.body).to.eql('Hello sir!');
-                    expect(response.statusCode).to.eql(200);
-                    expect(response.headers).to.be.an('object');
+                    .then((response) => {
+                        expect(response.body).to.eql('Hello sir!');
+                        expect(response.statusCode).to.eql(200);
+                        expect(response.headers).to.be.an('object');
 
-                    // The server returns three headers:
-                    //  'Invalid Header With Space': 'HeaderValue1',
-                    //  'X-Normal-Header': 'HeaderValue2',
-                    //  'Invalid-Header-Value': 'some\value',
-                    // With HTTP proxy, the invalid headers should be removed, otherwise they should be present
-                    expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
-                    if (useMainProxy && !useSsl) {
-                        expect(response.headers['invalid header with space']).to.eql(undefined);
+                        // The server returns three headers:
+                        //  'Invalid Header With Space': 'HeaderValue1',
+                        //  'X-Normal-Header': 'HeaderValue2',
+                        //  'Invalid-Header-Value': 'some\value',
+                        // With HTTP proxy, the invalid headers should be removed, otherwise they should be present
+                        expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
+                        if (useMainProxy && !useSsl) {
+                            expect(response.headers['invalid header with space']).to.eql(undefined);
+                        } else {
+                            expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
+                        }
                         expect(response.headers['invalid-header-value']).to.eql(undefined);
-                    } else {
-                        expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
-                        expect(response.headers['invalid-header-value']).to.eql('some\value');
-                    }
-                });
+                    });
             });
 
             if (!useSsl) {

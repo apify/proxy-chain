@@ -116,10 +116,13 @@ class TargetServer {
         const headers = {
             'Invalid Header With Space': 'HeaderValue1',
             'X-Normal-Header': 'HeaderValue2',
-            // This is a regression test for "TypeError: The header content contains invalid characters"
-            // that occurred in production
-            'Invalid-Header-Value': 'some\value',
         };
+
+        // This is a regression test for "TypeError: The header content contains invalid characters"
+        // that occurred in production
+        if (request.query.skipInvalidHeaderValue !== '1') {
+            headers['Invalid-Header-Value'] = 'some\value';
+        }
 
         let msg = `HTTP/1.1 200 OK\r\n`;
         _.each(headers, (value, key) => {
