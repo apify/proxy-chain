@@ -470,10 +470,11 @@ const createTestSuite = ({
                         expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
                         if (useMainProxy && !useSsl) {
                             expect(response.headers['invalid header with space']).to.eql(undefined);
+                            expect(response.headers['invalid-header-value']).to.eql(undefined);
                         } else {
                             expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
+                            expect(response.headers['invalid-header-value']).to.eql(skipInvalidHeaderValue ? undefined : 'some\value');
                         }
-                        expect(response.headers['invalid-header-value']).to.eql(undefined);
                     });
             });
 
