@@ -518,7 +518,7 @@ const createTestSuite = ({
 
         // TODO: For some reason, this test causes crash on Node 10 on Travis,
         // everywhere else it works fine... need to investigate this more
-        /*if (nodeMajorVersion !== 112222 || process.env.TRAVIS !== 'true') {
+        //if (nodeMajorVersion !== 112222 || process.env.TRAVIS !== 'true') {
             _it('handles large streamed POST payload', () => {
                 const opts = getRequestOpts('/echo-payload');
                 opts.headers['Content-Type'] = 'text/my-test';
@@ -532,27 +532,37 @@ const createTestSuite = ({
                     opts.body = passThrough;
 
                     request(opts, (error, response, body) => {
-                        if (error) return reject(error);
+                        if (error) {
+                            console.log('request on error');
+                            console.dir(error);
+                            return reject(error);
+                        }
                         expect(response.statusCode).to.eql(200);
                         expect(body).to.eql(DATA_CHUNKS_COMBINED);
+                        console.log('resolve()');
                         resolve();
                     });
 
                     intervalId = setInterval(() => {
                         if (chunkIndex >= DATA_CHUNKS.length) {
+                            console.log('passThrough.end()');
                             passThrough.end();
                             return;
                         }
                         passThrough.write(DATA_CHUNKS[chunkIndex++], (err) => {
-                            if (err) reject(err);
+                            if (err) {
+                                console.log('passThrough.write() on error');
+                                console.dir(err);
+                                reject(err);
+                            }
                         });
-                    }, 1);
+                    }, 5);
                 })
                     .finally(() => {
                         clearInterval(intervalId);
                     });
             });
-        }*/
+        //}
 
         const test1MAChars = () => {
             const opts = getRequestOpts('/get-1m-a-chars-together');
