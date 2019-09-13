@@ -64,7 +64,6 @@
     "faye-websocket": "^0.11.3",
     "https-proxy-agent": "^2.1.0",
     "isparta": "^4.0.0",
-    "longjohn": "^0.2.12",
     "mocha": "^6.2.0",
     "phantomjs-prebuilt": "^2.1.16",
     "proxy": "^0.2.4",
