@@ -64,7 +64,7 @@ class TargetServer {
 
     allEchoPayload(request, response) {
         response.writeHead(200, { 'Content-Type': request.headers['content-type'] || 'dummy' });
-        console.log('allEchoPayload: ' + request.body.length);
+        // console.log('allEchoPayload: ' + request.body.length);
         response.end(request.body);
     }
 
