@@ -1,4 +1,3 @@
-// require('longjohn');
 const fs = require('fs');
 const path = require('path');
 const stream = require('stream');
@@ -30,8 +29,6 @@ TODO - add following tests:
 
 // See README.md for details
 const LOCALHOST_TEST = 'localhost-test';
-
-const nodeMajorVersion = parseInt(process.versions.node.split('.')[0]);
 
 const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
@@ -192,6 +189,16 @@ const createTestSuite = ({
                             if (err) return reject(err);
                             resolve();
                         });
+
+                        // This is a workaround to a buggy implementation of "proxy" package. On Node 10+,
+                        // the socket sometimes emits ECONNRESET error, which would break the test.
+                        // We just swallow it.
+                        upstreamProxyServer.on('connect', (req, socket) => {
+                            socket.on('error', (err) => {
+                                if (err.code === 'ECONNRESET') return;
+                                throw err;
+                            });
+                        })
                     });
                 }
             }).then(() => {
@@ -454,6 +461,7 @@ const createTestSuite = ({
                 // Node 12+ uses a new HTTP parser (https://llhttp.org/),
                 // which throws error on HTTP headers values with invalid chars.
                 // So we skip this test for Node 12+.
+                const nodeMajorVersion = parseInt(process.versions.node.split('.')[0]);
                 const skipInvalidHeaderValue = nodeMajorVersion >= 12;
 
                 const opts = getRequestOpts(`/get-non-standard-headers?skipInvalidHeaderValue=${skipInvalidHeaderValue ? '1' : '0'}`);
@@ -530,43 +538,25 @@ const createTestSuite = ({
                 opts.body = passThrough;
 
                 request(opts, (error, response, body) => {
-                    if (error) {
-                        // console.log('request on error');
-                        // console.dir(error);
-                        return reject(error);
-                    }
+                    if (error) return reject(error);
                     expect(response.statusCode).to.eql(200);
                     expect(body).to.eql(DATA_CHUNKS_COMBINED);
-                    // console.log('resolve()');
                     resolve();
                 });
 
-                passThrough.on('finish', () => {
-                    // NOTE: It seems adding the 'finish' fixed the ECONNRESET error in Node 10+
-                    // console.log('passThrough on finish');
-                });
-
-                /*passThrough.on('err', (err) => {
-                    console.log('passThrough on error');
-                    console.dir(err);
-                });*/
-
                 intervalId = setInterval(() => {
                     if (chunkIndex >= DATA_CHUNKS.length) {
-                        // console.log('passThrough.end()');
                         passThrough.end();
                         clearInterval(intervalId);
                         return;
                     }
                     passThrough.write(DATA_CHUNKS[chunkIndex++], (err) => {
                         if (err) {
-                            // console.log('passThrough.write() on error');
-                            // console.dir(err);
                             clearInterval(intervalId);
                             reject(err);
                         }
                     });
-                }, 2);
+                }, 1);
             })
                 .finally(() => {
                     clearInterval(intervalId);
