@@ -543,6 +543,15 @@ const createTestSuite = ({
                         resolve();
                     });
 
+                    passThrough.on('finish', () => {
+                        console.log('passThrough on finish');
+                    });
+
+                    passThrough.on('err', (err) => {
+                        console.log('passThrough on error');
+                        console.dir(err);
+                    });
+
                     intervalId = setInterval(() => {
                         if (chunkIndex >= DATA_CHUNKS.length) {
                             console.log('passThrough.end()');
