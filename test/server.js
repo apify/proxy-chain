@@ -14,7 +14,7 @@ const url = require('url');
 const WebSocket = require('faye-websocket');
 
 const { parseUrl, parseProxyAuthorizationHeader } = require('../build/tools');
-const { Server, RequestError } = require('../build/server');
+const { Server, RequestError } = require('../build/index');
 const { TargetServer } = require('./target_server');
 
 /* globals process */

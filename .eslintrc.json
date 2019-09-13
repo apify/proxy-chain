@@ -27,6 +27,7 @@
     "no-continue": 0,
     "import/no-cycle": 1,
     "max-classes-per-file": 0,
-    "prefer-destructuring": 0
+    "prefer-destructuring": 0,
+    "no-console": 0
   }
 }

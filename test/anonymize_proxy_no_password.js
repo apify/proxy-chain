@@ -8,7 +8,7 @@ const Promise = require('bluebird');
 const request = require('request');
 const express  = require('express');
 
-const { anonymizeProxy, closeAnonymizedProxy } = require('../build/anonymize_proxy');
+const { anonymizeProxy, closeAnonymizedProxy } = require('../build/index');
 const { PORT_SELECTION_CONFIG } = require('../build/tools');
 
 /* globals process */
