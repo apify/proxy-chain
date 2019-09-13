@@ -4,10 +4,11 @@
 - Bugfix: Attempt to prevent the unhandled "write after end" error
 - Bugfix: Proxy no longer attempts to forward invalid
   HTTP status codes and fails with 500 Internal Server Error
-- Fixed finishing of sockets on Node 10+
-- Fixed and improve unit tests to also work on Node 10+, update dev dependencies
-- Changed HTTP 200 message from "Connection established" to "Connection Established"
-- Proxy source/target sockets are set to no delay, to avoid any caching delays
+- Fixed closing of sockets on Node 10+
+- Fixed and improved unit tests to also work on Node 10+, update dev dependencies
+- Changed HTTP 200 message from `Connection established` to `Connection Established`
+  to be according to standards
+- Proxy source/target sockets are set to no delay (i.e. disabled Nagle's algorithm), to avoid any caching delays
 - Improved logging
 
 0.2.7 / 2018-02-19
