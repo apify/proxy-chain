@@ -517,64 +517,61 @@ const createTestSuite = ({
                 });
         });
 
-        // TODO: For some reason, this test causes crash on Node 10 on Travis,
-        // everywhere else it works fine... need to investigate this more
-        //if (nodeMajorVersion !== 112222 || process.env.TRAVIS !== 'true') {
-            _it('handles large streamed POST payload', () => {
-                const opts = getRequestOpts('/echo-payload');
-                opts.headers['Content-Type'] = 'text/my-test';
-                opts.method = 'POST';
+        _it('handles large streamed POST payload', () => {
+            const opts = getRequestOpts('/echo-payload');
+            opts.headers['Content-Type'] = 'text/my-test';
+            opts.method = 'POST';
 
-                let chunkIndex = 0;
-                let intervalId;
+            let chunkIndex = 0;
+            let intervalId;
 
-                return new Promise((resolve, reject) => {
-                    const passThrough = new stream.PassThrough();
-                    opts.body = passThrough;
+            return new Promise((resolve, reject) => {
+                const passThrough = new stream.PassThrough();
+                opts.body = passThrough;
 
-                    request(opts, (error, response, body) => {
-                        if (error) {
-                            console.log('request on error');
-                            console.dir(error);
-                            return reject(error);
-                        }
-                        expect(response.statusCode).to.eql(200);
-                        expect(body).to.eql(DATA_CHUNKS_COMBINED);
-                        console.log('resolve()');
-                        resolve();
-                    });
+                request(opts, (error, response, body) => {
+                    if (error) {
+                        // console.log('request on error');
+                        // console.dir(error);
+                        return reject(error);
+                    }
+                    expect(response.statusCode).to.eql(200);
+                    expect(body).to.eql(DATA_CHUNKS_COMBINED);
+                    // console.log('resolve()');
+                    resolve();
+                });
 
-                    passThrough.on('finish', () => {
-                        console.log('passThrough on finish');
-                    });
+                passThrough.on('finish', () => {
+                    // NOTE: It seems adding the 'finish' fixed the ECONNRESET error in Node 10+
+                    // console.log('passThrough on finish');
+                });
 
-                    passThrough.on('err', (err) => {
-                        console.log('passThrough on error');
-                        console.dir(err);
-                    });
+                /*passThrough.on('err', (err) => {
+                    console.log('passThrough on error');
+                    console.dir(err);
+                });*/
 
-                    intervalId = setInterval(() => {
-                        if (chunkIndex >= DATA_CHUNKS.length) {
-                            console.log('passThrough.end()');
-                            passThrough.end();
-                            clearInterval(intervalId);
-                            return;
-                        }
-                        passThrough.write(DATA_CHUNKS[chunkIndex++], (err) => {
-                            if (err) {
-                                console.log('passThrough.write() on error');
-                                console.dir(err);
-                                clearInterval(intervalId);
-                                reject(err);
-                            }
-                        });
-                    }, 2);
-                })
-                    .finally(() => {
+                intervalId = setInterval(() => {
+                    if (chunkIndex >= DATA_CHUNKS.length) {
+                        // console.log('passThrough.end()');
+                        passThrough.end();
                         clearInterval(intervalId);
+                        return;
+                    }
+                    passThrough.write(DATA_CHUNKS[chunkIndex++], (err) => {
+                        if (err) {
+                            // console.log('passThrough.write() on error');
+                            // console.dir(err);
+                            clearInterval(intervalId);
+                            reject(err);
+                        }
                     });
-            });
-        //}
+                }, 2);
+            })
+                .finally(() => {
+                    clearInterval(intervalId);
+                });
+        });
 
         const test1MAChars = () => {
             const opts = getRequestOpts('/get-1m-a-chars-together');
