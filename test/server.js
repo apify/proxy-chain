@@ -547,16 +547,18 @@ const createTestSuite = ({
                         if (chunkIndex >= DATA_CHUNKS.length) {
                             console.log('passThrough.end()');
                             passThrough.end();
+                            clearInterval(intervalId);
                             return;
                         }
                         passThrough.write(DATA_CHUNKS[chunkIndex++], (err) => {
                             if (err) {
                                 console.log('passThrough.write() on error');
                                 console.dir(err);
+                                clearInterval(intervalId);
                                 reject(err);
                             }
                         });
-                    }, 5);
+                    }, 2);
                 })
                     .finally(() => {
                         clearInterval(intervalId);
