@@ -5,7 +5,7 @@ const http = require('http');
 const proxy = require('proxy');
 const Promise = require('bluebird');
 
-const { createTunnel, closeTunnel } = require('../build/tcp_tunnel');
+const { createTunnel, closeTunnel } = require('../build/tcp_tunnel_tools');
 const { findFreePort } = require('../build/tools');
 
 const destroySocket = socket => new Promise((resolve, reject) => {
