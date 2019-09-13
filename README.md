@@ -247,6 +247,8 @@ The `createTunnel()` function accepts an optional Node.js-style callback that re
 If no callback is supplied, the function returns a promise that resolves to a String with
 the path to the local endpoint.
 
+For more information, read this [blog post](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff).
+
 Example:
 
 ```javascript
