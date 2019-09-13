@@ -1,8 +1,6 @@
 import http from 'http';
 import { maybeAddProxyAuthorizationHeader } from './tools';
 
-// TODO: please rename this class to something else than "Handler", it makes it look like the class inherits from HandlerBase, which it doesn't
-
 /**
  * Represents a connection from source client to an external proxy using HTTP CONNECT tunnel, allows TCP connection.
  */
