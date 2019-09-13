@@ -70,7 +70,7 @@ export default class HandlerBase extends EventEmitter {
         this.srcSocket.once('end', this.onSrcSocketEnd);
         this.srcSocket.once('close', this.onSrcSocketClose);
         this.srcSocket.once('finish', this.onSrcSocketFinish);
-        this.srcSocket.once('error', this.onSrcSocketError);
+        this.srcSocket.on('error', this.onSrcSocketError);
     }
 
     bindHandlersToThis(handlerNames) {
@@ -147,7 +147,7 @@ export default class HandlerBase extends EventEmitter {
         socket.once('end', this.onTrgSocketEnd);
         socket.once('finish', this.onTrgSocketFinish);
         socket.once('close', this.onTrgSocketClose);
-        socket.once('error', this.onTrgSocketError);
+        socket.on('error', this.onTrgSocketError);
     }
 
     trgSocketShutdown(msg) {

@@ -30,7 +30,7 @@ export default class HandlerTunnelTcpChain {
         this.srcSocket = srcSocket;
         this.srcSocket.once('close', this.onSrcSocketClose);
         this.srcSocket.once('end', this.onSrcSocketEnd);
-        this.srcSocket.once('error', this.onSrcSocketError);
+        this.srcSocket.on('error', this.onSrcSocketError);
 
         this.upstreamProxyUrlParsed = upstreamProxyUrlParsed;
 
@@ -60,8 +60,8 @@ export default class HandlerTunnelTcpChain {
 
         this.trgRequest.once('connect', this.onTrgRequestConnect);
         this.trgRequest.once('abort', this.onTrgRequestAbort);
-        this.trgRequest.once('error', this.onTrgRequestError);
-        this.trgRequest.on('socket', this.onTrgSocket);
+        this.trgRequest.once('socket', this.onTrgSocket);
+        this.trgRequest.on('error', this.onTrgRequestError);
 
         // Send the data
         this.trgRequest.end();
@@ -96,7 +96,7 @@ export default class HandlerTunnelTcpChain {
 
         socket.once('close', this.onTrgSocketClose);
         socket.once('end', this.onTrgSocketEnd);
-        socket.once('error', this.onTrgSocketError);
+        socket.on('error', this.onTrgSocketError);
     }
 
     // Once target socket closes, we need to give time

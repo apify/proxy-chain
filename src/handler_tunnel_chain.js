@@ -35,8 +35,8 @@ export default class HandlerTunnelChain extends HandlerBase {
 
         this.trgRequest.once('connect', this.onTrgRequestConnect);
         this.trgRequest.once('abort', this.onTrgRequestAbort);
-        this.trgRequest.once('error', this.onTrgRequestError);
-        this.trgRequest.on('socket', this.onTrgSocket);
+        this.trgRequest.once('socket', this.onTrgSocket);
+        this.trgRequest.on('error', this.onTrgRequestError);
 
         // Send the data
         this.trgRequest.end();
