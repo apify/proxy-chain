@@ -26,21 +26,29 @@ export default class HandlerForward extends HandlerBase {
         // var hasVia = false;
         // var via = '1.1 ' + hostname + ' (proxy/' + version + ')';
 
+        let hostHeaderFound = false;
+
+        // TODO: We should probably use a raw HTTP message via socket instead of http.request(),
+        // since Node transforms the headers to lower case and thus makes it easy to detect the proxy
         for (let i = 0; i < this.srcRequest.rawHeaders.length; i += 2) {
             const headerName = this.srcRequest.rawHeaders[i];
             const headerValue = this.srcRequest.rawHeaders[i + 1];
 
-            if (headerName === 'Connection' && headerValue === 'keep-alive') {
+            if (/^connection$/i.test(headerName) && /^keep-alive$/i.test(headerValue)) {
                 // Keep the "Connection: keep-alive" header, to reduce the chance that the server
                 // will detect we're not a browser and also to improve performance
             } else if (isHopByHopHeader(headerName)) {
                 continue;
             } else if (isInvalidHeader(headerName, headerValue)) {
                 continue;
+            } else if (/^host$/i.test(headerName)) {
+                // If Host header was used multiple times, only consider the first one.
+                // This is to prevent "TypeError: hostHeader.startsWith is not a function at calculateServerName (_http_agent.js:240:20)"
+                if (hostHeaderFound) continue;
+                hostHeaderFound = true;
             }
 
             /*
-
             if (!hasXForwardedFor && 'x-forwarded-for' === keyLower) {
                 // append to existing "X-Forwarded-For" header
                 // http://en.wikipedia.org/wiki/X-Forwarded-For

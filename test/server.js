@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const stream = require('stream');
 const childProcess = require('child_process');
+const net = require('net');
 const dns = require('dns');
 const _ = require('underscore');
 const { expect, assert } = require('chai');
@@ -524,6 +525,54 @@ const createTestSuite = ({
                     expect(response.rawHeaders[secondIndex + 1]).to.eql('HeaderValue2');
                 });
         });
+
+        if (!useSsl) {
+            _it('handles double Host header', () => {
+                // This is a regression test, duplication of Host headers caused the proxy to throw
+                // "TypeError: hostHeader.startsWith is not a function"
+                // The only way to test this is to send raw HTTP request via TCP socket.
+                return new Promise((resolve, reject) => {
+                    let port;
+                    let httpMsg;
+                    if (useMainProxy) {
+                        port = mainProxyServerPort;
+                        httpMsg = `GET http://localhost:${targetServerPort}/echo-raw-headers HTTP/1.1\r\n` +
+                            'Host: dummy1.example.com\r\n' +
+                            'Host: dummy2.example.com\r\n';
+                        if (mainProxyAuth) {
+                            const auth = Buffer.from(`${mainProxyAuth.username}:${mainProxyAuth.password}`).toString('base64');
+                            httpMsg += `Proxy-Authorization: Basic ${auth}\r\n`;
+                        }
+                        httpMsg += '\r\n';
+                    } else {
+                        port = targetServerPort;
+                        httpMsg = 'GET /echo-raw-headers HTTP/1.1\r\n' +
+                            'Host: dummy1.example.com\r\n' +
+                            'Host: dummy2.example.com\r\n\r\n';
+                    }
+
+                    const client = net.createConnection({ port }, () => {
+                        // console.log('connected to server! sending msg: ' + httpMsg);
+                        client.write(httpMsg);
+                    });
+                    client.on('data', (data) => {
+                        // console.log('received data: ' + data.toString());
+                        try {
+                            expect(data.toString()).to.match(/^HTTP\/1\.1 200 OK/);
+                            client.end();
+                        } catch (err) {
+                            reject(err);
+                        }
+                    });
+                    client.on('end', () => {
+                        // console.log('disconnected from server');
+                        resolve();
+                    });
+                    client.on('error', reject);
+                });
+
+            });
+        }
 
         _it('handles large streamed POST payload', () => {
             const opts = getRequestOpts('/echo-payload');

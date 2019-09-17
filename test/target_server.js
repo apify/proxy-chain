@@ -25,6 +25,7 @@ class TargetServer {
 
         this.app.all('/hello-world', this.allHelloWorld.bind(this));
         this.app.all('/echo-request-info', this.allEchoRequestInfo.bind(this));
+        this.app.all('/echo-raw-headers', this.allEchoRawHeaders.bind(this));
         this.app.all('/echo-payload', this.allEchoPayload.bind(this));
         this.app.get('/redirect-to-hello-world', this.getRedirectToHelloWorld.bind(this));
         this.app.get('/get-1m-a-chars-together', this.get1MACharsTogether.bind(this));
@@ -60,6 +61,11 @@ class TargetServer {
         response.writeHead(200, { 'Content-Type': 'application/json' });
         const result = _.pick(request, 'headers', 'method');
         response.end(JSON.stringify(result));
+    }
+
+    allEchoRawHeaders(request, response) {
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify(request.rawHeaders));
     }
 
     allEchoPayload(request, response) {
