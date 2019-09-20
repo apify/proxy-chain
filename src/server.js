@@ -299,8 +299,8 @@ export class Server extends EventEmitter {
                         if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
                             throw new Error('Invalid "upstreamProxyUrl" provided: URL must have hostname and port');
                         }
-                        if (handlerOpts.upstreamProxyUrlParsed.scheme !== 'http') {
-                            throw new Error('Invalid "upstreamProxyUrl" provided: URL must have the "http" scheme');
+                        if (!['http', 'https'].includes(handlerOpts.upstreamProxyUrlParsed.scheme)) {
+                            throw new Error('Invalid "upstreamProxyUrl" provided: URL must have the "http" or "https" scheme');
                         }
                     }
                 }
