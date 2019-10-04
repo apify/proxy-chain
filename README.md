@@ -87,6 +87,24 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
+## Custom error responses
+
+To return a custom HTTP response to indicate an error to the client,
+you can throw the `RequestError` from inside of the `prepareRequestFunction` function.
+The class constructor has the following parameters: `RequestError(body, statusCode, headers)`
+
+```javascript
+const ProxyChain = require('proxy-chain');
+
+const server = new ProxyChain.Server({
+    prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
+        if (username !== 'bob') {
+           throw new ProxyChain.RequestError('Only Bob can use this proxy!', 400);     
+        }
+    },
+});
+```
+
 ## Measuring traffic statistics
 
 To get traffic statistics for a certain HTTP connection, you can use:
