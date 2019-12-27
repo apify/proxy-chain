@@ -1,3 +1,7 @@
+0.3.3 / 2019-12-27
+===================
+- More informative messages for "Invalid upstreamProxyUrl" errors
+
 0.3.2 / 2019-09-17
 ===================
 - Bugfix: Prevent the `"TypeError: hostHeader.startsWith is not a function` error
