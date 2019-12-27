@@ -297,10 +297,14 @@ export class Server extends EventEmitter {
 
                     if (handlerOpts.upstreamProxyUrlParsed) {
                         if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
-                            throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`);
+                            throw new Error(
+                                `Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`,
+                            );
                         }
                         if (handlerOpts.upstreamProxyUrlParsed.scheme !== 'http') {
-                            throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" scheme (was "${funcResult.upstreamProxyUrl}")`);
+                            throw new Error(
+                                `Invalid "upstreamProxyUrl" provided: URL must have the "http" scheme (was "${funcResult.upstreamProxyUrl}")`,
+                            );
                         }
                     }
                 }
