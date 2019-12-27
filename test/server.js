@@ -312,17 +312,24 @@ const createTestSuite = ({
                                 if (mainProxyAuth.username !== username || mainProxyAuth.password !== password) {
                                     result.requestAuthentication = true;
                                     addToMainProxyServerConnectionIds = false;
-                                    // Now that authentication is requested, upstream proxy should not get used to try some invalid one
-                                    result.upstreamProxyUrl = 'http://dummy-hostname:4567';
+                                    // Now that authentication is requested, upstream proxy should not get used,
+                                    // so try some invalid one and it should cause no issue
+                                    result.upstreamProxyUrl = 'http://dummy-hostname-xyz:6789';
                                 }
                             }
 
                             if (useUpstreamProxy && !result.upstreamProxyUrl) {
                                 let upstreamProxyUrl;
 
-                                if (hostname === 'activate-invalid-upstream-proxy-credentials') {
+                                if (hostname === 'activate-invalid-upstream-proxy-scheme') {
+                                    upstreamProxyUrl = `ftp://proxy.example.com:8000`;
+                                    addToMainProxyServerConnectionIds = false;
+                                } else if (hostname === 'activate-invalid-upstream-proxy-url') {
+                                    upstreamProxyUrl = '    ';
+                                    addToMainProxyServerConnectionIds = false;
+                                } else if (hostname === 'activate-bad-upstream-proxy-credentials') {
                                     upstreamProxyUrl = `http://invalid:credentials@127.0.0.1:${upstreamProxyPort}`;
-                                } else if (hostname === 'activate-invalid-upstream-proxy-host') {
+                                } else if (hostname === 'activate-unknown-upstream-proxy-host') {
                                     upstreamProxyUrl = 'http://dummy-hostname:1234';
                                 } else {
                                     let auth = '';
@@ -811,14 +818,25 @@ const createTestSuite = ({
             }
 
             if (useUpstreamProxy) {
+
+                it('fails gracefully on invalid upstream proxy scheme', () => {
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-scheme`);
+                    return testForErrorResponse(opts, 500);
+                });
+
                 it('fails gracefully on invalid upstream proxy URL', () => {
-                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-host`);
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-url`);
+                    return testForErrorResponse(opts, 500);
+                });
+
+                it('fails gracefully on non-existent upstream proxy host', () => {
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-unknown-upstream-proxy-host`);
                     return testForErrorResponse(opts, 502);
                 });
 
                 if (upstreamProxyAuth) {
-                    _it('fails gracefully on invalid upstream proxy credentials', () => {
-                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-credentials`);
+                    _it('fails gracefully on bad upstream proxy credentials', () => {
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-bad-upstream-proxy-credentials`);
                         return testForErrorResponse(opts, 502);
                     });
                 }
