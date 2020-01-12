@@ -116,12 +116,19 @@ console.dir(stats);
 The resulting object looks like:
 ```javascript
 {
+    // Number of bytes sent to client
     srcTxBytes: Number,
+    // Number of bytes received from client
     srcRxBytes: Number,
+    // Number of bytes sent to target server (proxy or website)
     trgTxBytes: Number,
+    // Number of bytes received from target server (proxy or website)
     trgRxBytes: Number,
 }
 ```
+
+If the underlying sockets were closed, the corresponding values will be `null`,
+rather than `0`.
 
 ## Custom responses
 
