@@ -205,6 +205,12 @@ export class Server extends EventEmitter {
         const { socket } = request;
         let isHttp = false;
 
+        // We need to consume socket errors, otherwise they could crash the entire process.
+        // See https://github.com/apifytech/proxy-chain/issues/53
+        socket.on('error', (err) => {
+            this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
+        });
+
         return Promise.resolve()
             .then(() => {
                 // console.dir(_.pick(request, 'url', 'headers', 'method'));
@@ -363,7 +369,7 @@ export class Server extends EventEmitter {
             this.emit('requestFailed', { error: err, request });
         }
 
-        // emit connection closed if request fails and connection was already reported
+        // Emit 'connectionClosed' event if request failed and connection was already reported
         if (handlerOpts) {
             this.log(handlerId, 'Closed because request failed with error');
             this.emit('connectionClosed', {
@@ -393,7 +399,7 @@ export class Server extends EventEmitter {
             if (!headers.Server) {
                 headers.Server = this.authRealm;
             }
-            // These headers are required by PhantomJS, otherwise the connection would timeout!
+            // These headers are required by e.g. PhantomJS, otherwise the connection would time out!
             if (!headers.Connection) {
                 headers.Connection = 'close';
             }
@@ -412,8 +418,8 @@ export class Server extends EventEmitter {
             socket.write(msg, () => {
                 socket.end();
 
-                // Unfortunately calling end() will not close the socket
-                // if client refuses to close it. Hence calling destroy after a short while.
+                // Unfortunately calling end() will not close the socket if client refuses to close it.
+                // Hence calling destroy after a short while.
                 setTimeout(() => {
                     socket.destroy();
                 }, 100);
@@ -500,7 +506,6 @@ export class Server extends EventEmitter {
             this.log(null, `Destroyed ${count} pending handlers`);
         }
 
-        // TODO: keep track of all handlers and close them if closeConnections=true
         if (this.server) {
             const { server } = this;
             this.server = null;

@@ -1,6 +1,8 @@
-xxx
+0.4.1 / 2020-02-22
 ===================
 - **BREAKING**: Dropped support for Node.js 9 and lower
+- Bugfix: Consume source socket errors to avoid unhandled exceptions.
+  See [Issue #53](https://github.com/apifytech/proxy-chain/issues/53).
 - Replaced `bluebird` dependency with native Promises
 - Bugfix: Renamed misspelled `Trailers` HTTP header to `Trailer`
 - Upgraded NPM dev dependencies
