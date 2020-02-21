@@ -39,6 +39,9 @@
     "lint": "npm run build && eslint src",
     "lint-fix": "npm run build && eslint src --fix"
   },
+  "engines": {
+    "node": ">=10"
+  },
   "dependencies": {
     "portastic": "^1.0.1",
     "underscore": "^1.9.1"

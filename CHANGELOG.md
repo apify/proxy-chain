@@ -2,6 +2,7 @@ xxx
 ===================
 - Upgraded NPM dev dependencies
 - Replaced `bluebird` dependency with native Promises
+- **BREAKING**: Dropped support for Node.js 9 and lower
 
 0.3.3 / 2019-12-27
 ===================

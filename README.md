@@ -1,7 +1,7 @@
 # Programmable HTTP proxy server for Node.js
 
 [![npm version](https://badge.fury.io/js/proxy-chain.svg)](http://badge.fury.io/js/proxy-chain)
-[![Build Status](https://travis-ci.org/apifytech/proxy-chain.svg)](https://travis-ci.org/apifytech/proxy-chain)
+[![Build Status](https://travis-ci.com/apifytech/proxy-chain.svg)](https://travis-ci.com/apifytech/proxy-chain)
 
 Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining,
 custom HTTP responses and measuring traffic statistics.
@@ -17,7 +17,6 @@ The package is used for this exact purpose by the [Apify web scraping platform](
 
 To learn more about the rationale behind this package,
 read [How to make headless Chrome and Puppeteer use a proxy server with authentication](https://medium.com/@jancurn/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212).
-
 
 ## Run a simple HTTP/HTTPS proxy server
 
@@ -99,7 +98,7 @@ const ProxyChain = require('proxy-chain');
 const server = new ProxyChain.Server({
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
         if (username !== 'bob') {
-           throw new ProxyChain.RequestError('Only Bob can use this proxy!', 400);     
+           throw new ProxyChain.RequestError('Only Bob can use this proxy!', 400);
         }
     },
 });
