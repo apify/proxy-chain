@@ -3,7 +3,6 @@ const net = require('net');
 const { expect, assert } = require('chai');
 const http = require('http');
 const proxy = require('proxy');
-const Promise = require('bluebird');
 
 const { createTunnel, closeTunnel } = require('../build/index');
 const { findFreePort } = require('../build/tools');

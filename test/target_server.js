@@ -1,9 +1,9 @@
 const http = require('http');
 const https = require('https');
+const util = require('util');
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
-const Promise = require('bluebird');
 const basicAuth = require('basic-auth');
 const _ = require('underscore');
 
@@ -49,7 +49,7 @@ class TargetServer {
     }
 
     listen() {
-        return Promise.promisify(this.httpServer.listen).bind(this.httpServer)(this.port);
+        return util.promisify(this.httpServer.listen).bind(this.httpServer)(this.port);
     }
 
     allHelloWorld(request, response) {
@@ -187,7 +187,7 @@ class TargetServer {
     }
 
     close() {
-        return Promise.promisify(this.httpServer.close).bind(this.httpServer)();
+        return util.promisify(this.httpServer.close).bind(this.httpServer)();
     }
 }
 

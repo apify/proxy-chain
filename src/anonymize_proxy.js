@@ -1,6 +1,5 @@
-import Promise from 'bluebird';
 import { Server } from './server';
-import { parseUrl, findFreePort, PORT_SELECTION_CONFIG } from './tools';
+import { parseUrl, findFreePort, PORT_SELECTION_CONFIG, nodeify } from './tools';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer = {};
@@ -24,7 +23,7 @@ export const anonymizeProxy = (proxyUrl, callback) => {
 
     // If upstream proxy requires no password, return it directly
     if (!parsedProxyUrl.username && !parsedProxyUrl.password) {
-        return Promise.resolve(proxyUrl).nodeify(callback);
+        return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
     let port;
@@ -60,13 +59,13 @@ export const anonymizeProxy = (proxyUrl, callback) => {
             });
     };
 
-    return startServer(PORT_SELECTION_CONFIG.RETRY_COUNT)
+    const promise = startServer(PORT_SELECTION_CONFIG.RETRY_COUNT)
         .then(() => {
             const url = `http://127.0.0.1:${port}`;
             anonymizedProxyUrlToServer[url] = server;
             return url;
-        })
-        .nodeify(callback);
+        });
+    return nodeify(promise, callback);
 };
 
 /**
@@ -86,16 +85,14 @@ export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callb
 
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
-        return Promise
-            .resolve(false)
-            .nodeify(callback);
+        return nodeify(Promise.resolve(false), callback);
     }
 
     delete anonymizedProxyUrlToServer[anonymizedProxyUrl];
 
-    return server.close(closeConnections)
+    const promise = server.close(closeConnections)
         .then(() => {
             return true;
-        })
-        .nodeify(callback);
+        });
+    return nodeify(promise, callback);
 };

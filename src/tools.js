@@ -220,3 +220,17 @@ export const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
         headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
     }
 };
+
+// Replacement for Bluebird's Promise.nodeify()
+export const nodeify = (promise, callback) => {
+    if (typeof callback !== 'function') return promise;
+
+    const p = promise.then((result) => callback(null, result), callback);
+
+    // Handle error from callback function
+    p.catch((e) => {
+        setTimeout(() => { throw e }, 0);
+    });
+
+    return promise;
+};

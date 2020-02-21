@@ -1,7 +1,6 @@
-import Promise from 'bluebird';
 import net from 'net';
 import TcpTunnel from './tcp_tunnel';
-import { parseUrl, findFreePort } from './tools';
+import { parseUrl, findFreePort, nodeify } from './tools';
 
 const runningServers = {};
 
@@ -21,7 +20,7 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
         ...providedOptions,
     };
 
-    return new Promise((resolve, reject) => {
+    const promise = new Promise((resolve, reject) => {
         if (options.port) return resolve(options.port);
         findFreePort().then(resolve).catch(reject);
     }).then((port) => {
@@ -75,8 +74,9 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
                 resolve(`${options.hostname}:${port}`);
             });
         });
-    })
-        .nodeify(callback);
+    });
+
+    return nodeify(promise, callback);
 }
 
 export function closeTunnel(serverPath, closeConnections, callback) {
@@ -84,7 +84,7 @@ export function closeTunnel(serverPath, closeConnections, callback) {
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
 
-    return new Promise((resolve) => {
+    const promise = new Promise((resolve) => {
         if (!runningServers[port]) return resolve(false);
         if (!closeConnections) return resolve();
         runningServers[port].connections.forEach((connection) => connection.destroy());
@@ -96,6 +96,7 @@ export function closeTunnel(serverPath, closeConnections, callback) {
                 delete runningServers[port];
                 resolve(true);
             });
-        }))
-        .nodeify(callback);
+        }));
+
+    return nodeify(promise, callback);
 }

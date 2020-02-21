@@ -4,12 +4,12 @@ const stream = require('stream');
 const childProcess = require('child_process');
 const net = require('net');
 const dns = require('dns');
+const util = require('util');
 const _ = require('underscore');
 const { expect, assert } = require('chai');
 const proxy = require('proxy');
 const http = require('http');
 const portastic = require('portastic');
-const Promise = require('bluebird');
 const request = require('request');
 const url = require('url');
 const WebSocket = require('faye-websocket');
@@ -935,7 +935,7 @@ const createTestSuite = ({
                     if (upstreamProxyServer) {
                         // NOTE: We used to wait for upstream proxy connections to close,
                         // but for HTTPS, in Node 10+, they linger for some reason...
-                        // return Promise.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
+                        // return util.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
                         upstreamProxyServer.close();
 
                     }
@@ -951,10 +951,11 @@ const createTestSuite = ({
 
 describe(`Test ${LOCALHOST_TEST} setup`, () => {
     it('works', () => {
-        return Promise.promisify(dns.lookup).bind(dns)(LOCALHOST_TEST, { family: 4 })
-            .then((address) => {
+        return util.promisify(dns.lookup).bind(dns)(LOCALHOST_TEST, { family: 4 })
+            .then(({ address, family }) => {
                 // If this fails, see README.md !!!
                 expect(address).to.eql('127.0.0.1');
+                expect(family).to.eql(4);
             });
     });
 });

@@ -10,7 +10,7 @@
     "tunnel"
   ],
   "author": {
-    "name": "Apify",
+    "name": "Apify Technologies",
     "email": "support@apify.com",
     "url": "https://apify.com"
   },
@@ -40,7 +40,6 @@
     "lint-fix": "npm run build && eslint src --fix"
   },
   "dependencies": {
-    "bluebird": "^3.5.1",
     "portastic": "^1.0.1",
     "underscore": "^1.9.1"
   },

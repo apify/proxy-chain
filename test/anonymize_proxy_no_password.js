@@ -2,9 +2,9 @@ const _ = require('underscore');
 const { expect, assert } = require('chai');
 const proxy = require('proxy');
 const http = require('http');
+const util = require('util');
 const portastic = require('portastic');
 const basicAuthParser = require('basic-auth-parser');
-const Promise = require('bluebird');
 const request = require('request');
 const express  = require('express');
 
@@ -74,7 +74,7 @@ before(() => {
 
 after(function () {
     this.timeout(5 * 1000);
-    if (proxyServer) return Promise.promisify(proxyServer.close).bind(proxyServer)();
+    if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
 });
 
 

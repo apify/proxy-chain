@@ -6,6 +6,7 @@ const portastic = require('portastic');
 const {
     parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
     parseProxyAuthorizationHeader, addHeader, findFreePort, PORT_SELECTION_CONFIG,
+    nodeify,
 } = require('../build/tools');
 
 /* global process, describe, it */
@@ -268,5 +269,55 @@ describe('tools.findFreePort()', () => {
                 PORT_SELECTION_CONFIG.to = PORT_SELECTION_CONFIG_BACKUP.to;
                 if (server.listening) server.close();
             });
+    });
+});
+
+const asyncFunction = async (throwError) => {
+    if (throwError) throw new Error('Test error');
+    return 123;
+};
+
+describe('tools.nodeify()', () => {
+    it('works', async () => {
+        {
+            // Test promised result
+            const promise = asyncFunction(false);
+            const result = await nodeify(promise, null);
+            expect(result).to.eql(123);
+        }
+
+        {
+            // Test promised exception
+            const promise = asyncFunction(true);
+            let result;
+            try {
+                result = await nodeify(promise, null);
+                throw new Error('This should not be reached!');
+            } catch (e) {
+                expect(e.message).to.eql('Test error');
+            }
+        }
+
+        {
+            // Test callback result
+            const promise = asyncFunction(false);
+            await new Promise((resolve) => {
+                nodeify(promise, (error, result) => {
+                    expect(result).to.eql(123);
+                    resolve();
+                });
+            });
+        }
+
+        {
+            // Test callback error
+            const promise = asyncFunction(true);
+            await new Promise((resolve) => {
+                nodeify(promise, (error, result) => {
+                    expect(error.message).to.eql('Test error');
+                    resolve();
+                });
+            });
+        }
     });
 });

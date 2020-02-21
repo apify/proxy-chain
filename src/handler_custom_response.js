@@ -1,5 +1,4 @@
 import _ from 'underscore';
-import Promise from 'bluebird';
 import HandlerBase from './handler_base';
 
 

@@ -1,6 +1,7 @@
 xxx
 ===================
 - Upgraded NPM dev dependencies
+- Replaced `bluebird` dependency with native Promises
 
 0.3.3 / 2019-12-27
 ===================
