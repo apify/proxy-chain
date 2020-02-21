@@ -91,9 +91,29 @@ const phantomGet = (url, proxyUrl) => {
     return new Promise((resolve, reject) => {
         const cmd = `${phantomPath} --ignore-ssl-errors=true ${proxyParams} ${scriptPath} ${url}`;
         childProcess.exec(cmd, (error, stdout, stderr) => {
-            if (error) return reject(new Error(`Cannot open page in PhantomJS: ${error}: ${stderr || stdout}`));
-
+            if (error) {
+                return reject(new Error(`Cannot open page in PhantomJS: ${error}: ${stderr || stdout}`));
+            }
             resolve(stdout);
+        });
+    });
+};
+
+// Opens web page in curl and returns the HTML content.
+// The thing is, on error curl closes the connection immediately, which used to cause
+// uncaught ECONNRESET error. See https://github.com/apifytech/proxy-chain/issues/53
+// This is a regression test for that situation
+const curlGet = (url, proxyUrl) => {
+    // console.log(`curlGet(${url}, ${proxyUrl})`);
+    let cmd = 'curl --insecure --silent '; // ignore SSL errors, don't show progress
+    if (proxyUrl) cmd += `-x ${proxyUrl} `; // use proxy
+    cmd += `--output - ${url}`; // print output to stdout
+
+    return new Promise((resolve, reject) => {
+        childProcess.exec(cmd, (error, stdout, stderr) => {
+            // NOTE: It's okay if curl exits with non-zero code, that happens e.g. on 407 error over HTTPS
+            // console.log(`curlGet(): ${stderr || stdout}`);
+            resolve(stderr || stdout);
         });
     });
 };
@@ -432,6 +452,7 @@ const createTestSuite = ({
         };
 
         // Replacement for it() that checks whether the tests really called the main and upstream proxies
+        // Only use this for requests that are supposed to go through, e.g. not invalid credentials
         const _it = (description, func) => {
             it(description, () => {
                 const upstreamCount = upstreamProxyRequestCount;
@@ -697,16 +718,42 @@ const createTestSuite = ({
 
         // NOTE: PhantomJS cannot handle proxy auth with empty user or password, both need to be present!
         if (!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) {
-            _it('handles GET request from PhantomJS', () => {
-                return Promise.resolve()
-                    .then(() => {
-                        // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
-                        const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                        return phantomGet(phantomUrl, mainProxyUrl);
-                    })
-                    .then((response) => {
-                        expect(response).to.contain('Hello world!');
-                    });
+            _it('handles GET request from PhantomJS', async () => {
+                // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
+                const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const response = await phantomGet(phantomUrl, mainProxyUrl);
+                expect(response).to.contain('Hello world!');
+            });
+        }
+
+        if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
+            it('handles GET request from PhantomJS with invalid credentials', async () => {
+                // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
+                const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const response = await phantomGet(phantomUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                expect(response).to.contain('Proxy credentials required');
+            });
+        }
+
+        // Test also curl, to see how other HTTP clients do
+        // NOTE: curl doesn't support auth without username with only password
+        if (!mainProxyAuth || mainProxyAuth.username) {
+            _it('handles GET request from curl', async () => {
+                const curlUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const response = await curlGet(curlUrl, mainProxyUrl);
+                expect(response).to.contain('Hello world!');
+            });
+        }
+
+        if (mainProxyAuth && mainProxyAuth.username) {
+            it('handles GET request from curl with invalid credentials', async () => {
+                const curlUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const response = await curlGet(curlUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                if (useSsl) {
+                    expect(response).to.contain('Received HTTP code 407 from proxy after CONNECT');
+                } else {
+                    expect(response).to.contain('Proxy credentials required');
+                }
             });
         }
 
@@ -1018,17 +1065,17 @@ useSslVariants.forEach((useSsl) => {
                 let desc = `${baseDesc} `;
 
                 if (mainProxyAuth) {
-                    if (!mainProxyAuth) {
-                        desc += 'public ';
-                    } else if (mainProxyAuth.username && mainProxyAuth.password) desc += 'with username:password ';
-                    else desc += 'with username only ';
+                    if (!mainProxyAuth) desc += 'public ';
+                    else if (mainProxyAuth.username && mainProxyAuth.password) desc += 'with username:password ';
+                    else if (mainProxyAuth.username) desc += 'with username only ';
+                    else desc += 'with password only ';
                 }
                 if (useUpstreamProxy) {
                     desc += '-> Upstream proxy ';
-                    if (!upstreamProxyAuth) {
-                        desc += 'public ';
-                    } else if (upstreamProxyAuth.username && upstreamProxyAuth.password) desc += 'with username:password ';
-                    else desc += 'with username only ';
+                    if (!upstreamProxyAuth) desc += 'public ';
+                    else if (upstreamProxyAuth.username && upstreamProxyAuth.password) desc += 'with username:password ';
+                    else if (upstreamProxyAuth.username) desc += 'with username only ';
+                    else desc += 'with password only ';
                 }
                 desc += '-> Target)';
 
