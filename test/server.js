@@ -755,14 +755,14 @@ const createTestSuite = ({
             _it('removes hop-by-hop headers (HTTP-only) and leaves other ones', () => {
                 const opts = getRequestOpts('/echo-request-info');
                 opts.headers['X-Test-Header'] = 'my-test-value';
-                opts.headers['Transfer-Encoding'] = 'identity';
+                opts.headers['TE'] = 'MyTest';
                 return requestPromised(opts)
                     .then((response) => {
                         expect(response.statusCode).to.eql(200);
                         expect(response.headers['content-type']).to.eql('application/json');
                         const req = JSON.parse(response.body);
                         expect(req.headers['x-test-header']).to.eql('my-test-value');
-                        expect(req.headers['transfer-encoding']).to.eql(useSsl ? 'identity' : undefined);
+                        expect(req.headers['te']).to.eql(useSsl ? 'MyTest' : undefined);
                     });
             });
 
