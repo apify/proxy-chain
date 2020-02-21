@@ -32,7 +32,7 @@
   "scripts": {
     "build": "rm -rf ./build && babel src --out-dir build",
     "local-proxy": "npm run build && node ./build/run_locally.js",
-    "test": "npm run build && mocha --exit --recursive",
+    "test": "npm run build && NODE_OPTIONS=--insecure-http-parser mocha --exit --recursive",
     "prepare": "npm run build",
     "prepublishOnly": "(test $RUNNING_FROM_SCRIPT || (echo \"You must use publish.sh instead of 'npm publish' directly!\"; exit 1)) && npm test && npm run lint",
     "clean": "rm -rf build",

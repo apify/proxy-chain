@@ -5,6 +5,7 @@ xxx
 - **BREAKING**: Dropped support for Node.js 9 and lower
 - Fixed broken tests caused by newly introduced strict HTTP parsing in Node.js
 - Bugfix: Renamed misspelled `Trailers` HTTP header to `Trailer`
+- Fixed broken test on Node.js 10 by adding `NODE_OPTIONS=--insecure-http-parser` env var to `npm test`
 
 0.3.3 / 2019-12-27
 ===================

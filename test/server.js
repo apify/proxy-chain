@@ -474,6 +474,9 @@ const createTestSuite = ({
                 // Node 12+ uses a new HTTP parser (https://llhttp.org/),
                 // which throws error on HTTP headers values with invalid chars.
                 // So we skip this test for Node 12+.
+                // Note that after Node.js introduced a stricter HTTP parsing as a security hotfix
+                // (https://snyk.io/blog/node-js-release-fixes-a-critical-http-security-vulnerability/)
+                // this test broke down so we had to add NODE_OPTIONS=--insecure-http-parser to "npm test" command
                 const nodeMajorVersion = parseInt(process.versions.node.split('.')[0]);
                 const skipInvalidHeaderValue = nodeMajorVersion >= 12;
 
