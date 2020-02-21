@@ -1,5 +1,7 @@
 import { Server } from './server';
-import { parseUrl, findFreePort, PORT_SELECTION_CONFIG, nodeify } from './tools';
+import {
+    parseUrl, findFreePort, PORT_SELECTION_CONFIG, nodeify,
+} from './tools';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer = {};

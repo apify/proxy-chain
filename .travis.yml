@@ -6,11 +6,9 @@ addons:
 before_install:
 language: node_js
 node_js:
-  - "8"
-  - "9"
   - "10"
-  - "11"
   - "12"
+  - "13"
 script:
   - npm run lint
   - npm test

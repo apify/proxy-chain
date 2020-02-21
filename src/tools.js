@@ -229,7 +229,7 @@ export const nodeify = (promise, callback) => {
 
     // Handle error from callback function
     p.catch((e) => {
-        setTimeout(() => { throw e }, 0);
+        setTimeout(() => { throw e; }, 0);
     });
 
     return promise;
