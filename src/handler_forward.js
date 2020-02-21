@@ -21,15 +21,16 @@ export default class HandlerForward extends HandlerBase {
         reqOpts.method = this.srcRequest.method;
         reqOpts.headers = {};
 
-        // setup outbound proxy request HTTP headers
-        // TODO: var hasXForwardedFor = false;
-        // var hasVia = false;
-        // var via = '1.1 ' + hostname + ' (proxy/' + version + ')';
+        // TODO:
+        //  - We should probably use a raw HTTP message via socket instead of http.request(),
+        //    since Node transforms the headers to lower case and thus makes it easy to detect the proxy
+        //  - The "Connection" header might define additional hop-by-hop headers that should be removed,
+        //    see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection
+        //  - We should also add "Via" and "X-Forwarded-For" headers
+        //  - Or, alternatively, we should make this proxy fully transparent
 
         let hostHeaderFound = false;
 
-        // TODO: We should probably use a raw HTTP message via socket instead of http.request(),
-        // since Node transforms the headers to lower case and thus makes it easy to detect the proxy
         for (let i = 0; i < this.srcRequest.rawHeaders.length; i += 2) {
             const headerName = this.srcRequest.rawHeaders[i];
             const headerValue = this.srcRequest.rawHeaders[i + 1];

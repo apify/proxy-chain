@@ -3,6 +3,8 @@ xxx
 - Upgraded NPM dev dependencies
 - Replaced `bluebird` dependency with native Promises
 - **BREAKING**: Dropped support for Node.js 9 and lower
+- Fixed broken tests caused by newly introduced strict HTTP parsing in Node.js
+- Bugfix: Renamed misspelled `Trailers` HTTP header to `Trailer`
 
 0.3.3 / 2019-12-27
 ===================

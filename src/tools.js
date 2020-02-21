@@ -31,14 +31,14 @@ export const parseHostHeader = (hostHeader) => {
     return { hostname, port };
 };
 
-
+// As per HTTP specification, hop-by-hop headers should be consumed but the proxy, and not forwarded
 const HOP_BY_HOP_HEADERS = [
     'Connection',
     'Keep-Alive',
     'Proxy-Authenticate',
     'Proxy-Authorization',
     'TE',
-    'Trailers',
+    'Trailer',
     'Transfer-Encoding',
     'Upgrade',
 ];
