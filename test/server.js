@@ -407,10 +407,13 @@ const createTestSuite = ({
                 return promise.then(() => {
                     assert.fail();
                 })
-                    .catch((err) => {
-                        // console.dir(err);
-                        expect(err.message).to.contain(`${expectedStatusCode}`);
-                    });
+                .catch((err) => {
+                    // console.dir(err);
+                    expect(err.message).to.contain(`${expectedStatusCode}`);
+                })
+                .finally(() => {
+                    mainProxyServer.removeListener('requestFailed', onRequestFailed);
+                });
             }
             return promise.then((response) => {
                 expect(response.statusCode).to.eql(expectedStatusCode);
@@ -826,7 +829,6 @@ const createTestSuite = ({
             }
 
             if (useUpstreamProxy) {
-
                 it('fails gracefully on invalid upstream proxy scheme', () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-scheme`);
                     return testForErrorResponse(opts, 500);
