@@ -98,6 +98,11 @@ const phantomGet = (url, proxyUrl) => {
     });
 };
 
+/**
+ * This function creates a function to test the proxy, with specific configuration options.
+ * This is to avoid duplication of the code, since many of the tests are same for the specific configurations.
+ * @return {function(...[*]=)}
+ */
 const createTestSuite = ({
     useSsl, useMainProxy, mainProxyAuth, useUpstreamProxy, upstreamProxyAuth, testCustomResponse,
 }) => {

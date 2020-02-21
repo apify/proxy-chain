@@ -1,3 +1,7 @@
+xxx
+===================
+- Upgraded NPM dev dependencies
+
 0.3.3 / 2019-12-27
 ===================
 - More informative messages for "Invalid upstreamProxyUrl" errors
@@ -9,7 +13,7 @@
 
 0.3.1 / 2019-09-07
 ===================
-- *BREAKING CHANGE*: `closeAnonymizedProxy` throws on invalid proxy URL
+- **BREAKING CHANGE**: `closeAnonymizedProxy` throws on invalid proxy URL
 - Bugfix: Attempt to prevent the unhandled "write after end" error
 - Bugfix: Proxy no longer attempts to forward invalid
   HTTP status codes and fails with 500 Internal Server Error
