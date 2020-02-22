@@ -103,16 +103,16 @@ const phantomGet = (url, proxyUrl) => {
 // The thing is, on error curl closes the connection immediately, which used to cause
 // uncaught ECONNRESET error. See https://github.com/apifytech/proxy-chain/issues/53
 // This is a regression test for that situation
-const curlGet = (url, proxyUrl) => {
-    // console.log(`curlGet(${url}, ${proxyUrl})`);
-    let cmd = 'curl --insecure --silent '; // ignore SSL errors, don't show progress
+const curlGet = (url, proxyUrl, returnResponse) => {
+    let cmd = 'curl --insecure '; // ignore SSL errors
     if (proxyUrl) cmd += `-x ${proxyUrl} `; // use proxy
-    cmd += `--output - ${url}`; // print output to stdout
+    if (returnResponse) cmd += `--silent --output - ${url}`; // print response to stdout
+    else cmd += `${url}`;
+    // console.log(`curlGet(): ${cmd}`);
 
     return new Promise((resolve, reject) => {
         childProcess.exec(cmd, (error, stdout, stderr) => {
             // NOTE: It's okay if curl exits with non-zero code, that happens e.g. on 407 error over HTTPS
-            // console.log(`curlGet(): ${stderr || stdout}`);
             resolve(stderr || stdout);
         });
     });
@@ -740,19 +740,20 @@ const createTestSuite = ({
         if (!mainProxyAuth || mainProxyAuth.username) {
             _it('handles GET request from curl', async () => {
                 const curlUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const response = await curlGet(curlUrl, mainProxyUrl);
-                expect(response).to.contain('Hello world!');
+                const output = await curlGet(curlUrl, mainProxyUrl, true);
+                expect(output).to.contain('Hello world!');
             });
         }
 
         if (mainProxyAuth && mainProxyAuth.username) {
             it('handles GET request from curl with invalid credentials', async () => {
                 const curlUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const response = await curlGet(curlUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                // For SSL, we need to return curl's stderr to check what kind of error was there
+                const output = await curlGet(curlUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`, !useSsl);
                 if (useSsl) {
-                    expect(response).to.contain('Received HTTP code 407 from proxy after CONNECT');
+                    expect(output).to.contain('Received HTTP code 407 from proxy after CONNECT');
                 } else {
-                    expect(response).to.contain('Proxy credentials required');
+                    expect(output).to.contain('Proxy credentials required');
                 }
             });
         }
