@@ -1,13 +1,13 @@
-0.4.1 / 2020-02-22
+0.4.0 / 2020-02-22
 ===================
-- **BREAKING**: Dropped support for Node.js 9 and lower
-- Bugfix: Consume source socket errors to avoid unhandled exceptions.
-  See [Issue #53](https://github.com/apifytech/proxy-chain/issues/53).
-- Replaced `bluebird` dependency with native Promises
-- Bugfix: Renamed misspelled `Trailers` HTTP header to `Trailer`
-- Upgraded NPM dev dependencies
-- Fixed broken tests caused by newly introduced strict HTTP parsing in Node.js
-- Fixed broken test on Node.js 10 by adding `NODE_OPTIONS=--insecure-http-parser` env var to `npm test`
+- **BREAKING**: Dropped support for Node.js 9 and lower.
+- BUGFIX: Consume source socket errors to avoid unhandled exceptions.
+  Fixes [Issue #53](https://github.com/apifytech/proxy-chain/issues/53).
+- BUGFIX: Renamed misspelled `Trailers` HTTP header to `Trailer`.
+- Replaced `bluebird` dependency with native Promises.
+- Upgraded NPM dev dependencies.
+- Fixed broken tests caused by newly introduced strict HTTP parsing in Node.js.
+- Fixed broken test on Node.js 10 by adding `NODE_OPTIONS=--insecure-http-parser` env var to `npm test`.
 
 0.3.3 / 2019-12-27
 ===================
