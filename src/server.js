@@ -207,6 +207,8 @@ export class Server extends EventEmitter {
 
         // We need to consume socket errors, otherwise they could crash the entire process.
         // See https://github.com/apifytech/proxy-chain/issues/53
+        // TODO: HandlerBase will also attach its own 'error' handler, we should only attach this one
+        //  if HandlerBase doesn't do it
         socket.on('error', (err) => {
             this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
         });
