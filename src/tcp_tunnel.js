@@ -98,21 +98,23 @@ export default class TcpTunnel {
     }
 
     // Once target socket closes, we need to give time
-    // to source socket to receive pending data, so we only call end()
+    // to source socket to receive pending data, so we only call end() after a little while.
+    // One second should be about enough.
     onTrgSocketClose() {
         if (this.isClosed) return;
         this.log('Target socket closed');
         setTimeout(() => {
             if (this.srcSocket) this.srcSocket.end();
-        }, 100);
+        }, 1000);
     }
 
+    // Same as onTrgSocketClose() above
     onTrgSocketEnd() {
         if (this.isClosed) return;
         this.log('Target socket ended');
         setTimeout(() => {
             if (this.srcSocket) this.srcSocket.end();
-        }, 100);
+        }, 1000);
     }
 
     onTrgSocketError(err) {

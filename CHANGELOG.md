@@ -1,3 +1,8 @@
+0.4.1 / 2020-02-22
+===================
+- Increased socket end/destroy timeouts from 100ms to 1000ms, to ensure the client
+  receives the data.
+
 0.4.0 / 2020-02-22
 ===================
 - **BREAKING CHANGE**: Dropped support for Node.js 9 and lower.

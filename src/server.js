@@ -421,10 +421,11 @@ export class Server extends EventEmitter {
                 socket.end();
 
                 // Unfortunately calling end() will not close the socket if client refuses to close it.
-                // Hence calling destroy after a short while.
+                // Hence calling destroy after a short while. One second should be more than enough
+                // to send out this small amount data.
                 setTimeout(() => {
                     socket.destroy();
-                }, 100);
+                }, 1000);
             });
         } catch (err) {
             this.log(null, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
