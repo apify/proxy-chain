@@ -1,6 +1,6 @@
 0.4.0 / 2020-02-22
 ===================
-- **BREAKING**: Dropped support for Node.js 9 and lower.
+- **BREAKING CHANGE**: Dropped support for Node.js 9 and lower.
 - BUGFIX: Consume source socket errors to avoid unhandled exceptions.
   Fixes [Issue #53](https://github.com/apifytech/proxy-chain/issues/53).
 - BUGFIX: Renamed misspelled `Trailers` HTTP header to `Trailer`.
