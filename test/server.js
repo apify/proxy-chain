@@ -437,6 +437,7 @@ const createTestSuite = ({
             }
             return promise.then((response) => {
                 expect(response.statusCode).to.eql(expectedStatusCode);
+                expect(response.headers['content-type']).to.eql('text/plain; charset=utf-8');
                 if (expectedStatusCode === 500) {
                     expect(requestError).to.have.own.property('message');
                     expect(failedRequest).to.have.own.property('url');

@@ -36,6 +36,7 @@ export default class HandlerCustomResponse extends HandlerBase {
                 this.log(`Received custom user response (${statusCode}, length: ${length}, encoding: ${customResponse.encoding})`);
 
                 // Forward custom response to source
+                this.srcGotResponse = true;
                 this.srcResponse.statusCode = statusCode;
 
                 _.each(customResponse.headers, (value, key) => {

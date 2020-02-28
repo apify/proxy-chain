@@ -392,10 +392,11 @@ export class Server extends EventEmitter {
         try {
             headers = headers || {};
 
-            if (!headers['Content-Type']) {
-                headers['Content-Type'] = 'text/html; charset=utf-8';
+            // TODO: We should use fully case-insensitive lookup here!
+            if (!headers['Content-Type'] && !headers['content-type']) {
+                headers['Content-Type'] = 'text/plain; charset=utf-8';
             }
-            if (statusCode === 407 && !headers['Proxy-Authenticate']) {
+            if (statusCode === 407 && !headers['Proxy-Authenticate'] && !headers['proxy-authenticate']) {
                 headers['Proxy-Authenticate'] = `Basic realm="${this.authRealm}"`;
             }
             if (!headers.Server) {
@@ -405,7 +406,7 @@ export class Server extends EventEmitter {
             if (!headers.Connection) {
                 headers.Connection = 'close';
             }
-            if (!headers['Content-Length']) {
+            if (!headers['Content-Length'] && !headers['content-length']) {
                 headers['Content-Length'] = Buffer.byteLength(message);
             }
 

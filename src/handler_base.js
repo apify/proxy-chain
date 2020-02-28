@@ -200,9 +200,15 @@ export default class HandlerBase extends EventEmitter {
         if (this.srcGotResponse) {
             this.log('Source already received a response, just destroying the socket...');
             this.close();
-        } else if (err.statusCode) {
+            return;
+        }
+
+        this.srcGotResponse = true;
+        this.srcResponse.setHeader('Content-Type', 'text/plain; charset=utf-8');
+
+        if (err.statusCode) {
             // Error is RequestError with HTTP status code
-            this.log(`${err}, responding with custom status code ${err.statusCode} to client`);
+            this.log(`${err} Responding with custom status code ${err.statusCode} to client`);
             this.srcResponse.writeHead(err.statusCode);
             this.srcResponse.end(`${err.message}`);
         } else if (err.code === 'ENOTFOUND' && !this.upstreamProxyUrlParsed) {

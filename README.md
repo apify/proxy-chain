@@ -94,7 +94,8 @@ server.on('requestFailed', ({ request, error }) => {
 
 To return a custom HTTP response to indicate an error to the client,
 you can throw the `RequestError` from inside of the `prepareRequestFunction` function.
-The class constructor has the following parameters: `RequestError(body, statusCode, headers)`
+The class constructor has the following parameters: `RequestError(body, statusCode, headers)`.
+By default, the response will have `Content-Type: text/plain; charset=utf-8`.
 
 ```javascript
 const ProxyChain = require('proxy-chain');

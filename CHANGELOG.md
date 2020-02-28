@@ -1,3 +1,10 @@
+0.4.2 / 2020-02-28
+===================
+- Bugfix: Prevented attempted double-sending of certain HTTP responses to client,
+  which might have caused some esoteric errors
+- Error responses now by default have `Content-Type: text/plain; charset=utf-8` instead
+  of `text/html; charset=utf-8` or missing one.
+
 0.4.1 / 2020-02-22
 ===================
 - Increased socket end/destroy timeouts from 100ms to 1000ms, to ensure the client
