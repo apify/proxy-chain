@@ -34,6 +34,11 @@ export default class HandlerTunnelDirect extends HandlerBase {
         // See also https://github.com/nodejs/node/blob/master/lib/_http_outgoing.js#L217
         this.srcResponse._send('');
 
+        // It can happen that this.close() it called in the meanwhile, so this.srcSocket becomes null
+        // and the detachSocket() call below fails with "Cannot read property '_httpMessage' of null"
+        // See https://github.com/apifytech/proxy-chain/issues/63
+        if (this.isClosed) return;
+
         // Relinquish control of the socket from the ServerResponse instance
         this.srcResponse.detachSocket(this.srcSocket);
 

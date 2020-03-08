@@ -1,3 +1,8 @@
+0.4.3 / 2020-03-08
+===================
+- Fixed unhandled `TypeError: Cannot read property '_httpMessage' of null` exception
+  in `HandlerTunnelChain.onTrgRequestConnect` (see Issue [#63](https://github.com/apifytech/proxy-chain/issues/63))
+
 0.4.2 / 2020-02-28
 ===================
 - Bugfix: Prevented attempted double-sending of certain HTTP responses to client,
