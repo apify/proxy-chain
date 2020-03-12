@@ -136,7 +136,7 @@ export default class HandlerBase extends EventEmitter {
     }
 
     onTrgSocket(socket) {
-        if (this.isClosed) return;
+        if (this.isClosed || this.trgSocket) return;
         this.log('Target socket assigned');
 
         this.trgSocket = socket;
@@ -258,6 +258,7 @@ export default class HandlerBase extends EventEmitter {
         if (this.isClosed) return;
 
         this.log('Closing handler');
+        this.isClosed = true;
 
         // Save stats before sockets are destroyed
         const stats = this.getStats();
@@ -281,8 +282,6 @@ export default class HandlerBase extends EventEmitter {
             this.trgSocket.destroy();
             this.trgSocket = null;
         }
-
-        this.isClosed = true;
 
         this.emit('close', { stats });
     }

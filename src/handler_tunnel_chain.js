@@ -46,6 +46,12 @@ export default class HandlerTunnelChain extends HandlerBase {
         if (this.isClosed) return;
         this.log('Connected to upstream proxy');
 
+        // Attempt to fix https://github.com/apifytech/proxy-chain/issues/64,
+        // perhaps the 'connect' event might occur before 'socket'
+        if (!this.trgSocket) {
+            this.onTrgSocket(socket);
+        }
+
         if (this.checkUpstreamProxy407(response)) return;
 
         this.srcGotResponse = true;

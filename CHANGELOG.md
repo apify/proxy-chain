@@ -1,7 +1,13 @@
+0.4.4 / 2020-03-12
+===================
+- Attempt to fix an unhandled exception in `HandlerTunnelChain.onTrgRequestConnect`
+  (see issue [#64](https://github.com/apifytech/proxy-chain/issues/64))
+- Code cleanup
+
 0.4.3 / 2020-03-08
 ===================
 - Fixed unhandled `TypeError: Cannot read property '_httpMessage' of null` exception
-  in `HandlerTunnelChain.onTrgRequestConnect` (see Issue [#63](https://github.com/apifytech/proxy-chain/issues/63))
+  in `HandlerTunnelChain.onTrgRequestConnect` (see issue [#63](https://github.com/apifytech/proxy-chain/issues/63))
 
 0.4.2 / 2020-02-28
 ===================

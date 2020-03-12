@@ -113,9 +113,9 @@ export default class HandlerForward extends HandlerBase {
         // console.dir(requestOptions);
 
         this.trgRequest = http.request(reqOpts);
+        this.trgRequest.on('socket', this.onTrgSocket);
         this.trgRequest.on('response', this.onTrgResponse);
         this.trgRequest.on('error', this.onTrgError);
-        this.trgRequest.on('socket', this.onTrgSocket);
 
         // this.srcRequest.pipe(tee('to trg')).pipe(this.trgRequest);
         this.srcRequest.pipe(this.trgRequest);

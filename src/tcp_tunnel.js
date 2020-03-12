@@ -86,7 +86,7 @@ export default class TcpTunnel {
     }
 
     onTrgSocket(socket) {
-        if (this.isClosed) return;
+        if (this.isClosed || this.trgSocket) return;
 
         this.log('Target socket assigned');
 
@@ -123,9 +123,15 @@ export default class TcpTunnel {
         this.fail(err);
     }
 
-    onTrgRequestConnect(response) {
+    onTrgRequestConnect(response, socket) {
         if (this.isClosed) return;
         this.log('Connected to upstream proxy');
+
+        // Attempt to fix https://github.com/apifytech/proxy-chain/issues/64,
+        // perhaps the 'connect' event might occur before 'socket'
+        if (!this.trgSocket) {
+            this.onTrgSocket(socket);
+        }
 
         if (this.checkUpstreamProxy407(response)) return;
 
@@ -192,6 +198,7 @@ export default class TcpTunnel {
     close() {
         if (!this.isClosed) {
             this.log('Closing handler');
+            this.isClosed = true;
 
             if (this.srcRequest) {
                 this.srcRequest.destroy();
@@ -212,8 +219,6 @@ export default class TcpTunnel {
                 this.trgSocket.destroy();
                 this.trgSocket = null;
             }
-
-            this.isClosed = true;
         }
     }
 }
