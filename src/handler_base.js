@@ -62,14 +62,14 @@ export default class HandlerBase extends EventEmitter {
         // take care of closing the socket once the HTTP response has completed, but
         // since we're making this ServerResponse instance manually, that event handler
         // never gets hooked up, so we must manually close the socket...
-        this.srcResponse.once('finish', this.onSrcResponseFinish);
+        this.srcResponse.on('finish', this.onSrcResponseFinish);
 
         // Forward data directly to source client without any delay
         this.srcSocket.setNoDelay();
 
-        this.srcSocket.once('end', this.onSrcSocketEnd);
-        this.srcSocket.once('close', this.onSrcSocketClose);
-        this.srcSocket.once('finish', this.onSrcSocketFinish);
+        this.srcSocket.on('end', this.onSrcSocketEnd);
+        this.srcSocket.on('close', this.onSrcSocketClose);
+        this.srcSocket.on('finish', this.onSrcSocketFinish);
         this.srcSocket.on('error', this.onSrcSocketError);
     }
 
@@ -144,9 +144,9 @@ export default class HandlerBase extends EventEmitter {
         // Forward data directly to target server without any delay
         this.trgSocket.setNoDelay();
 
-        socket.once('end', this.onTrgSocketEnd);
-        socket.once('finish', this.onTrgSocketFinish);
-        socket.once('close', this.onTrgSocketClose);
+        socket.on('end', this.onTrgSocketEnd);
+        socket.on('finish', this.onTrgSocketFinish);
+        socket.on('close', this.onTrgSocketClose);
         socket.on('error', this.onTrgSocketError);
     }
 

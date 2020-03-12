@@ -17,7 +17,7 @@ function handleConnection(conn) {
     conn.setEncoding('utf8');
 
     conn.on('data', onConnData);
-    conn.once('close', onConnClose);
+    conn.on('close', onConnClose);
     conn.on('error', onConnError);
 
     function onConnData(d) {

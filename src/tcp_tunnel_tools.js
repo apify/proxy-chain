@@ -50,7 +50,7 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
             tunnel.run();
 
             srcSocket.on('data', onConnData);
-            srcSocket.once('close', onConnClose);
+            srcSocket.on('close', onConnClose);
             srcSocket.on('error', onConnError);
 
             function onConnData(d) {

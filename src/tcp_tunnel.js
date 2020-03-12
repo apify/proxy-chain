@@ -26,8 +26,8 @@ export default class TcpTunnel {
         this.trgParsed.port = this.trgParsed.port || DEFAULT_TARGET_PORT;
 
         this.srcSocket = srcSocket;
-        this.srcSocket.once('close', this.onSrcSocketClose);
-        this.srcSocket.once('end', this.onSrcSocketEnd);
+        this.srcSocket.on('close', this.onSrcSocketClose);
+        this.srcSocket.on('end', this.onSrcSocketEnd);
         this.srcSocket.on('error', this.onSrcSocketError);
 
         this.upstreamProxyUrlParsed = upstreamProxyUrlParsed;
@@ -56,9 +56,9 @@ export default class TcpTunnel {
 
         this.trgRequest = http.request(options);
 
-        this.trgRequest.once('connect', this.onTrgRequestConnect);
-        this.trgRequest.once('abort', this.onTrgRequestAbort);
-        this.trgRequest.once('socket', this.onTrgSocket);
+        this.trgRequest.on('connect', this.onTrgRequestConnect);
+        this.trgRequest.on('abort', this.onTrgRequestAbort);
+        this.trgRequest.on('socket', this.onTrgSocket);
         this.trgRequest.on('error', this.onTrgRequestError);
 
         // Send the data
@@ -92,8 +92,8 @@ export default class TcpTunnel {
 
         this.trgSocket = socket;
 
-        socket.once('close', this.onTrgSocketClose);
-        socket.once('end', this.onTrgSocketEnd);
+        socket.on('close', this.onTrgSocketClose);
+        socket.on('end', this.onTrgSocketEnd);
         socket.on('error', this.onTrgSocketError);
     }
 
