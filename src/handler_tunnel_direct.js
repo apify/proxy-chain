@@ -53,7 +53,7 @@ export default class HandlerTunnelDirect extends HandlerBase {
             this.trgSocket.write(this.srcHead);
         }
 
-        // Note that sockets could be closed anytime, causing this.close() to be called too
+        // Note that sockets could be closed anytime, causing this.close() to be called too in above statements
         // See https://github.com/apifytech/proxy-chain/issues/64
         if (this.isClosed) return;
 
