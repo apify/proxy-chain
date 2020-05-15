@@ -83,6 +83,10 @@ export default class HandlerTunnelChain extends HandlerBase {
             this.trgSocket.write(this.srcHead);
         }
 
+        // Note that sockets could be closed anytime, causing this.close() to be called too
+        // See https://github.com/apifytech/proxy-chain/issues/64
+        if (this.isClosed) return;
+
         // Setup bi-directional tunnel
         this.trgSocket.pipe(this.srcSocket);
         this.srcSocket.pipe(this.trgSocket);

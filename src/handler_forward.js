@@ -149,6 +149,10 @@ export default class HandlerForward extends HandlerBase {
 
         this.srcGotResponse = true;
 
+        // Note that sockets could be closed anytime, causing this.close() to be called too
+        // See https://github.com/apifytech/proxy-chain/issues/64
+        if (this.isClosed) return;
+
         this.srcResponse.writeHead(response.statusCode, headers);
         response.pipe(this.srcResponse);
     }
