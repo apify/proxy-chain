@@ -1,6 +1,6 @@
 0.4.5 / 2020-05-15
 ===================
-- Added checks for closed handlers, to prevent the `Cannot read property 'pipe' of null` errors
+- Added checks for closed handlers, in order to prevent the `Cannot read property 'pipe' of null` errors
   (see issue [#64](https://github.com/apifytech/proxy-chain/issues/64))
 
 0.4.4 / 2020-03-12
