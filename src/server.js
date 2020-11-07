@@ -93,7 +93,10 @@ export class Server extends EventEmitter {
 
         options = options || {};
 
-        this.port = options.port || DEFAULT_PROXY_SERVER_PORT;
+        if (options.port === undefined)
+            this.port = DEFAULT_PROXY_SERVER_PORT;
+        else
+            this.port = options.port;
         this.prepareRequestFunction = options.prepareRequestFunction;
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
