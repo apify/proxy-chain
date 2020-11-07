@@ -452,6 +452,7 @@ export class Server extends EventEmitter {
                 reject(err);
             };
             const onListening = () => {
+                this.port = this.server.address().port;
                 this.log(null, 'Listening...');
                 removeListeners();
                 resolve();

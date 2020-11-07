@@ -1003,6 +1003,17 @@ const createTestSuite = ({
     };
 };
 
+describe(`Test 0 port option`, async () => {
+    for(let i = 0; i < 10; i++)
+    {
+        let server = new Server({
+            port : 0
+        });
+        await server.listen();
+        expect(server.port).to.be.eql(server.server.address().port);
+    }
+})
+
 describe(`Test ${LOCALHOST_TEST} setup`, () => {
     it('works', () => {
         return util.promisify(dns.lookup).bind(dns)(LOCALHOST_TEST, { family: 4 })
