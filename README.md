@@ -1,7 +1,7 @@
 # Programmable HTTP proxy server for Node.js
 
 [![npm version](https://badge.fury.io/js/proxy-chain.svg)](http://badge.fury.io/js/proxy-chain)
-[![Build Status](https://travis-ci.com/apifytech/proxy-chain.svg)](https://travis-ci.com/apifytech/proxy-chain)
+[![Build Status](https://travis-ci.com/apify/proxy-chain.svg?branch=master)](https://travis-ci.com/apify/proxy-chain)
 
 Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining,
 custom HTTP responses and measuring traffic statistics.
