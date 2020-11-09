@@ -93,7 +93,7 @@ export class Server extends EventEmitter {
 
         options = options || {};
 
-        if (options.port === undefined && options.port !== null)
+        if (options.port === undefined || options.port === null)
             this.port = DEFAULT_PROXY_SERVER_PORT;
         else
             this.port = options.port;
