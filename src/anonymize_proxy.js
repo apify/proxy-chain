@@ -1,6 +1,6 @@
 import { Server } from './server';
 import {
-    parseUrl, findFreePort, PORT_SELECTION_CONFIG, nodeify,
+    parseUrl, nodeify,
 } from './tools';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
@@ -28,19 +28,14 @@ export const anonymizeProxy = (proxyUrl, callback) => {
         return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
-    let port;
     let server;
 
-    const startServer = (maxRecursion) => {
+    const startServer = () => {
         return Promise.resolve()
             .then(() => {
-                return findFreePort();
-            })
-            .then((result) => {
-                port = result;
                 server = new Server({
                     // verbose: true,
-                    port,
+                    port: 0,
                     prepareRequestFunction: () => {
                         return {
                             requestAuthentication: false,
@@ -50,23 +45,16 @@ export const anonymizeProxy = (proxyUrl, callback) => {
                 });
 
                 return server.listen();
-            })
-            .catch((err) => {
-                // It might happen that the port was taken in the meantime,
-                // in which case retry the search
-                if (err.code === 'EADDRINUSE' && maxRecursion > 0) {
-                    return startServer(maxRecursion - 1);
-                }
-                throw err;
             });
     };
 
-    const promise = startServer(PORT_SELECTION_CONFIG.RETRY_COUNT)
+    const promise = startServer()
         .then(() => {
-            const url = `http://127.0.0.1:${port}`;
+            const url = `http://127.0.0.1:${server.port}`;
             anonymizedProxyUrlToServer[url] = server;
             return url;
         });
+
     return nodeify(promise, callback);
 };
 

@@ -22,6 +22,7 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
 
     const promise = new Promise((resolve, reject) => {
         if (options.port) return resolve(options.port);
+        // TODO: Use port: 0 instead!
         findFreePort().then(resolve).catch(reject);
     }).then((port) => {
         const server = net.createServer();

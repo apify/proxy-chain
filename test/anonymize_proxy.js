@@ -6,14 +6,10 @@ const http = require('http');
 const portastic = require('portastic');
 const basicAuthParser = require('basic-auth-parser');
 const request = require('request');
-const express  = require('express');
+const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy } = require('../build/index');
-const { findFreePort, PORT_SELECTION_CONFIG } = require('../build/tools');
-
-/* globals process */
-
-const ORIG_PORT_SELECTION_CONFIG = { ...PORT_SELECTION_CONFIG };
+const { findFreePort } = require('../build/tools');
 
 let proxyServer;
 let proxyPort; // eslint-disable-line no-unused-vars
@@ -260,14 +256,8 @@ describe('utils.anonymizeProxy', function () {
 
         return Promise.resolve()
             .then(() => {
-                // This setting should ensure there will be a port collision,
-                // but still there will be some free ports to choose on retry
-                PORT_SELECTION_CONFIG.FROM = 40000;
-                PORT_SELECTION_CONFIG.TO = 40000 + N + N/2;
-                PORT_SELECTION_CONFIG.RETRY_COUNT = 100;
-
                 const promises = [];
-                for (let i=0; i<N; i++) {
+                for (let i = 0; i < N; i++) {
                     promises.push(anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`));
                 }
 
@@ -303,9 +293,6 @@ describe('utils.anonymizeProxy', function () {
                 for (let i=0; i<N; i++) {
                     expect(results[i]).to.eql(true);
                 }
-            })
-            .finally(() => {
-                Object.assign(PORT_SELECTION_CONFIG, ORIG_PORT_SELECTION_CONFIG);
             });
     });
 
@@ -375,9 +362,5 @@ describe('utils.anonymizeProxy', function () {
             .then((closed) => {
                 expect(closed).to.eql(true);
             });
-    });
-
-    after(() => {
-        Object.assign(PORT_SELECTION_CONFIG, PORT_SELECTION_CONFIG);
     });
 });
