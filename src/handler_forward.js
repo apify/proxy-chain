@@ -5,7 +5,6 @@ import {
 import HandlerBase from './handler_base';
 import { RequestError } from './server';
 
-
 /**
  * Represents a proxied request to a HTTP server, either direct or via another upstream proxy.
  */

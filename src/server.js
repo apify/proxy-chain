@@ -10,7 +10,6 @@ import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
 import HandlerCustomResponse from './handler_custom_response';
 
-
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
 // - Implement this requirement from rfc7230
@@ -183,7 +182,6 @@ export class Server extends EventEmitter {
                 this.failRequest(request, err, handlerOpts);
             });
     }
-
 
     /**
      * Authenticates a new request and determines upstream proxy URL using the user function.
@@ -436,7 +434,6 @@ export class Server extends EventEmitter {
             this.log(null, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
         }
     }
-
 
     /**
      * Starts listening at a port specified in the constructor.

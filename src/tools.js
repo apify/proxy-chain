@@ -3,9 +3,7 @@ import { _checkIsHttpToken, _checkInvalidHeaderChar } from '_http_common'; // es
 import portastic from 'portastic';
 // import through from 'through';
 
-
 const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
-
 
 /**
  * Parsed the 'Host' HTTP header and returns an object with { host: String, port: Number }.
@@ -94,7 +92,6 @@ export const parseUrl = (url) => {
     return parsed;
 };
 
-
 /**
  * Redacts password from a URL, so that it can be shown in logs, results etc.
  * For example, converts URL such as
@@ -122,7 +119,6 @@ export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') =
     return `${p.protocol}//${auth || ''}${auth ? '@' : ''}${p.host}${p.path || ''}${p.hash || ''}`;
 };
 
-
 const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;
 
 /**
@@ -145,7 +141,6 @@ export const parseProxyAuthorizationHeader = (header) => {
         password: index >= 0 ? auth.substr(index + 1) : '',
     };
 };
-
 
 /**
  * Works like Bash tee, but instead of passing output to file,
@@ -174,7 +169,6 @@ export const tee = (name, initialOnly = true) => {
     return duplex;
 };
 */
-
 
 export const addHeader = (headers, name, value) => {
     if (headers[name] === undefined) {
