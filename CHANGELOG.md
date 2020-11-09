@@ -1,3 +1,10 @@
+0.4.6 / 2020-11-09
+===================
+- `Proxy.Server` now supports `port: 0` option to assign the port randomly,
+   see PR [#98](https://github.com/apify/proxy-chain/pull/98).
+- `anonymizeProxy()` now uses the above port assignment rather than polling for random port => better performance
+- Updated NPM packages
+
 0.4.5 / 2020-05-15
 ===================
 - Added checks for closed handlers, in order to prevent the `Cannot read property 'pipe' of null` errors
