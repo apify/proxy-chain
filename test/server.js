@@ -224,7 +224,7 @@ const createTestSuite = ({
                                 if (err.code === 'ECONNRESET') return;
                                 throw err;
                             });
-                        })
+                        });
                     });
                 }
             }).then(() => {
@@ -398,6 +398,12 @@ const createTestSuite = ({
                 .then(() => {
                     // Generate URLs
                     baseUrl = `${useSsl ? 'https' : 'http'}://127.0.0.1:${targetServerPort}`;
+
+                    // Ensure the port numbers are correct
+                    if (mainProxyServer) {
+                        expect(mainProxyServer.port).to.be.eql(mainProxyServerPort);
+                        expect(mainProxyServer.server.address().port).to.be.eql(mainProxyServerPort);
+                    }
 
                     if (useMainProxy) {
                         let auth = '';
@@ -1003,18 +1009,19 @@ const createTestSuite = ({
     };
 };
 
-describe(`Test 0 port option`, async () => {
+describe('Test 0 port option', async () => {
     it('Port inherits net port', async () => {
-        for(let i = 0; i < 10; i++)
-        {
-            let server = new Server({
-                port : 0
+        for (let i = 0; i < 10; i++) {
+            const server = new Server({
+                port: 0,
             });
+            // eslint-disable-next-line no-await-in-loop
             await server.listen();
             expect(server.port).to.be.eql(server.server.address().port);
+            server.close(true);
         }
-    })
-})
+    });
+});
 
 describe(`Test ${LOCALHOST_TEST} setup`, () => {
     it('works', () => {
