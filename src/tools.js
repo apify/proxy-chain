@@ -64,7 +64,7 @@ export const isInvalidHeader = (name, value) => {
  * @ignore
  */
 export const parseUrl = (url) => {
-    const parsed = urlModule.parse(url);
+    const parsed = new URL(url);
 
     parsed.username = null;
     parsed.password = null;
