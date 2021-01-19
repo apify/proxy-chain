@@ -87,13 +87,13 @@ export function closeTunnel(serverPath, closeConnections, callback) {
 
     const promise = new Promise((resolve) => {
         if (!runningServers[port]) return resolve(false);
-        if (!closeConnections) return resolve();
+        if (!closeConnections) return resolve(true);
         runningServers[port].connections.forEach((connection) => connection.destroy());
-        resolve();
+        resolve(true);
     })
         .then((serverExists) => new Promise((resolve) => {
             if (!serverExists) return resolve(false);
-            runningServers[port].close(() => {
+            runningServers[port].server.close(() => {
                 delete runningServers[port];
                 resolve(true);
             });
