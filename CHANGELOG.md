@@ -1,3 +1,8 @@
+0.4.7 / 2021-01-19
+===================
+- Bugfix: `closeTunnel()` function was returning invalid value.
+  see PR [#98](https://github.com/apify/proxy-chain/pull/101).
+
 0.4.6 / 2020-11-09
 ===================
 - `Proxy.Server` now supports `port: 0` option to assign the port randomly,
