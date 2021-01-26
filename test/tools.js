@@ -14,6 +14,7 @@ const {
 
 const testUrl = (url, extras) => {
     const parsed1 = parseUrl(url);
+    // TODO: This test needs to be fixed
     const parsed2 = urlModule.parse(url);
     expect(parsed1).to.eql(_.extend(parsed2, extras));
 };
@@ -61,6 +62,8 @@ describe('tools.parseUrl()', () => {
             password: null,
             port: null,
         });
+
+        // TODO: Added tests for IPv6 and the other failing URLs
     });
 });
 

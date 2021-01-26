@@ -64,29 +64,32 @@ export const isInvalidHeader = (name, value) => {
  * @ignore
  */
 export const parseUrl = (url) => {
-    const parsed = urlModule.parse(url);
+    // NOTE: Not using url.parse() because it can't handle IPv6 and other special URLs
+    const urlObj = new URL(url);
 
-    parsed.username = null;
-    parsed.password = null;
+    const parsed = {
+        hash: urlObj.hash,
+        host: urlObj.host,
+        hostname: urlObj.hostname,
+        href: urlObj.href,
+        origin: urlObj.origin,
+        password: urlObj.password,
+        pathname: urlObj.pathname,
+        port: urlObj.port,
+        protocol: urlObj.protocol,
+        search: urlObj.search,
+        searchParams: urlObj.searchParams,
+        username: urlObj.username,
+    };
+
+    console.dir({ parsed });
+
     parsed.scheme = null;
-
-    if (parsed.auth) {
-        const matches = /^([^:]+)(:?)(.*)$/.exec(parsed.auth);
-        if (matches && matches.length === 4) {
-            parsed.username = matches[1];
-            if (matches[2] === ':') parsed.password = matches[3];
-        }
-    }
-
     if (parsed.protocol) {
         const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
         if (matches && matches.length === 2) {
             parsed.scheme = matches[1];
         }
-    }
-
-    if (parsed.port) {
-        parsed.port = parseInt(parsed.port, 10);
     }
 
     return parsed;
@@ -116,7 +119,7 @@ export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') =
             auth = `${p.username}`;
         }
     }
-    return `${p.protocol}//${auth || ''}${auth ? '@' : ''}${p.host}${p.path || ''}${p.hash || ''}`;
+    return `${p.protocol}//${auth || ''}${auth ? '@' : ''}${p.host}${p.pathname || ''}${p.hash || ''}`;
 };
 
 const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;
