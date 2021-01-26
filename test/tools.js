@@ -69,7 +69,8 @@ describe('tools.parseUrl()', () => {
 
 describe('tools.redactUrl()', () => {
     it('works', () => {
-        expect(redactUrl('https://username:password@www.example.com:1234/path#hash'))
+        // Test that the function lower-cases the schema and path
+        expect(redactUrl('HTTPS://username:password@WWW.EXAMPLE.COM:1234/path#hash'))
             .to.eql('https://username:<redacted>@www.example.com:1234/path#hash');
 
         expect(redactUrl('https://username@www.example.com:1234/path#hash'))
