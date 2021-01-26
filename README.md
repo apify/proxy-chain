@@ -299,11 +299,10 @@ If the callback is not provided, the function returns a promise instead.
 
 ### `parseUrl(url)`
 
-Calls Node.js's [url.parse](https://nodejs.org/docs/latest/api/url.html#url_url_parse_urlstring_parsequerystring_slashesdenotehost)
-function and extends the resulting object with the following fields: `scheme`, `username` and `password`.
-For example, for `HTTP://bob:pass123@example.com` these values are
-`http`, `bob` and `pass123`, respectively.
+Parses url string with `new URL(url)` and normalizes the result (eg. port is converted to number), path (ie. pathname + search) is added
+to the result.
 
+For non-urls the given string is treated as if it was relative url.
 
 ### `redactUrl(url, passwordReplacement)`
 

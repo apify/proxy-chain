@@ -59,7 +59,8 @@ export const isInvalidHeader = (name, value) => {
  * Wraps `new URL(url)` and adds following:
  *  - `port` is casted to number / null from string
  *  - `path` field is added (pathname + search)
- *  - malformed or relative urls are parsed as well
+ *  - malformed or relative urls are parsed as well (always, the given string is returned as is in
+ *    few fields, other are left undefined)
  *
  * Using `new URL` causes following:
  *  - we are unable to distiguish empty password and missing password

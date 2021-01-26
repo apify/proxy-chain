@@ -14,6 +14,21 @@ const testUrl = (url, expected) => {
     expect(parsed1).to.contain(expected);
 };
 
+const testNonOrRelativeUrl = (url) => {
+    // Relative paths should be parsed, but only contain
+    // few selected fields
+    const parsedRelativeUrl = parseUrl(url);
+    expect(parsedRelativeUrl).to.contain({
+        path: url,
+    });
+    // eslint-disable-next-line no-unused-expressions
+    expect(!parsedRelativeUrl.protocol).to.be.true;
+    // eslint-disable-next-line no-unused-expressions
+    expect(!parsedRelativeUrl.host).to.be.true;
+    // eslint-disable-next-line no-unused-expressions
+    expect(!parsedRelativeUrl.port).to.be.true;
+};
+
 describe('tools.parseUrl()', () => {
     it('works', () => {
         testUrl('https://username:password@www.example.com:12345/some/path', {
@@ -93,6 +108,9 @@ describe('tools.parseUrl()', () => {
             password: 'p%40%%w0rd',
             port: 12345,
         });
+
+        testNonOrRelativeUrl('/some-relative-url?a=1');
+        testNonOrRelativeUrl('A nonsense, really.');
     });
 });
 
