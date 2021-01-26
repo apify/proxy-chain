@@ -1,3 +1,9 @@
+0.4.8 / 2021-01-26
+===================
+- Bugfix: `parseUrl()` function now handles IPv6 and other previously unsupported URLs.
+  Fixes issues [#89](https://github.com/apify/proxy-chain/issues/89)
+  and [#67](https://github.com/apify/proxy-chain/issues/67).
+
 0.4.7 / 2021-01-19
 ===================
 - Bugfix: `closeTunnel()` function was returning invalid value.
