@@ -1,4 +1,3 @@
-import urlModule from 'url';
 import { _checkIsHttpToken, _checkInvalidHeaderChar } from '_http_common'; // eslint-disable-line
 import portastic from 'portastic';
 // import through from 'through';
@@ -57,39 +56,53 @@ export const isInvalidHeader = (name, value) => {
 };
 
 /**
- * Sames are Node's url.parse() just adds the 'username', 'password' and 'scheme' fields.
- * Also this method makes sure "port" is a number rather than a string.
- * Note that `scheme` is always lower-cased (e.g. `ftp`).
+ * Wraps `new URL(url)` and adds following:
+ *  - `port` is casted to number / null from string
+ *  - `path` field is added (pathname + search)
+ *  - malformed or relative urls are parsed as well (always, the given string is returned as is in
+ *    few fields, other are left undefined)
+ *
+ * Using `new URL` causes following:
+ *  - we are unable to distiguish empty password and missing password
+ *  - password and username are empty string if not present (or empty)
+ *  - we are able to parse IPv6
+ *  - there might be issues with password being urlencoded
+ *
  * @param url
  * @ignore
  */
 export const parseUrl = (url) => {
-    const parsed = urlModule.parse(url);
+    // NOTE: Not using url.parse() because it can't handle IPv6 and other special URLs
+    try {
+        const urlObj = new URL(url);
 
-    parsed.username = null;
-    parsed.password = null;
-    parsed.scheme = null;
+        const parsed = {
+            hash: urlObj.hash,
+            host: urlObj.host,
+            hostname: urlObj.hostname,
+            href: urlObj.href,
+            origin: urlObj.origin,
+            password: urlObj.password,
+            username: urlObj.username,
+            pathname: urlObj.pathname,
+            // Path was present on the original UrlObject, it's kept for backwards compatibility
+            path: `${urlObj.pathname}${urlObj.search}`,
+            // Port is turned into a number if available
+            port: urlObj.port ? parseInt(urlObj.port, 10) : null,
+            protocol: urlObj.protocol,
+            search: urlObj.search,
+            searchParams: urlObj.searchParams,
+        };
 
-    if (parsed.auth) {
-        const matches = /^([^:]+)(:?)(.*)$/.exec(parsed.auth);
-        if (matches && matches.length === 4) {
-            parsed.username = matches[1];
-            if (matches[2] === ':') parsed.password = matches[3];
-        }
+        return parsed;
+    } catch (e) {
+        // Malformed (or relative) urls need to be treated as well.
+        return {
+            pathname: url,
+            path: url,
+            href: url,
+        };
     }
-
-    if (parsed.protocol) {
-        const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
-        if (matches && matches.length === 2) {
-            parsed.scheme = matches[1];
-        }
-    }
-
-    if (parsed.port) {
-        parsed.port = parseInt(parsed.port, 10);
-    }
-
-    return parsed;
 };
 
 /**

@@ -1,5 +1,3 @@
-const _ = require('underscore');
-const urlModule = require('url');
 const { expect } = require('chai');
 const net = require('net');
 const portastic = require('portastic');
@@ -11,62 +9,115 @@ const {
 
 /* global process, describe, it */
 
-
-const testUrl = (url, extras) => {
+const testUrl = (url, expected) => {
     const parsed1 = parseUrl(url);
-    const parsed2 = urlModule.parse(url);
-    expect(parsed1).to.eql(_.extend(parsed2, extras));
+    expect(parsed1).to.contain(expected);
+};
+
+const testNonOrRelativeUrl = (url) => {
+    // Relative paths should be parsed, but only contain
+    // few selected fields
+    const parsedRelativeUrl = parseUrl(url);
+    expect(parsedRelativeUrl).to.contain({
+        path: url,
+    });
+    // eslint-disable-next-line no-unused-expressions
+    expect(!parsedRelativeUrl.protocol).to.be.true;
+    // eslint-disable-next-line no-unused-expressions
+    expect(!parsedRelativeUrl.host).to.be.true;
+    // eslint-disable-next-line no-unused-expressions
+    expect(!parsedRelativeUrl.port).to.be.true;
 };
 
 describe('tools.parseUrl()', () => {
     it('works', () => {
         testUrl('https://username:password@www.example.com:12345/some/path', {
-            scheme: 'https',
+            protocol: 'https:',
             username: 'username',
             password: 'password',
             port: 12345,
         });
 
+        testUrl('https://username:password@www.example.com/some/path', {
+            protocol: 'https:',
+            username: 'username',
+            password: 'password',
+            port: null,
+        });
+
         testUrl('http://us-er+na12345me:@www.example.com:12345/some/path', {
-            scheme: 'http',
+            protocol: 'http:',
             username: 'us-er+na12345me',
             password: '',
             port: 12345,
         });
 
         testUrl('socks5://username@www.example.com:12345/some/path', {
-            scheme: 'socks5',
+            protocol: 'socks5:',
             username: 'username',
-            password: null,
+            password: '',
             port: 12345,
         });
 
         testUrl('FTP://@www.example.com:12345/some/path', {
-            scheme: 'ftp',
-            username: null,
-            password: null,
+            protocol: 'ftp:',
+            username: '',
+            password: '',
             port: 12345,
         });
 
         testUrl('HTTP://www.example.com:12345/some/path', {
-            scheme: 'http',
-            username: null,
-            password: null,
+            protocol: 'http:',
+            username: '',
+            password: '',
             port: 12345,
         });
 
         testUrl('HTTP://www.example.com/some/path', {
-            scheme: 'http',
-            username: null,
-            password: null,
+            protocol: 'http:',
+            username: '',
+            password: '',
             port: null,
         });
+
+        testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/', {
+            protocol: 'http:',
+            username: '',
+            password: '',
+            port: null,
+        });
+
+        testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
+            protocol: 'http:',
+            username: '',
+            password: '',
+            port: 12345,
+        });
+
+        testUrl('http://username:password@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
+            protocol: 'http:',
+            username: 'username',
+            password: 'password',
+            port: 12345,
+        });
+
+        // TODO: Maybe decoding password should be considered in parse url
+        testUrl('http://username:p@%%w0rd@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
+            protocol: 'http:',
+            username: 'username',
+            password: 'p%40%%w0rd',
+            port: 12345,
+        });
+
+        testNonOrRelativeUrl('/some-relative-url?a=1');
+        testNonOrRelativeUrl('A nonsense, really.');
     });
 });
 
 describe('tools.redactUrl()', () => {
     it('works', () => {
-        expect(redactUrl('https://username:password@www.example.com:1234/path#hash'))
+        // Test that the function lower-cases the schema and path
+        expect(redactUrl('HTTPS://username:password@WWW.EXAMPLE.COM:1234/path#hash'))
             .to.eql('https://username:<redacted>@www.example.com:1234/path#hash');
 
         expect(redactUrl('https://username@www.example.com:1234/path#hash'))
@@ -83,6 +134,9 @@ describe('tools.redactUrl()', () => {
 
         expect(redactUrl('ftp://example.com/'))
             .to.eql('ftp://example.com/');
+
+        expect(redactUrl('http://username:p@%%w0rd@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/'))
+            .to.eql('http://username:<redacted>@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/');
     });
 });
 
