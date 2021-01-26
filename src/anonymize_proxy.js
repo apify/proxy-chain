@@ -19,7 +19,7 @@ export const anonymizeProxy = (proxyUrl, callback) => {
     if (!parsedProxyUrl.host || !parsedProxyUrl.port) {
         throw new Error('Invalid "proxyUrl" option: the URL must contain both hostname and port.');
     }
-    if (parsedProxyUrl.scheme !== 'http') {
+    if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error('Invalid "proxyUrl" option: only HTTP proxies are currently supported.');
     }
 

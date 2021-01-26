@@ -1,4 +1,3 @@
-import urlModule from 'url';
 import { _checkIsHttpToken, _checkInvalidHeaderChar } from '_http_common'; // eslint-disable-line
 import portastic from 'portastic';
 // import through from 'through';
@@ -57,42 +56,52 @@ export const isInvalidHeader = (name, value) => {
 };
 
 /**
- * Sames are Node's url.parse() just adds the 'username', 'password' and 'scheme' fields.
- * Also this method makes sure "port" is a number rather than a string.
- * Note that `scheme` is always lower-cased (e.g. `ftp`).
+ * Wraps `new URL(url)` and adds following:
+ *  - `port` is casted to number / null from string
+ *  - `path` field is added (pathname + search)
+ *  - malformed or relative urls are parsed as well
+ *
+ * Using `new URL` causes following:
+ *  - we are unable to distiguish empty password and missing password
+ *  - password and username are empty string if not present (or empty)
+ *  - we are able to parse IPv6
+ *  - there might be issues with password being urlencoded
+ *
  * @param url
  * @ignore
  */
 export const parseUrl = (url) => {
     // NOTE: Not using url.parse() because it can't handle IPv6 and other special URLs
-    const urlObj = new URL(url);
+    try {
+        const urlObj = new URL(url);
 
-    const parsed = {
-        hash: urlObj.hash,
-        host: urlObj.host,
-        hostname: urlObj.hostname,
-        href: urlObj.href,
-        origin: urlObj.origin,
-        password: urlObj.password,
-        pathname: urlObj.pathname,
-        port: urlObj.port,
-        protocol: urlObj.protocol,
-        search: urlObj.search,
-        searchParams: urlObj.searchParams,
-        username: urlObj.username,
-    };
+        const parsed = {
+            hash: urlObj.hash,
+            host: urlObj.host,
+            hostname: urlObj.hostname,
+            href: urlObj.href,
+            origin: urlObj.origin,
+            password: urlObj.password,
+            username: urlObj.username,
+            pathname: urlObj.pathname,
+            // Path was present on the original UrlObject, it's kept for backwards compatibility
+            path: `${urlObj.pathname}${urlObj.search}`,
+            // Port is turned into a number if available
+            port: urlObj.port ? parseInt(urlObj.port, 10) : null,
+            protocol: urlObj.protocol,
+            search: urlObj.search,
+            searchParams: urlObj.searchParams,
+        };
 
-    console.dir({ parsed });
-
-    parsed.scheme = null;
-    if (parsed.protocol) {
-        const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
-        if (matches && matches.length === 2) {
-            parsed.scheme = matches[1];
-        }
+        return parsed;
+    } catch (e) {
+        // Malformed (or relative) urls need to be treated as well.
+        return {
+            pathname: url,
+            path: url,
+            href: url,
+        };
     }
-
-    return parsed;
 };
 
 /**
@@ -119,7 +128,7 @@ export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') =
             auth = `${p.username}`;
         }
     }
-    return `${p.protocol}//${auth || ''}${auth ? '@' : ''}${p.host}${p.pathname || ''}${p.hash || ''}`;
+    return `${p.protocol}//${auth || ''}${auth ? '@' : ''}${p.host}${p.path || ''}${p.hash || ''}`;
 };
 
 const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;

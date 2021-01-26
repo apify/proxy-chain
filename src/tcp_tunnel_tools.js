@@ -11,7 +11,7 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
 
     const parsedProxyUrl = parseUrl(proxyUrl);
     if (!parsedProxyUrl.hostname) throw new Error('proxyUrl needs to include atleast hostname');
-    if (parsedProxyUrl.scheme !== 'http') throw new Error('Currently only "http" scheme is supported');
+    if (parsedProxyUrl.protocol !== 'http:') throw new Error('Currently only "http" protocol is supported');
 
     const options = {
         verbose: false,
