@@ -33,6 +33,7 @@ describe('tools.parseUrl()', () => {
     it('works', () => {
         testUrl('https://username:password@www.example.com:12345/some/path', {
             protocol: 'https:',
+            scheme: 'https',
             username: 'username',
             password: 'password',
             port: 12345,
@@ -40,6 +41,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('https://username:password@www.example.com/some/path', {
             protocol: 'https:',
+            scheme: 'https',
             username: 'username',
             password: 'password',
             port: null,
@@ -47,6 +49,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('http://us-er+na12345me:@www.example.com:12345/some/path', {
             protocol: 'http:',
+            scheme: 'http',
             username: 'us-er+na12345me',
             password: '',
             port: 12345,
@@ -54,6 +57,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('socks5://username@www.example.com:12345/some/path', {
             protocol: 'socks5:',
+            scheme: 'socks5',
             username: 'username',
             password: '',
             port: 12345,
@@ -61,6 +65,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('FTP://@www.example.com:12345/some/path', {
             protocol: 'ftp:',
+            scheme: 'ftp',
             username: '',
             password: '',
             port: 12345,
@@ -68,6 +73,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('HTTP://www.example.com:12345/some/path', {
             protocol: 'http:',
+            scheme: 'http',
             username: '',
             password: '',
             port: 12345,
@@ -75,6 +81,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('HTTP://www.example.com/some/path', {
             protocol: 'http:',
+            scheme: 'http',
             username: '',
             password: '',
             port: null,
@@ -82,6 +89,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/', {
             protocol: 'http:',
+            scheme: 'http',
             username: '',
             password: '',
             port: null,
@@ -89,6 +97,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
             protocol: 'http:',
+            scheme: 'http',
             username: '',
             password: '',
             port: 12345,
@@ -96,6 +105,7 @@ describe('tools.parseUrl()', () => {
 
         testUrl('http://username:password@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
             protocol: 'http:',
+            scheme: 'http',
             username: 'username',
             password: 'password',
             port: 12345,
@@ -104,6 +114,7 @@ describe('tools.parseUrl()', () => {
         // TODO: Maybe decoding password should be considered in parse url
         testUrl('http://username:p@%%w0rd@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
             protocol: 'http:',
+            scheme: 'http',
             username: 'username',
             password: 'p%40%%w0rd',
             port: 12345,
