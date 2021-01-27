@@ -90,9 +90,18 @@ export const parseUrl = (url) => {
             // Port is turned into a number if available
             port: urlObj.port ? parseInt(urlObj.port, 10) : null,
             protocol: urlObj.protocol,
+            scheme: null,
             search: urlObj.search,
             searchParams: urlObj.searchParams,
         };
+
+        // Add scheme field (as some other external tools rely on that)
+        if (parsed.protocol) {
+            const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
+            if (matches && matches.length === 2) {
+                parsed.scheme = matches[1];
+            }
+        }
 
         return parsed;
     } catch (e) {
