@@ -1,3 +1,7 @@
+0.4.9 / 2021-01-26
+===================
+- Bugfix: Added back the `scheme` field to result from`parseUrl()`
+
 0.4.8 / 2021-01-26
 ===================
 - Bugfix: `parseUrl()` function now handles IPv6 and other previously unsupported URLs.
