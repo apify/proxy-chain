@@ -55,7 +55,7 @@
     "babel-preset-stage-0": "^6.1.18",
     "basic-auth": "^2.0.0",
     "body-parser": "^1.18.2",
-    "chai": "^4.0.2",
+    "chai": "^4.3.0",
     "eslint": "^7.19.0",
     "eslint-config-airbnb": "^18.0.1",
     "eslint-config-airbnb-base": "^14.0.0",
