@@ -10,8 +10,16 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
     if (!trgHostname || !trgPort) throw new Error('target needs to include both hostname and port.');
 
     const parsedProxyUrl = parseUrl(proxyUrl);
-    if (!parsedProxyUrl.hostname) throw new Error('proxyUrl needs to include atleast hostname');
-    if (parsedProxyUrl.protocol !== 'http:') throw new Error('Currently only "http" protocol is supported');
+
+    if (!parsedProxyUrl.hostname || !parsedProxyUrl.port) {
+        throw new Error(`The proxy URL must contain hostname and port (was "${proxyUrl}")`);
+    }
+    if (parsedProxyUrl.protocol !== 'http:') {
+        throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
+    }
+    if (/:/.test(parsedProxyUrl.username)) {
+        throw new Error('The proxy URL username cannot contain the colon (:) character according to RFC 7617.');
+    }
 
     const options = {
         verbose: false,
