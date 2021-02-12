@@ -11,14 +11,11 @@ const proxy = require('proxy');
 const http = require('http');
 const portastic = require('portastic');
 const request = require('request');
-const url = require('url');
 const WebSocket = require('faye-websocket');
 
 const { parseUrl, parseProxyAuthorizationHeader } = require('../build/tools');
 const { Server, RequestError } = require('../build/index');
 const { TargetServer } = require('./target_server');
-
-/* globals process */
 
 /*
 TODO - add following tests:
@@ -45,7 +42,7 @@ let DATA_CHUNKS_COMBINED = '';
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 for (let i = 0; i < 100; i++) {
     let chunk = '';
-    for (let i = 0; i < 10000; i++) {
+    for (let j = 0; j < 10000; j++) {
         chunk += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     DATA_CHUNKS.push(chunk);
@@ -69,7 +66,7 @@ const requestPromised = (opts) => {
     });
 };
 
-const wait = timeout => new Promise(resolve => setTimeout(resolve, timeout));
+const wait = (timeout) => new Promise(resolve => setTimeout(resolve, timeout));
 
 // Opens web page in phantomjs and returns the HTML content
 const phantomGet = (url, proxyUrl) => {
@@ -347,10 +344,14 @@ const createTestSuite = ({
                                 let upstreamProxyUrl;
 
                                 if (hostname === 'activate-invalid-upstream-proxy-scheme') {
-                                    upstreamProxyUrl = `ftp://proxy.example.com:8000`;
+                                    upstreamProxyUrl = 'ftp://proxy.example.com:8000';
                                     addToMainProxyServerConnectionIds = false;
                                 } else if (hostname === 'activate-invalid-upstream-proxy-url') {
                                     upstreamProxyUrl = '    ';
+                                    addToMainProxyServerConnectionIds = false;
+                                } else if (hostname === 'activate-invalid-upstream-proxy-username') {
+                                    // Colon in proxy username is forbidden!
+                                    upstreamProxyUrl = 'http://us%3Aer:pass@proxy.example.com:8000';
                                     addToMainProxyServerConnectionIds = false;
                                 } else if (hostname === 'activate-bad-upstream-proxy-credentials') {
                                     upstreamProxyUrl = `http://invalid:credentials@127.0.0.1:${upstreamProxyPort}`;
@@ -712,7 +713,7 @@ const createTestSuite = ({
                     expect(response.statusCode).to.eql(401);
                 })
                 .then(() => {
-                    // Then test valid ones
+                    // Then test valid ones (passed as they are)
                     const opts = getRequestOpts('/basic-auth');
                     opts.url = opts.url.replace('://', '://john.doe$:Passwd$@');
                     return requestPromised(opts);
@@ -722,7 +723,7 @@ const createTestSuite = ({
                     expect(response.statusCode).to.eql(200);
                 })
                 .then(() => {
-                    // Then test encoded characters
+                    // Then test URI encoded characters (must also work)
                     const opts = getRequestOpts('/basic-auth');
                     opts.url = opts.url.replace('://', '://john.doe%24:Passwd%24@');
                     return requestPromised(opts);
@@ -904,6 +905,11 @@ const createTestSuite = ({
                     return testForErrorResponse(opts, 500);
                 });
 
+                it('fails gracefully on invalid upstream proxy username', () => {
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-username`);
+                    return testForErrorResponse(opts, 500);
+                });
+
                 it('fails gracefully on non-existent upstream proxy host', () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-unknown-upstream-proxy-host`);
                     return testForErrorResponse(opts, 502);
@@ -1072,7 +1078,8 @@ const useUpstreamProxyVariants = [
 const upstreamProxyAuthVariants = [
     null,
     { type: 'Basic', username: 'userA', password: '' },
-    { type: 'Basic', username: 'userB', password: 'passA' },
+    // Test special URI-invalid chars!
+    { type: 'Basic', username: 'us$erB', password: 'pas%sA' },
 ];
 
 useSslVariants.forEach((useSsl) => {
