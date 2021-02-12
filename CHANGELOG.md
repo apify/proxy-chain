@@ -1,3 +1,7 @@
+0.4.10 / 2021-02-12
+===================
+- Fix percent encoded usernames and passwords causing an abrupt socket close.
+
 0.4.9 / 2021-01-26
 ===================
 - Bugfix: Added back the `scheme` field to result from`parseUrl()`
