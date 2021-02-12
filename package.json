@@ -55,8 +55,8 @@
     "babel-preset-stage-0": "^6.1.18",
     "basic-auth": "^2.0.0",
     "body-parser": "^1.18.2",
-    "chai": "^4.0.2",
-    "eslint": "^7.13.0",
+    "chai": "^4.3.0",
+    "eslint": "^7.19.0",
     "eslint-config-airbnb": "^18.0.1",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.2.0",
@@ -73,7 +73,7 @@
     "sinon": "^9.0.0",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
-    "ws": "^7.1.2"
+    "ws": "^7.4.3"
   },
   "optionalDependencies": {}
 }
