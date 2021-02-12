@@ -239,14 +239,14 @@ export class Server extends EventEmitter {
                     // "When making a request to a proxy, other than a CONNECT or server-wide
                     //  OPTIONS request (as detailed below), a client MUST send the target
                     //  URI in absolute-form as the request-target"
-                    const parsed = parseUrl(request.url);
 
-                    // If srcRequest.url does not match the regexp tools.HOST_HEADER_REGEX
-                    // or the url is too long it will not be parsed so we throw error here.
-                    if (!parsed) {
+                    let parsed;
+                    try {
+                        parsed = parseUrl(request.url);
+                    } catch (e) {
+                        // If URL is invalid, throw HTTP 400 error
                         throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
                     }
-
                     // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
                     if (!parsed.protocol) {
                         throw new RequestError('Hey, good try, but I\'m a HTTP proxy, not your ordinary web server :)', 400);
