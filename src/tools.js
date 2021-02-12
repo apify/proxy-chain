@@ -231,8 +231,11 @@ export const findFreePort = () => {
 
 export const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
     if (parsedUrl && parsedUrl.username) {
-        let auth = parsedUrl.username;
-        if (parsedUrl.password || parsedUrl.password === '') auth += `:${parsedUrl.password}`;
+        // username and password can contain percent encoded characters so we must decode those.
+        // https://stackoverflow.com/questions/6718471/escaping-username-characters-in-basic-auth-urls
+        // RFC 3986 http://www.faqs.org/rfcs/rfc3986.html
+        let auth = decodeURIComponent(parsedUrl.username);
+        if (parsedUrl.password || parsedUrl.password === '') auth += `:${decodeURIComponent(parsedUrl.password)}`;
         headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
     }
 };

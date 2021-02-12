@@ -99,7 +99,7 @@ class TargetServer {
 
     getBasicAuth(request, response) {
         const auth = basicAuth(request);
-        if (!auth || auth.name !== 'john.doe' || auth.pass !== 'Passwd') {
+        if (!auth || auth.name !== 'john.doe$' || auth.pass !== 'Passwd$') {
             response.statusCode = 401;
             response.setHeader('WWW-Authenticate', 'Basic realm="MyRealmName"');
             response.end('Unauthorized');

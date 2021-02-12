@@ -714,7 +714,17 @@ const createTestSuite = ({
                 .then(() => {
                     // Then test valid ones
                     const opts = getRequestOpts('/basic-auth');
-                    opts.url = opts.url.replace('://', '://john.doe:Passwd@');
+                    opts.url = opts.url.replace('://', '://john.doe$:Passwd$@');
+                    return requestPromised(opts);
+                })
+                .then((response) => {
+                    expect(response.body).to.eql('OK');
+                    expect(response.statusCode).to.eql(200);
+                })
+                .then(() => {
+                    // Then test encoded characters
+                    const opts = getRequestOpts('/basic-auth');
+                    opts.url = opts.url.replace('://', '://john.doe%24:Passwd%24@');
                     return requestPromised(opts);
                 })
                 .then((response) => {
