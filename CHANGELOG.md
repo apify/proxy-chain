@@ -1,6 +1,13 @@
-0.4.10 / 2021-02-12
+0.5.0 / 2021-02-13
 ===================
-- Fix percent encoded usernames and passwords causing an abrupt socket close.
+- **BREAKING:** The `parseUrl()` function slightly changed behavior: it no longer
+  returns an object on invalid URLs and throws instead, it URI-decodes username and password
+  if possible, it adds `auth` property for backwards compatibility - see README for details.
+- **BREAKING:** Improved error handling in `createTunnel()` and `prepareRequestFunction()` functions
+  and better error messages. Both functions now fail if the upstream proxy URL contains colon (`:`)
+  character in the username, in order to comply with RFC 7617 and fail fast with reasonable error,
+  rather later and silently.
+- Various code improvements and better tests.
 
 0.4.9 / 2021-01-26
 ===================
