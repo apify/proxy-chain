@@ -55,63 +55,64 @@ export const isInvalidHeader = (name, value) => {
         || _checkInvalidHeaderChar(value);
 };
 
+const bulletproofDecodeURIComponent = (encodedURIComponent) => {
+    try {
+        return decodeURIComponent(encodedURIComponent);
+    } catch (e) {
+        return encodedURIComponent;
+    }
+};
+
 /**
- * Wraps `new URL(url)` and adds following:
+ * Parses a URL using Node.js' `new URL(url)` and adds the following features:
  *  - `port` is casted to number / null from string
  *  - `path` field is added (pathname + search)
- *  - malformed or relative urls are parsed as well (always, the given string is returned as is in
- *    few fields, other are left undefined)
+ *  - both username and password is URI-decoded
+ *  - `auth` field is added (username + ":" + password, or empty string)
  *
- * Using `new URL` causes following:
- *  - we are unable to distiguish empty password and missing password
+ * Note that compared to the old implementation using `url.parse()`, the new function:
+ *  - is unable to distinguish empty password and missing password
  *  - password and username are empty string if not present (or empty)
  *  - we are able to parse IPv6
- *  - there might be issues with password being urlencoded
  *
  * @param url
  * @ignore
  */
 export const parseUrl = (url) => {
-    // NOTE: Not using url.parse() because it can't handle IPv6 and other special URLs
-    try {
-        const urlObj = new URL(url);
+    // NOTE: In the past we used url.parse() here, but it can't handle IPv6 and other special URLs,
+    // so we moved to new URL()
+    const urlObj = new URL(url);
 
-        const parsed = {
-            hash: urlObj.hash,
-            host: urlObj.host,
-            hostname: urlObj.hostname,
-            href: urlObj.href,
-            origin: urlObj.origin,
-            password: urlObj.password,
-            username: urlObj.username,
-            pathname: urlObj.pathname,
-            // Path was present on the original UrlObject, it's kept for backwards compatibility
-            path: `${urlObj.pathname}${urlObj.search}`,
-            // Port is turned into a number if available
-            port: urlObj.port ? parseInt(urlObj.port, 10) : null,
-            protocol: urlObj.protocol,
-            scheme: null,
-            search: urlObj.search,
-            searchParams: urlObj.searchParams,
-        };
+    const parsed = {
+        auth: urlObj.username || urlObj.password ? `${urlObj.username}:${urlObj.password}` : '',
+        hash: urlObj.hash,
+        host: urlObj.host,
+        hostname: urlObj.hostname,
+        href: urlObj.href,
+        origin: urlObj.origin,
+        // The username and password might not be correctly URI-encoded, try to make it work anyway
+        username: bulletproofDecodeURIComponent(urlObj.username),
+        password: bulletproofDecodeURIComponent(urlObj.password),
+        pathname: urlObj.pathname,
+        // Path was present on the original UrlObject, it's kept for backwards compatibility
+        path: `${urlObj.pathname}${urlObj.search}`,
+        // Port is turned into a number if available
+        port: urlObj.port ? parseInt(urlObj.port, 10) : null,
+        protocol: urlObj.protocol,
+        scheme: null,
+        search: urlObj.search,
+        searchParams: urlObj.searchParams,
+    };
 
-        // Add scheme field (as some other external tools rely on that)
-        if (parsed.protocol) {
-            const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
-            if (matches && matches.length === 2) {
-                parsed.scheme = matches[1];
-            }
+    // Add scheme field (as some other external tools rely on that)
+    if (parsed.protocol) {
+        const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
+        if (matches && matches.length === 2) {
+            parsed.scheme = matches[1];
         }
-
-        return parsed;
-    } catch (e) {
-        // Malformed (or relative) urls need to be treated as well.
-        return {
-            pathname: url,
-            path: url,
-            href: url,
-        };
     }
+
+    return parsed;
 };
 
 /**
@@ -230,12 +231,15 @@ export const findFreePort = () => {
 };
 
 export const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
-    if (parsedUrl && parsedUrl.username) {
-        // username and password can contain percent encoded characters so we must decode those.
-        // https://stackoverflow.com/questions/6718471/escaping-username-characters-in-basic-auth-urls
-        // RFC 3986 http://www.faqs.org/rfcs/rfc3986.html
-        let auth = decodeURIComponent(parsedUrl.username);
-        if (parsedUrl.password || parsedUrl.password === '') auth += `:${decodeURIComponent(parsedUrl.password)}`;
+    if (parsedUrl && (parsedUrl.username || parsedUrl.password)) {
+        // According to RFC 7617 (see https://tools.ietf.org/html/rfc7617#page-5):
+        //  "Furthermore, a user-id containing a colon character is invalid, as
+        //   the first colon in a user-pass string separates user-id and password
+        //   from one another; text after the first colon is part of the password.
+        //   User-ids containing colons cannot be encoded in user-pass strings."
+        // So to be correct and avoid strange errors later, we just throw an error
+        if (/:/.test(parsedUrl.username)) throw new Error('The proxy username cannot contain the colon (:) character according to RFC 7617.');
+        const auth = `${parsedUrl.username || ''}:${parsedUrl.password || ''}`;
         headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
     }
 };
