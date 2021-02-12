@@ -299,10 +299,22 @@ If the callback is not provided, the function returns a promise instead.
 
 ### `parseUrl(url)`
 
-Parses url string with `new URL(url)` and normalizes the result (eg. port is converted to number), path (ie. pathname + search) is added
-to the result.
+An utility function for parsing URLs.
+It parses the URL using Node.js' `new URL(url)` and adds the following features:
 
-For non-urls the given string is treated as if it was relative url.
+- The result is a vanilla JavaScript object
+- `port` field is casted to number / null from string
+- `path` field is added (pathname + search)
+- both username and password is URI-decoded if possible
+- `auth` field is added, and it contains username + ":" + password, or an empty string.
+
+If the URL is invalid, the function throws an error.
+
+Note that compared to the old implementation using `url.parse()`, the new function:
+
+ - is unable to distinguish empty password and missing password
+ - password and username are empty string if not present (or empty)
+ - we are able to parse IPv6
 
 ### `redactUrl(url, passwordReplacement)`
 
