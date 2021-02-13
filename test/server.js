@@ -359,7 +359,8 @@ const createTestSuite = ({
                                     upstreamProxyUrl = 'http://dummy-hostname:1234';
                                 } else {
                                     let auth = '';
-                                    if (upstreamProxyAuth) auth = `${upstreamProxyAuth.username}:${upstreamProxyAuth.password}@`;
+                                    // NOTE: We URI-encode just username, not password, which might contain
+                                    if (upstreamProxyAuth) auth = `${encodeURIComponent(upstreamProxyAuth.username)}:${upstreamProxyAuth.password}@`;
                                     upstreamProxyUrl = `http://${auth}127.0.0.1:${upstreamProxyPort}`;
                                 }
 
@@ -1078,8 +1079,9 @@ const useUpstreamProxyVariants = [
 const upstreamProxyAuthVariants = [
     null,
     { type: 'Basic', username: 'userA', password: '' },
-    // Test special URI-invalid chars!
-    { type: 'Basic', username: 'us$erB', password: 'pas%sA' },
+    // Test special chars, note that we URI-encode just username when constructing the proxyUrl,
+    // to test both correctly and incorrectly encoded auth
+    { type: 'Basic', username: 'us%erB', password: 'p$as%sA' },
 ];
 
 useSslVariants.forEach((useSsl) => {
