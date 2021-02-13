@@ -33,9 +33,8 @@
   "scripts": {
     "build": "rm -rf ./build && babel src --out-dir build",
     "local-proxy": "npm run build && node ./build/run_locally.js",
-    "test": "npm run build && NODE_OPTIONS=--insecure-http-parser mocha --exit --recursive",
+    "test": "npm run build && cross-env NODE_OPTIONS=--insecure-http-parser mocha --exit --recursive",
     "prepare": "npm run build",
-    "prepublishOnly": "(test $RUNNING_FROM_SCRIPT || (echo \"You must use publish.sh instead of 'npm publish' directly!\"; exit 1)) && npm test && npm run lint",
     "clean": "rm -rf build",
     "lint": "npm run build && eslint src",
     "lint-fix": "npm run build && eslint src --fix"
@@ -56,6 +55,7 @@
     "basic-auth": "^2.0.0",
     "body-parser": "^1.18.2",
     "chai": "^4.3.0",
+    "cross-env": "^7.0.3",
     "eslint": "^7.19.0",
     "eslint-config-airbnb": "^18.0.1",
     "eslint-config-airbnb-base": "^14.0.0",
