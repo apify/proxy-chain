@@ -313,6 +313,12 @@ It parses the URL using Node.js' `new URL(url)` and adds the following features:
 
 If the URL is invalid, the function throws an error.
 
+The username and password parsing should make it possible to parse proxy URLs containing
+special characters, such as `http://user:pass:wrd@proxy.example.com`
+or `http://us%35er:passwrd@proxy.example.com`. The parsing is done on a best-effort basis.
+The safest way is to always URI-encode username and password before constructing
+the URL, according to RFC 3986.
+
 Note that compared to the old implementation using `url.parse()`, the new function:
 
  - is unable to distinguish empty password and missing password
