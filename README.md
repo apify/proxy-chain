@@ -42,8 +42,9 @@ const server = new ProxyChain.Server({
     // Enables verbose logging
     verbose: true,
 
-    // Custom function to authenticate proxy requests and provide the URL to chained upstream proxy.
-    // It must return an object (or promise resolving to the object) with the following form:
+    // Custom user-defined function to authenticate incoming proxy requests,
+    // and optionally provide the URL to chained upstream proxy.
+    // The function must return an object (or promise resolving to the object) with the following signature:
     // { requestAuthentication: Boolean, upstreamProxyUrl: String }
     // If the function is not defined or is null, the server runs in simple mode.
     // Note that the function takes a single argument with the following properties:
@@ -58,7 +59,8 @@ const server = new ProxyChain.Server({
     // * connectionId - Unique ID of the HTTP connection. It can be used to obtain traffic statistics.
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
         return {
-            // Require clients to authenticate with username 'bob' and password 'TopSecret'
+            // If set to true, the client is sent HTTP 407 resposne with the Proxy-Authenticate header set,
+            // requiring Basic authentication. Here you can verify user credentials.
             requestAuthentication: username !== 'bob' || password !== 'TopSecret',
 
             // Sets up an upstream HTTP proxy to which all the requests are forwarded.
@@ -69,7 +71,7 @@ const server = new ProxyChain.Server({
             upstreamProxyUrl: `http://username:password@proxy.example.com:3128`,
 
             // If "requestAuthentication" is true, you can use the following property
-            // to define a custom error message instead of the default "Proxy credentials required"
+            // to define a custom error message to return to the client instead of the default "Proxy credentials required"
             failMsg: 'Bad username or password, please try again.',
         };
     },
