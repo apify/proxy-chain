@@ -3,11 +3,35 @@ const net = require('net');
 const portastic = require('portastic');
 const {
     parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
-    parseProxyAuthorizationHeader, addHeader, findFreePort, PORT_SELECTION_CONFIG,
+    parseProxyAuthorizationHeader, addHeader,
     nodeify,
 } = require('../build/tools');
 
-/* global process, describe, it */
+/* global describe, it */
+
+const PORT_SELECTION_CONFIG = {
+    FROM: 20000,
+    TO: 60000,
+    RETRY_COUNT: 10,
+};
+
+const findFreePort = () => {
+    // Let 'min' be a random value in the first half of the PORT_FROM-PORT_TO range,
+    // to reduce a chance of collision if other ProxyChain is started at the same time.
+    const half = Math.floor((PORT_SELECTION_CONFIG.TO - PORT_SELECTION_CONFIG.FROM) / 2);
+
+    const opts = {
+        min: PORT_SELECTION_CONFIG.FROM + Math.floor(Math.random() * half),
+        max: PORT_SELECTION_CONFIG.TO,
+        retrieve: 1,
+    };
+
+    return portastic.find(opts)
+        .then((ports) => {
+            if (ports.length < 1) throw new Error(`There are no more free ports in range from ${PORT_SELECTION_CONFIG.FROM} to ${PORT_SELECTION_CONFIG.TO}`); // eslint-disable-line max-len
+            return ports[0];
+        });
+};
 
 const testUrl = (url, expected) => {
     const parsed1 = parseUrl(url);
@@ -330,8 +354,8 @@ describe('tools.findFreePort()', () => {
                 expect(err.message).to.contain('There are no more free ports');
             })
             .finally(() => {
-                PORT_SELECTION_CONFIG.from = PORT_SELECTION_CONFIG_BACKUP.from;
-                PORT_SELECTION_CONFIG.to = PORT_SELECTION_CONFIG_BACKUP.to;
+                PORT_SELECTION_CONFIG.FROM = PORT_SELECTION_CONFIG_BACKUP.FROM;
+                PORT_SELECTION_CONFIG.TO = PORT_SELECTION_CONFIG_BACKUP.TO;
                 if (server.listening) server.close();
             });
     });
@@ -386,3 +410,8 @@ describe('tools.nodeify()', () => {
         }
     });
 });
+
+module.exports = {
+    PORT_SELECTION_CONFIG,
+    findFreePort,
+};
