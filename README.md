@@ -64,6 +64,8 @@ const server = new ProxyChain.Server({
             // Sets up an upstream HTTP proxy to which all the requests are forwarded.
             // If null, the proxy works in direct mode, i.e. the connection is forwarded directly
             // to the target server. This field is ignored if "requestAuthentication" is true.
+            // The username and password should be URI-encoded, in case it contains some special characters.
+            // See `parseUrl()` function for details.
             upstreamProxyUrl: `http://username:password@proxy.example.com:3128`,
 
             // If "requestAuthentication" is true, you can use the following property
