@@ -308,6 +308,7 @@ It parses the URL using Node.js' `new URL(url)` and adds the following features:
 - `port` field is casted to number / null from string
 - `path` field is added (pathname + search)
 - both username and password is URI-decoded if possible
+  (if not, the function keeps the username and password as is)
 - `auth` field is added, and it contains username + ":" + password, or an empty string.
 
 If the URL is invalid, the function throws an error.
