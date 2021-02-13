@@ -1,13 +1,25 @@
 0.5.0 / 2021-02-13
 ===================
-- **BREAKING:** The `parseUrl()` function slightly changed behavior: it no longer
-  returns an object on invalid URLs and throws instead, it URI-decodes username and password
-  if possible, it adds `auth` property for backwards compatibility - see README for details.
+- **BREAKING:** The `parseUrl()` function slightly changed its behavior (see README for details):
+  - it no longer returns an object on invalid URLs and throws an exception instead
+  - it URI-decodes username and password if possible
+    (if not, the function keeps the username and password as is)
+  - it adds back `auth` property for better backwards compatibility
+- The above change should make it possible to pass upstream proxy URLs containing
+  special characters, such as `http://user:pass:wrd@proxy.example.com`
+  or `http://us%35er:passwrd@proxy.example.com`. The parsing is done on a best-effort basis.
+  The safest way is to always URI-encode username and password before constructing
+  the URL, according to RFC 3986.
+  This change should finally fix issues:
+  [#89](https://github.com/apify/proxy-chain/issues/89),
+  [#67](https://github.com/apify/proxy-chain/issues/67),
+  and [#108](https://github.com/apify/proxy-chain/issues/108)
 - **BREAKING:** Improved error handling in `createTunnel()` and `prepareRequestFunction()` functions
-  and better error messages. Both functions now fail if the upstream proxy URL contains colon (`:`)
-  character in the username, in order to comply with RFC 7617 and fail fast with reasonable error,
-  rather later and silently.
+  and provided better error messages. Both functions now fail if the upstream proxy
+  URL contains colon (`:`) character in the username, in order to comply with RFC 7617.
+  The functions now fail fast with a reasonable error, rather later and with cryptic errors.
 - Various code improvements and better tests.
+- Updated packages.
 
 0.4.9 / 2021-01-26
 ===================
