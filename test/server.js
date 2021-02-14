@@ -801,6 +801,7 @@ const createTestSuite = ({
                 const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
                 return requestPromised(opts)
                     .then((response) => {
+                        console.dir(response); // TODO remove
                         expect(response.statusCode).to.eql(404);
                     });
             });
