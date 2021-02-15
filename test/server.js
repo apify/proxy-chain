@@ -434,7 +434,8 @@ const createTestSuite = ({
                     assert.fail();
                 })
                 .catch((err) => {
-                    // console.dir(err);
+                    console.log('EXPECT_CONTAIN');
+                    console.dir(err);
                     expect(err.message).to.contain(`${expectedStatusCode}`);
                 })
                 .finally(() => {
