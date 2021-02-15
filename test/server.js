@@ -300,7 +300,7 @@ const createTestSuite = ({
                                 };
                             }
 
-                            if (hostname === 'test-custom-response-long') {
+                            if (hostname === 'test-custom-response-long.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
@@ -801,7 +801,6 @@ const createTestSuite = ({
                 const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
                 return requestPromised(opts)
                     .then((response) => {
-                        console.dir(response); // TODO remove
                         expect(response.statusCode).to.eql(404);
                     });
             });
