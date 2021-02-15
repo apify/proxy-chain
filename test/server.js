@@ -37,7 +37,7 @@ const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 // Enable self-signed certificates
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const NON_EXISTENT_HOSTNAME = 'non-existent-hostname';
+const NON_EXISTENT_HOSTNAME = 'this-apify-hostname-is-surely-non-existent.cz';
 
 // Prepare testing data
 const DATA_CHUNKS = [];
