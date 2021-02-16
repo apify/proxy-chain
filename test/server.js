@@ -251,6 +251,9 @@ const createTestSuite = ({
                             expect(request).to.be.an('object');
                             expect(port).to.be.an('number');
 
+                            // All the fake hostnames here have a .gov TLD, because without a TLD,
+                            // the tests would fail on GitHub Actions. We assume nobody will register
+                            // those random domains with a .gov TLD.
                             if (hostname === 'activate-error-in-prep-req-func-throw.gov') {
                                 throw new Error('Testing error 1');
                             }
