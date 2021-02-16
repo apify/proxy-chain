@@ -339,7 +339,7 @@ const createTestSuite = ({
                                     addToMainProxyServerConnectionIds = false;
                                     // Now that authentication is requested, upstream proxy should not get used,
                                     // so try some invalid one and it should cause no issue
-                                    result.upstreamProxyUrl = 'http://dummy-hostname-xyz:6789';
+                                    result.upstreamProxyUrl = 'http://dummy-hostname-xyz.gov:6789';
                                 }
                             }
 
@@ -355,7 +355,7 @@ const createTestSuite = ({
                                 } else if (hostname === 'activate-bad-upstream-proxy-credentials.gov') {
                                     upstreamProxyUrl = `http://invalid:credentials@127.0.0.1:${upstreamProxyPort}`;
                                 } else if (hostname === 'activate-unknown-upstream-proxy-host.gov') {
-                                    upstreamProxyUrl = 'http://dummy-hostname:1234';
+                                    upstreamProxyUrl = 'http://dummy-hostname.gov:1234';
                                 } else {
                                     let auth = '';
                                     if (upstreamProxyAuth) auth = `${upstreamProxyAuth.username}:${upstreamProxyAuth.password}@`;
