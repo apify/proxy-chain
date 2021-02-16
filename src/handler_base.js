@@ -114,7 +114,7 @@ export default class HandlerBase extends EventEmitter {
         this.close();
     }
 
-    // This is to address https://github.com/apifytech/proxy-chain/issues/27
+    // This is to address https://github.com/apify/proxy-chain/issues/27
     // It seems that when client closed the connection, the piped target socket
     // can still pump data to it, which caused unhandled "write after end" error
     onSrcResponseError(err) {
