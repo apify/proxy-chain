@@ -363,9 +363,7 @@ export class Server extends EventEmitter {
      */
     failRequest(request, err, handlerOpts) {
         const handlerId = handlerOpts ? handlerOpts.id : null;
-        console.log('FAIL_REQUEST');
-        console.dir(err);
-        console.dir(handlerOpts);
+
         if (err.name === REQUEST_ERROR_NAME) {
             this.log(handlerId, `Request failed (status ${err.statusCode}): ${err.message}`);
             this.sendResponse(request.socket, err.statusCode, err.headers, err.message);
