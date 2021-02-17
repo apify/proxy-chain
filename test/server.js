@@ -101,7 +101,7 @@ const phantomGet = (url, proxyUrl) => {
 
 // Opens web page in curl and returns the HTML content.
 // The thing is, on error curl closes the connection immediately, which used to cause
-// uncaught ECONNRESET error. See https://github.com/apifytech/proxy-chain/issues/53
+// uncaught ECONNRESET error. See https://github.com/apify/proxy-chain/issues/53
 // This is a regression test for that situation
 const curlGet = (url, proxyUrl, returnResponse) => {
     let cmd = 'curl --insecure '; // ignore SSL errors

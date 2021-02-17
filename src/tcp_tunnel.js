@@ -127,7 +127,7 @@ export default class TcpTunnel {
         if (this.isClosed) return;
         this.log('Connected to upstream proxy');
 
-        // Attempt to fix https://github.com/apifytech/proxy-chain/issues/64,
+        // Attempt to fix https://github.com/apify/proxy-chain/issues/64,
         // perhaps the 'connect' event might occur before 'socket'
         if (!this.trgSocket) {
             this.onTrgSocket(socket);
@@ -136,7 +136,7 @@ export default class TcpTunnel {
         if (this.checkUpstreamProxy407(response)) return;
 
         // Note that sockets could be closed anytime, causing this.close() to be called too in above statements
-        // See https://github.com/apifytech/proxy-chain/issues/64
+        // See https://github.com/apify/proxy-chain/issues/64
         if (this.isClosed) return;
 
         // Setup bi-directional tunnel

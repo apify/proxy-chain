@@ -140,7 +140,7 @@ export default class HandlerForward extends HandlerBase {
 
         // Ensure status code is in the range accepted by Node, otherwise proxy will crash with
         // "RangeError: Invalid status code: 0" (see writeHead in Node's _http_server.js)
-        // Fixes https://github.com/apifytech/proxy-chain/issues/35
+        // Fixes https://github.com/apify/proxy-chain/issues/35
         if (response.statusCode < 100 || response.statusCode > 999) {
             this.fail(new RequestError(`Target server responded with an invalid HTTP status code (${response.statusCode})`, 500));
             return;
@@ -149,7 +149,7 @@ export default class HandlerForward extends HandlerBase {
         this.srcGotResponse = true;
 
         // Note that sockets could be closed anytime, causing this.close() to be called too in above statements
-        // See https://github.com/apifytech/proxy-chain/issues/64
+        // See https://github.com/apify/proxy-chain/issues/64
         if (this.isClosed) return;
 
         this.srcResponse.writeHead(response.statusCode, headers);

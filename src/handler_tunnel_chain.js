@@ -46,7 +46,7 @@ export default class HandlerTunnelChain extends HandlerBase {
         if (this.isClosed) return;
         this.log('Connected to upstream proxy');
 
-        // Attempt to fix https://github.com/apifytech/proxy-chain/issues/64,
+        // Attempt to fix https://github.com/apify/proxy-chain/issues/64,
         // perhaps the 'connect' event might occur before 'socket'
         if (!this.trgSocket) {
             this.onTrgSocket(socket);
@@ -65,7 +65,7 @@ export default class HandlerTunnelChain extends HandlerBase {
 
         // It can happen that this.close() it called in the meanwhile, so this.srcSocket becomes null
         // and the detachSocket() call below fails with "Cannot read property '_httpMessage' of null"
-        // See https://github.com/apifytech/proxy-chain/issues/63
+        // See https://github.com/apify/proxy-chain/issues/63
         if (this.isClosed) return;
 
         // Relinquish control of the `socket` from the ServerResponse instance
@@ -84,7 +84,7 @@ export default class HandlerTunnelChain extends HandlerBase {
         }
 
         // Note that sockets could be closed anytime, causing this.close() to be called too in above statements
-        // See https://github.com/apifytech/proxy-chain/issues/64
+        // See https://github.com/apify/proxy-chain/issues/64
         if (this.isClosed) return;
 
         // Setup bi-directional tunnel
