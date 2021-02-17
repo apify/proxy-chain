@@ -1,8 +1,29 @@
+1.0.0 / 2021-02-17
 ===================
+- **BREAKING:** The `parseUrl()` function slightly changed its behavior (see README for details):
+  - it no longer returns an object on invalid URLs and throws an exception instead
+  - it URI-decodes username and password if possible
+    (if not, the function keeps the username and password as is)
+  - it adds back `auth` property for better backwards compatibility
+- The above change should make it possible to pass upstream proxy URLs containing
+  special characters, such as `http://user:pass:wrd@proxy.example.com`
+  or `http://us%35er:passwrd@proxy.example.com`. The parsing is done on a best-effort basis.
+  The safest way is to always URI-encode username and password before constructing
+  the URL, according to RFC 3986.
+  This change should finally fix issues:
+  [#89](https://github.com/apify/proxy-chain/issues/89),
+  [#67](https://github.com/apify/proxy-chain/issues/67),
+  and [#108](https://github.com/apify/proxy-chain/issues/108)
+- **BREAKING:** Improved error handling in `createTunnel()` and `prepareRequestFunction()` functions
+  and provided better error messages. Both functions now fail if the upstream proxy
+  URL contains colon (`:`) character in the username, in order to comply with RFC 7617.
+  The functions now fail fast with a reasonable error, rather later and with cryptic errors.
 - **BREAKING:** The `createTunnel()` function now lets the system assign potentially
   random listening TCP port, instead of the previous selection from range from 20000 to 60000.
 - **BREAKING:** The undocumented `findFreePort()` function was moved from tools.js to test/tools.js
 - Got rid of the "portastic" NPM package and thus reduced bundle size by ~50%
+- Various code improvements and better tests.
+- Updated packages.
 
 0.4.9 / 2021-01-26
 ===================

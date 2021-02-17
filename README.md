@@ -42,8 +42,9 @@ const server = new ProxyChain.Server({
     // Enables verbose logging
     verbose: true,
 
-    // Custom function to authenticate proxy requests and provide the URL to chained upstream proxy.
-    // It must return an object (or promise resolving to the object) with the following form:
+    // Custom user-defined function to authenticate incoming proxy requests,
+    // and optionally provide the URL to chained upstream proxy.
+    // The function must return an object (or promise resolving to the object) with the following signature:
     // { requestAuthentication: Boolean, upstreamProxyUrl: String }
     // If the function is not defined or is null, the server runs in simple mode.
     // Note that the function takes a single argument with the following properties:
@@ -58,16 +59,19 @@ const server = new ProxyChain.Server({
     // * connectionId - Unique ID of the HTTP connection. It can be used to obtain traffic statistics.
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
         return {
-            // Require clients to authenticate with username 'bob' and password 'TopSecret'
+            // If set to true, the client is sent HTTP 407 resposne with the Proxy-Authenticate header set,
+            // requiring Basic authentication. Here you can verify user credentials.
             requestAuthentication: username !== 'bob' || password !== 'TopSecret',
 
             // Sets up an upstream HTTP proxy to which all the requests are forwarded.
             // If null, the proxy works in direct mode, i.e. the connection is forwarded directly
             // to the target server. This field is ignored if "requestAuthentication" is true.
+            // The username and password should be URI-encoded, in case it contains some special characters.
+            // See `parseUrl()` function for details.
             upstreamProxyUrl: `http://username:password@proxy.example.com:3128`,
 
             // If "requestAuthentication" is true, you can use the following property
-            // to define a custom error message instead of the default "Proxy credentials required"
+            // to define a custom error message to return to the client instead of the default "Proxy credentials required"
             failMsg: 'Bad username or password, please try again.',
         };
     },
@@ -305,10 +309,29 @@ If the callback is not provided, the function returns a promise instead.
 
 ### `parseUrl(url)`
 
-Parses url string with `new URL(url)` and normalizes the result (eg. port is converted to number), path (ie. pathname + search) is added
-to the result.
+An utility function for parsing URLs.
+It parses the URL using Node.js' `new URL(url)` and adds the following features:
 
-For non-urls the given string is treated as if it was relative url.
+- The result is a vanilla JavaScript object
+- `port` field is casted to number / null from string
+- `path` field is added (pathname + search)
+- both username and password is URI-decoded if possible
+  (if not, the function keeps the username and password as is)
+- `auth` field is added, and it contains username + ":" + password, or an empty string.
+
+If the URL is invalid, the function throws an error.
+
+The username and password parsing should make it possible to parse proxy URLs containing
+special characters, such as `http://user:pass:wrd@proxy.example.com`
+or `http://us%35er:passwrd@proxy.example.com`. The parsing is done on a best-effort basis.
+The safest way is to always URI-encode username and password before constructing
+the URL, according to RFC 3986.
+
+Note that compared to the old implementation using `url.parse()`, the new function:
+
+ - is unable to distinguish empty password and missing password
+ - password and username are empty string if not present (or empty)
+ - we are able to parse IPv6
 
 ### `redactUrl(url, passwordReplacement)`
 

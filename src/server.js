@@ -239,14 +239,14 @@ export class Server extends EventEmitter {
                     // "When making a request to a proxy, other than a CONNECT or server-wide
                     //  OPTIONS request (as detailed below), a client MUST send the target
                     //  URI in absolute-form as the request-target"
-                    const parsed = parseUrl(request.url);
 
-                    // If srcRequest.url does not match the regexp tools.HOST_HEADER_REGEX
-                    // or the url is too long it will not be parsed so we throw error here.
-                    if (!parsed) {
+                    let parsed;
+                    try {
+                        parsed = parseUrl(request.url);
+                    } catch (e) {
+                        // If URL is invalid, throw HTTP 400 error
                         throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
                     }
-
                     // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
                     if (!parsed.protocol) {
                         throw new RequestError('Hey, good try, but I\'m a HTTP proxy, not your ordinary web server :)', 400);
@@ -303,19 +303,20 @@ export class Server extends EventEmitter {
                 }
 
                 if (funcResult && funcResult.upstreamProxyUrl) {
-                    handlerOpts.upstreamProxyUrlParsed = parseUrl(funcResult.upstreamProxyUrl);
+                    try {
+                        handlerOpts.upstreamProxyUrlParsed = parseUrl(funcResult.upstreamProxyUrl);
+                    } catch (e) {
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: ${e} (was "${funcResult.upstreamProxyUrl}"`);
+                    }
 
-                    if (handlerOpts.upstreamProxyUrlParsed) {
-                        if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
-                            throw new Error(
-                                `Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`,
-                            );
-                        }
-                        if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
-                            throw new Error(
-                                `Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`,
-                            );
-                        }
+                    if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`); // eslint-disable-line max-len
+                    }
+                    if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`); // eslint-disable-line max-len
+                    }
+                    if (/:/.test(handlerOpts.upstreamProxyUrlParsed.username)) {
+                        throw new Error('Invalid "upstreamProxyUrl" provided: The username cannot contain the colon (:) character according to RFC 7617.'); // eslint-disable-line max-len
                     }
                 }
 

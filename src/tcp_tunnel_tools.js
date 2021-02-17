@@ -5,13 +5,20 @@ import { parseUrl, nodeify } from './tools';
 const runningServers = {};
 
 export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
-    // TODO: More and better validations - yeah, make sure targetHost is really a hostname
-    const [trgHostname, trgPort] = targetHost.split(':');
-    if (!trgHostname || !trgPort) throw new Error('target needs to include both hostname and port.');
-
     const parsedProxyUrl = parseUrl(proxyUrl);
-    if (!parsedProxyUrl.hostname) throw new Error('proxyUrl needs to include atleast hostname');
-    if (parsedProxyUrl.protocol !== 'http:') throw new Error('Currently only "http" protocol is supported');
+    if (!parsedProxyUrl.hostname || !parsedProxyUrl.port) {
+        throw new Error(`The proxy URL must contain hostname and port (was "${proxyUrl}")`);
+    }
+    if (parsedProxyUrl.protocol !== 'http:') {
+        throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
+    }
+    if (/:/.test(parsedProxyUrl.username)) {
+        throw new Error('The proxy URL username cannot contain the colon (:) character according to RFC 7617.');
+    }
+
+    // TODO: More and better validations - yeah, make sure targetHost is really a hostname
+    const [trgHostname, trgPort] = (targetHost || '').split(':');
+    if (!trgHostname || !trgPort) throw new Error('The target host needs to include both hostname and port.');
 
     const options = {
         verbose: false,

@@ -4,7 +4,7 @@ const portastic = require('portastic');
 const {
     parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
     parseProxyAuthorizationHeader, addHeader,
-    nodeify,
+    nodeify, maybeAddProxyAuthorizationHeader,
 } = require('../build/tools');
 
 /* global describe, it */
@@ -38,60 +38,86 @@ const testUrl = (url, expected) => {
     expect(parsed1).to.contain(expected);
 };
 
-const testNonOrRelativeUrl = (url) => {
-    // Relative paths should be parsed, but only contain
-    // few selected fields
-    const parsedRelativeUrl = parseUrl(url);
-    expect(parsedRelativeUrl).to.contain({
-        path: url,
-    });
-    // eslint-disable-next-line no-unused-expressions
-    expect(!parsedRelativeUrl.protocol).to.be.true;
-    // eslint-disable-next-line no-unused-expressions
-    expect(!parsedRelativeUrl.host).to.be.true;
-    // eslint-disable-next-line no-unused-expressions
-    expect(!parsedRelativeUrl.port).to.be.true;
-};
-
 describe('tools.parseUrl()', () => {
     it('works', () => {
-        testUrl('https://username:password@www.example.com:12345/some/path', {
+        testUrl('https://username:password@www.example.COM:12345/some/path', {
+            auth: 'username:password',
             protocol: 'https:',
             scheme: 'https',
             username: 'username',
             password: 'password',
+            host: 'www.example.com:12345',
+            hostname: 'www.example.com',
             port: 12345,
         });
 
         testUrl('https://username:password@www.example.com/some/path', {
+            auth: 'username:password',
             protocol: 'https:',
             scheme: 'https',
             username: 'username',
             password: 'password',
+            host: 'www.example.com',
+            hostname: 'www.example.com',
             port: null,
+            path: '/some/path',
         });
 
-        testUrl('http://us-er+na12345me:@www.example.com:12345/some/path', {
+        testUrl('http://us-er+na12345me:@WWW.EXAMPLE.COM:12345/some/path', {
+            auth: 'us-er+na12345me:',
             protocol: 'http:',
             scheme: 'http',
             username: 'us-er+na12345me',
             password: '',
+            host: 'www.example.com:12345',
+            hostname: 'www.example.com',
             port: 12345,
+            path: '/some/path',
         });
 
-        testUrl('socks5://username@www.example.com:12345/some/path', {
+        testUrl('https://EXAMPLE.COM:12345/some/path', {
+            auth: '',
+            protocol: 'https:',
+            scheme: 'https',
+            username: '',
+            password: '', // not null!
+            host: 'example.com:12345',
+            hostname: 'example.com',
+            port: 12345,
+            path: '/some/path',
+        });
+
+        testUrl('https://:passwrd@EXAMPLE.COM:12345/some/path', {
+            auth: ':passwrd',
+            protocol: 'https:',
+            scheme: 'https',
+            username: '',
+            password: 'passwrd',
+            host: 'example.com:12345',
+            hostname: 'example.com',
+            port: 12345,
+            path: '/some/path',
+        });
+
+        testUrl('socks5://username@EXAMPLE.com:12345/some/path', {
+            auth: 'username:',
             protocol: 'socks5:',
             scheme: 'socks5',
             username: 'username',
             password: '',
+            // TODO: Why the hell it's UPPERCASE here??? And lower-case above for EXAMPLE.COM ?
+            host: 'EXAMPLE.com:12345',
+            hostname: 'EXAMPLE.com',
             port: 12345,
         });
 
-        testUrl('FTP://@www.example.com:12345/some/path', {
+        testUrl('FTP://@FTP.EXAMPLE.COM:12345/some/path', {
+            auth: '',
             protocol: 'ftp:',
             scheme: 'ftp',
             username: '',
             password: '',
+            hostname: 'ftp.example.com',
             port: 12345,
         });
 
@@ -100,7 +126,9 @@ describe('tools.parseUrl()', () => {
             scheme: 'http',
             username: '',
             password: '',
+            hostname: 'www.example.com',
             port: 12345,
+            path: '/some/path',
         });
 
         testUrl('HTTP://www.example.com/some/path', {
@@ -116,6 +144,7 @@ describe('tools.parseUrl()', () => {
             scheme: 'http',
             username: '',
             password: '',
+            hostname: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
             port: null,
         });
 
@@ -124,28 +153,38 @@ describe('tools.parseUrl()', () => {
             scheme: 'http',
             username: '',
             password: '',
+            hostname: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
             port: 12345,
         });
 
-        testUrl('http://username:password@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
+        // Note the upper-case "DB" here and lower-case "db" below
+        testUrl('http://username:password@[2001:DB8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
             protocol: 'http:',
             scheme: 'http',
             username: 'username',
             password: 'password',
+            host: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345',
+            hostname: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
             port: 12345,
         });
 
-        // TODO: Maybe decoding password should be considered in parse url
-        testUrl('http://username:p@%%w0rd@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
+        testUrl('http://user%35name:p%%w0rd@EXAMPLE.COM:12345/', {
             protocol: 'http:',
             scheme: 'http',
-            username: 'username',
-            password: 'p%40%%w0rd',
+            username: 'user5name',
+            password: 'p%%w0rd',
+            hostname: 'example.com',
             port: 12345,
+            path: '/',
         });
 
-        testNonOrRelativeUrl('/some-relative-url?a=1');
-        testNonOrRelativeUrl('A nonsense, really.');
+        expect(() => {
+            parseUrl('/some-relative-url?a=1');
+        }).to.throw(/Invalid URL/);
+
+        expect(() => {
+            parseUrl('A nonsense, really.');
+        }).to.throw(/Invalid URL/);
     });
 });
 
@@ -329,6 +368,39 @@ describe('tools.addHeader()', () => {
             foo: 'bar',
             someHeaderName: ['originalValue1', 'originalValue2', 'newValue'],
         });
+    });
+});
+
+describe('tools.maybeAddProxyAuthorizationHeader()', () => {
+    it('works', () => {
+        const parsedUrl1 = parseUrl('http://example.com');
+        const headers1 = { AAA: 123 };
+        maybeAddProxyAuthorizationHeader(parsedUrl1, headers1);
+        expect(headers1).to.eql({
+            AAA: 123,
+        });
+
+        const parsedUrl2 = parseUrl('http://aladdin:opensesame@userexample.com');
+        const headers2 = { BBB: 123 };
+        maybeAddProxyAuthorizationHeader(parsedUrl2, headers2);
+        expect(headers2).to.eql({
+            BBB: 123,
+            'Proxy-Authorization': 'Basic YWxhZGRpbjpvcGVuc2VzYW1l',
+        });
+
+        const parsedUrl3 = parseUrl('http://ala%35ddin:opensesame@userexample.com');
+        const headers3 = { BBB: 123 };
+        maybeAddProxyAuthorizationHeader(parsedUrl3, headers3);
+        expect(headers3).to.eql({
+            BBB: 123,
+            'Proxy-Authorization': 'Basic YWxhNWRkaW46b3BlbnNlc2FtZQ==',
+        });
+
+        const parsedUrl4 = parseUrl('http://ala%3Addin:opensesame@userexample.com');
+        const headers4 = { BBB: 123 };
+        expect(() => {
+            maybeAddProxyAuthorizationHeader(parsedUrl4, headers4);
+        }).to.throw(/The proxy username cannot contain the colon/);
     });
 });
 

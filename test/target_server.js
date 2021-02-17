@@ -99,7 +99,10 @@ class TargetServer {
 
     getBasicAuth(request, response) {
         const auth = basicAuth(request);
-        if (!auth || auth.name !== 'john.doe' || auth.pass !== 'Passwd') {
+        // Using special char $ to test URI-encoding feature!
+        // Beware that this is web server auth, not the proxy auth, so this doesn't really test our proxy server
+        // But it should work anyway
+        if (!auth || auth.name !== 'john.doe$' || auth.pass !== 'Passwd$') {
             response.statusCode = 401;
             response.setHeader('WWW-Authenticate', 'Basic realm="MyRealmName"');
             response.end('Unauthorized');
