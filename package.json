@@ -21,10 +21,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/apifytech/proxy-chain"
+    "url": "git+https://github.com/apify/proxy-chain"
   },
   "bugs": {
-    "url": "https://github.com/apifytech/proxy-chain/issues"
+    "url": "https://github.com/apify/proxy-chain/issues"
   },
   "homepage": "https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212",
   "files": [

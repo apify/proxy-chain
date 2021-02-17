@@ -46,18 +46,18 @@
 0.4.5 / 2020-05-15
 ===================
 - Added checks for closed handlers, in order to prevent the `Cannot read property 'pipe' of null` errors
-  (see issue [#64](https://github.com/apifytech/proxy-chain/issues/64))
+  (see issue [#64](https://github.com/apify/proxy-chain/issues/64))
 
 0.4.4 / 2020-03-12
 ===================
 - Attempt to fix an unhandled exception in `HandlerTunnelChain.onTrgRequestConnect`
-  (see issue [#64](https://github.com/apifytech/proxy-chain/issues/64))
+  (see issue [#64](https://github.com/apify/proxy-chain/issues/64))
 - Code cleanup
 
 0.4.3 / 2020-03-08
 ===================
 - Fixed unhandled `TypeError: Cannot read property '_httpMessage' of null` exception
-  in `HandlerTunnelChain.onTrgRequestConnect` (see issue [#63](https://github.com/apifytech/proxy-chain/issues/63))
+  in `HandlerTunnelChain.onTrgRequestConnect` (see issue [#63](https://github.com/apify/proxy-chain/issues/63))
 
 0.4.2 / 2020-02-28
 ===================
@@ -75,7 +75,7 @@
 ===================
 - **BREAKING CHANGE**: Dropped support for Node.js 9 and lower.
 - BUGFIX: Consume source socket errors to avoid unhandled exceptions.
-  Fixes [Issue #53](https://github.com/apifytech/proxy-chain/issues/53).
+  Fixes [Issue #53](https://github.com/apify/proxy-chain/issues/53).
 - BUGFIX: Renamed misspelled `Trailers` HTTP header to `Trailer`.
 - Replaced `bluebird` dependency with native Promises.
 - Upgraded NPM dev dependencies.

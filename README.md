@@ -270,6 +270,12 @@ If callback is not provided, the function returns a promise instead.
 Creates a TCP tunnel to `targetHost` that goes through a HTTP proxy server
 specified by the `proxyUrl` parameter.
 
+The optional `options` parameter is an object with the following properties:
+- `port: Number` - Enables specifying the local port to listen at. By default `0`,
+   which means a random port will be selected.
+- `hostname: String` - Local hostname to listen at. By default `localhost`.
+- `verbose: Boolean` - If `true`, the functions logs a lot. By default `false`.
+
 The result of the function is a local endpoint in a form of `hostname:port`.
 All TCP connections made to the local endpoint will be tunneled through the proxy to the target host and port.
 For example, this is useful if you want to access a certain service from a specific IP address.
