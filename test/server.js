@@ -37,7 +37,7 @@ const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 // Enable self-signed certificates
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const NON_EXISTENT_HOSTNAME = 'non-existent-hostname';
+const NON_EXISTENT_HOSTNAME = 'this-apify-hostname-is-surely-non-existent.cz';
 
 // Prepare testing data
 const DATA_CHUNKS = [];
@@ -251,21 +251,24 @@ const createTestSuite = ({
                             expect(request).to.be.an('object');
                             expect(port).to.be.an('number');
 
-                            if (hostname === 'activate-error-in-prep-req-func-throw') {
+                            // All the fake hostnames here have a .gov TLD, because without a TLD,
+                            // the tests would fail on GitHub Actions. We assume nobody will register
+                            // those random domains with a .gov TLD.
+                            if (hostname === 'activate-error-in-prep-req-func-throw.gov') {
                                 throw new Error('Testing error 1');
                             }
-                            if (hostname === 'activate-error-in-prep-req-func-throw-known') {
+                            if (hostname === 'activate-error-in-prep-req-func-throw-known.gov') {
                                 throw new RequestError('Known error 1', 501);
                             }
 
-                            if (hostname === 'activate-error-in-prep-req-func-promise') {
+                            if (hostname === 'activate-error-in-prep-req-func-promise.gov') {
                                 return Promise.reject(new Error('Testing error 2'));
                             }
-                            if (hostname === 'activate-error-in-prep-req-func-promise-known') {
+                            if (hostname === 'activate-error-in-prep-req-func-promise-known.gov') {
                                 throw new RequestError('Known error 2', 501);
                             }
 
-                            if (hostname === 'test-custom-response-simple') {
+                            if (hostname === 'test-custom-response-simple.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
@@ -281,7 +284,7 @@ const createTestSuite = ({
                                 if (useSsl) addToMainProxyServerConnectionIds = false;
                             }
 
-                            if (hostname === 'test-custom-response-complex') {
+                            if (hostname === 'test-custom-response-complex.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
@@ -300,7 +303,7 @@ const createTestSuite = ({
                                 };
                             }
 
-                            if (hostname === 'test-custom-response-long') {
+                            if (hostname === 'test-custom-response-long.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
@@ -313,7 +316,7 @@ const createTestSuite = ({
                                 };
                             }
 
-                            if (hostname === 'test-custom-response-promised') {
+                            if (hostname === 'test-custom-response-promised.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = parseUrl(request.url);
                                     expect(trgParsed).to.deep.include({
@@ -328,7 +331,7 @@ const createTestSuite = ({
                                 };
                             }
 
-                            if (hostname === 'test-custom-response-invalid') {
+                            if (hostname === 'test-custom-response-invalid.gov') {
                                 result.customResponseFunction = 'THIS IS NOT A FUNCTION';
                                 addToMainProxyServerConnectionIds = false;
                             }
@@ -339,23 +342,23 @@ const createTestSuite = ({
                                     addToMainProxyServerConnectionIds = false;
                                     // Now that authentication is requested, upstream proxy should not get used,
                                     // so try some invalid one and it should cause no issue
-                                    result.upstreamProxyUrl = 'http://dummy-hostname-xyz:6789';
+                                    result.upstreamProxyUrl = 'http://dummy-hostname-xyz.gov:6789';
                                 }
                             }
 
                             if (useUpstreamProxy && !result.upstreamProxyUrl) {
                                 let upstreamProxyUrl;
 
-                                if (hostname === 'activate-invalid-upstream-proxy-scheme') {
+                                if (hostname === 'activate-invalid-upstream-proxy-scheme.gov') {
                                     upstreamProxyUrl = `ftp://proxy.example.com:8000`;
                                     addToMainProxyServerConnectionIds = false;
-                                } else if (hostname === 'activate-invalid-upstream-proxy-url') {
+                                } else if (hostname === 'activate-invalid-upstream-proxy-url.gov') {
                                     upstreamProxyUrl = '    ';
                                     addToMainProxyServerConnectionIds = false;
-                                } else if (hostname === 'activate-bad-upstream-proxy-credentials') {
+                                } else if (hostname === 'activate-bad-upstream-proxy-credentials.gov') {
                                     upstreamProxyUrl = `http://invalid:credentials@127.0.0.1:${upstreamProxyPort}`;
-                                } else if (hostname === 'activate-unknown-upstream-proxy-host') {
-                                    upstreamProxyUrl = 'http://dummy-hostname:1234';
+                                } else if (hostname === 'activate-unknown-upstream-proxy-host.gov') {
+                                    upstreamProxyUrl = 'http://dummy-hostname.gov:1234';
                                 } else {
                                     let auth = '';
                                     if (upstreamProxyAuth) auth = `${upstreamProxyAuth.username}:${upstreamProxyAuth.password}@`;
@@ -434,7 +437,6 @@ const createTestSuite = ({
                     assert.fail();
                 })
                 .catch((err) => {
-                    // console.dir(err);
                     expect(err.message).to.contain(`${expectedStatusCode}`);
                 })
                 .finally(() => {
@@ -865,19 +867,19 @@ const createTestSuite = ({
                 it('returns 500 on error in prepareRequestFunction', () => {
                     return Promise.resolve()
                     .then(() => {
-                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-throw`);
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-throw.gov`);
                         return testForErrorResponse(opts, 500);
                     })
                     .then(() => {
-                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-promise`);
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-promise.gov`);
                         return testForErrorResponse(opts, 500);
                     })
                     .then(() => {
-                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-throw-known`);
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-throw-known.gov`);
                         return testForErrorResponse(opts, 501);
                     })
                     .then(() => {
-                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-promise-known`);
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-error-in-prep-req-func-promise-known.gov`);
                         return testForErrorResponse(opts, 501);
                     });
                 });
@@ -885,23 +887,23 @@ const createTestSuite = ({
 
             if (useUpstreamProxy) {
                 it('fails gracefully on invalid upstream proxy scheme', () => {
-                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-scheme`);
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-scheme.gov`);
                     return testForErrorResponse(opts, 500);
                 });
 
                 it('fails gracefully on invalid upstream proxy URL', () => {
-                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-url`);
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-url.gov`);
                     return testForErrorResponse(opts, 500);
                 });
 
                 it('fails gracefully on non-existent upstream proxy host', () => {
-                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-unknown-upstream-proxy-host`);
+                    const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-unknown-upstream-proxy-host.gov`);
                     return testForErrorResponse(opts, 502);
                 });
 
                 if (upstreamProxyAuth) {
                     _it('fails gracefully on bad upstream proxy credentials', () => {
-                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-bad-upstream-proxy-credentials`);
+                        const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-bad-upstream-proxy-credentials.gov`);
                         return testForErrorResponse(opts, 502);
                     });
                 }
@@ -910,7 +912,7 @@ const createTestSuite = ({
             if (testCustomResponse) {
                 if (!useSsl) {
                     it('supports custom response - simple', () => {
-                        const opts = getRequestOpts('http://test-custom-response-simple/some/path');
+                        const opts = getRequestOpts('http://test-custom-response-simple.gov/some/path');
                         return requestPromised(opts)
                             .then((response) => {
                                 expect(response.statusCode).to.eql(200);
@@ -919,7 +921,7 @@ const createTestSuite = ({
                     });
 
                     it('supports custom response - complex', () => {
-                        const opts = getRequestOpts('http://test-custom-response-complex:1234/some/path?query=456');
+                        const opts = getRequestOpts('http://test-custom-response-complex.gov:1234/some/path?query=456');
                         return requestPromised(opts)
                             .then((response) => {
                                 expect(response.statusCode).to.eql(201);
@@ -932,7 +934,7 @@ const createTestSuite = ({
                     });
 
                     it('supports custom response - long', () => {
-                        const opts = getRequestOpts('http://test-custom-response-long');
+                        const opts = getRequestOpts('http://test-custom-response-long.gov');
                         return requestPromised(opts)
                             .then((response) => {
                                 expect(response.statusCode).to.eql(200);
@@ -943,7 +945,7 @@ const createTestSuite = ({
                     });
 
                     it('supports custom response - promised', () => {
-                        const opts = getRequestOpts('http://test-custom-response-promised/some/path');
+                        const opts = getRequestOpts('http://test-custom-response-promised.gov/some/path');
                         return requestPromised(opts)
                             .then((response) => {
                                 expect(response.statusCode).to.eql(200);
@@ -952,12 +954,12 @@ const createTestSuite = ({
                     });
 
                     it('fails on invalid custom response function', () => {
-                        const opts = getRequestOpts('http://test-custom-response-invalid');
+                        const opts = getRequestOpts('http://test-custom-response-invalid.gov');
                         return testForErrorResponse(opts, 500);
                     });
                 } else {
                     it('does not support custom response in SSL mode', () => {
-                        const opts = getRequestOpts('https://test-custom-response-simple/some/path');
+                        const opts = getRequestOpts('https://test-custom-response-simple.gov/some/path');
                         return testForErrorResponse(opts, 500);
                     });
                 }
