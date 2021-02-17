@@ -9,7 +9,7 @@ const request = require('request');
 const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy } = require('../build/index');
-const { findFreePort } = require('../build/tools');
+const { findFreePort } = require('./tools');
 
 let proxyServer;
 let proxyPort; // eslint-disable-line no-unused-vars

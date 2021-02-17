@@ -1,6 +1,4 @@
 import { _checkIsHttpToken, _checkInvalidHeaderChar } from '_http_common'; // eslint-disable-line
-import portastic from 'portastic';
-// import through from 'through';
 
 const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
 
@@ -210,24 +208,6 @@ export const PORT_SELECTION_CONFIG = {
     FROM: 20000,
     TO: 60000,
     RETRY_COUNT: 10,
-};
-
-export const findFreePort = () => {
-    // Let 'min' be a random value in the first half of the PORT_FROM-PORT_TO range,
-    // to reduce a chance of collision if other ProxyChain is started at the same time.
-    const half = Math.floor((PORT_SELECTION_CONFIG.TO - PORT_SELECTION_CONFIG.FROM) / 2);
-
-    const opts = {
-        min: PORT_SELECTION_CONFIG.FROM + Math.floor(Math.random() * half),
-        max: PORT_SELECTION_CONFIG.TO,
-        retrieve: 1,
-    };
-
-    return portastic.find(opts)
-        .then((ports) => {
-            if (ports.length < 1) throw new Error(`There are no more free ports in range from ${PORT_SELECTION_CONFIG.FROM} to ${PORT_SELECTION_CONFIG.TO}`); // eslint-disable-line max-len
-            return ports[0];
-        });
 };
 
 export const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {

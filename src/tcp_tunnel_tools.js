@@ -1,6 +1,6 @@
 import net from 'net';
 import TcpTunnel from './tcp_tunnel';
-import { parseUrl, findFreePort, nodeify } from './tools';
+import { parseUrl, nodeify } from './tools';
 
 const runningServers = {};
 
@@ -27,60 +27,58 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
         ...providedOptions,
     };
 
-    const promise = new Promise((resolve, reject) => {
-        if (options.port) return resolve(options.port);
-        // TODO: Use port: 0 instead!
-        findFreePort().then(resolve).catch(reject);
-    }).then((port) => {
-        const server = net.createServer();
+    const server = net.createServer();
 
-        const log = (...args) => {
-            if (options.verbose) console.log(...args);
-        };
+    const log = (...args) => {
+        if (options.verbose) console.log(...args);
+    };
 
-        server.on('connection', (srcSocket) => {
-            runningServers[port].connections = srcSocket;
-            const remoteAddress = `${srcSocket.remoteAddress}:${srcSocket.remotePort}`;
-            log('new client connection from %s', remoteAddress);
+    server.on('connection', (srcSocket) => {
+        const port = server.address().port;
 
-            srcSocket.pause();
+        runningServers[port].connections = srcSocket;
+        const remoteAddress = `${srcSocket.remoteAddress}:${srcSocket.remotePort}`;
+        log('new client connection from %s', remoteAddress);
 
-            const tunnel = new TcpTunnel({
-                srcSocket,
-                upstreamProxyUrlParsed: parsedProxyUrl,
-                trgParsed: {
-                    hostname: trgHostname,
-                    port: trgPort,
-                },
-                log,
-            });
+        srcSocket.pause();
 
-            tunnel.run();
-
-            srcSocket.on('data', onConnData);
-            srcSocket.on('close', onConnClose);
-            srcSocket.on('error', onConnError);
-
-            function onConnData(d) {
-                log('connection data from %s: %j', remoteAddress, d);
-            }
-
-            function onConnClose() {
-                log('connection from %s closed', remoteAddress);
-            }
-
-            function onConnError(err) {
-                log('Connection %s error: %s', remoteAddress, err.message);
-            }
+        const tunnel = new TcpTunnel({
+            srcSocket,
+            upstreamProxyUrlParsed: parsedProxyUrl,
+            trgParsed: {
+                hostname: trgHostname,
+                port: trgPort,
+            },
+            log,
         });
 
-        return new Promise((resolve) => {
-            server.listen(port, (err) => {
-                if (err) return reject(err);
-                log('server listening to ', server.address());
-                runningServers[port] = { server, connections: [] };
-                resolve(`${options.hostname}:${port}`);
-            });
+        tunnel.run();
+
+        srcSocket.on('data', onConnData);
+        srcSocket.on('close', onConnClose);
+        srcSocket.on('error', onConnError);
+
+        function onConnData(d) {
+            log('connection data from %s: %j', remoteAddress, d);
+        }
+
+        function onConnClose() {
+            log('connection from %s closed', remoteAddress);
+        }
+
+        function onConnError(err) {
+            log('Connection %s error: %s', remoteAddress, err.message);
+        }
+    });
+
+    const promise = new Promise((resolve) => {
+        // Let the system pick a random listening port
+        server.listen(0, (err) => {
+            if (err) return reject(err);
+            const address = server.address();
+            log('server listening to ', address);
+            runningServers[address.port] = { server, connections: [] };
+            resolve(`${options.hostname}:${address.port}`);
         });
     });
 

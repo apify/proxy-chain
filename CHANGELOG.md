@@ -18,6 +18,10 @@
   and provided better error messages. Both functions now fail if the upstream proxy
   URL contains colon (`:`) character in the username, in order to comply with RFC 7617.
   The functions now fail fast with a reasonable error, rather later and with cryptic errors.
+- **BREAKING:** The `createTunnel()` function now lets the system assign potentially
+  random listening TCP port, instead of the previous selection from range from 20000 to 60000.
+- **BREAKING:** The undocumented `findFreePort()` function was moved from tools.js to test/tools.js
+- Got rid of the "portastic" NPM package and thus reduced bundle size by ~50%
 - Various code improvements and better tests.
 - Updated packages.
 

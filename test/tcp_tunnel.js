@@ -5,7 +5,7 @@ const http = require('http');
 const proxy = require('proxy');
 
 const { createTunnel, closeTunnel } = require('../build/index');
-const { findFreePort } = require('../build/tools');
+const { findFreePort } = require('./tools');
 
 const destroySocket = socket => new Promise((resolve, reject) => {
     if (!socket || socket.destroyed) return resolve();

@@ -6,12 +6,10 @@ const util = require('util');
 const portastic = require('portastic');
 const basicAuthParser = require('basic-auth-parser');
 const request = require('request');
-const express  = require('express');
+const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy } = require('../build/index');
-const { PORT_SELECTION_CONFIG } = require('../build/tools');
-
-/* globals process */
+const { PORT_SELECTION_CONFIG } = require('./tools');
 
 const ORIG_PORT_SELECTION_CONFIG = { ...PORT_SELECTION_CONFIG };
 
