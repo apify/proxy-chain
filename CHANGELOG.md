@@ -1,4 +1,4 @@
-0.5.0 / 2021-02-13
+1.0.0 / 2021-02-17
 ===================
 - **BREAKING:** The `parseUrl()` function slightly changed its behavior (see README for details):
   - it no longer returns an object on invalid URLs and throws an exception instead
