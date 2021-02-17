@@ -1,3 +1,9 @@
+===================
+- **BREAKING:** The `createTunnel()` function now lets the system assign potentially
+  random listening TCP port, instead of the previous selection from range from 20000 to 60000.
+- **BREAKING:** The undocumented `findFreePort()` function was moved from tools.js to test/tools.js
+- Got rid of the "portastic" NPM package and thus reduced bundle size by ~50%
+
 0.4.9 / 2021-01-26
 ===================
 - Bugfix: Added back the `scheme` field to result from`parseUrl()`
