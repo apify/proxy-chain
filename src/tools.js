@@ -47,7 +47,7 @@ const TOKEN_REGEX = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
  * @see https://tools.ietf.org/html/rfc7230#section-3.2.6
  * @see https://github.com/nodejs/node/blob/8cf5ae07e9e80747c19e0fc04fad48423707f62c/lib/_http_common.js#L222
  */
-export const isHttpToken = (val) => TOKEN_REGEX.test(val);
+const isHttpToken = (val) => TOKEN_REGEX.test(val);
 
 const HEADER_CHAR_REGEX = /[^\t\x20-\x7e\x80-\xff]/;
 
@@ -58,7 +58,7 @@ const HEADER_CHAR_REGEX = /[^\t\x20-\x7e\x80-\xff]/;
  *  field-vchar    = VCHAR / obs-text
  * @see https://github.com/nodejs/node/blob/8cf5ae07e9e80747c19e0fc04fad48423707f62c/lib/_http_common.js#L233
  */
-export const isInvalidHeaderChar = (val) => HEADER_CHAR_REGEX.test(val);
+const isInvalidHeaderChar = (val) => HEADER_CHAR_REGEX.test(val);
 
 // This code is based on Node.js' validateHeader() function from _http_outgoing.js module
 // (see https://github.com/nodejs/node/blob/189d29f39e6de9ccf10682bfd1341819b4a2291f/lib/_http_outgoing.js#L485)
