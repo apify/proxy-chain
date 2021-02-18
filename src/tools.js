@@ -1,5 +1,3 @@
-import { _checkIsHttpToken, _checkInvalidHeaderChar } from '_http_common'; // eslint-disable-line
-
 const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
 
 /**
@@ -42,15 +40,35 @@ const HOP_BY_HOP_HEADERS_REGEX = new RegExp(`^(${HOP_BY_HOP_HEADERS.join('|')})$
 
 export const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS_REGEX.test(header);
 
+const TOKEN_REGEX = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
+
+/**
+ * Verifies that the given val is a valid HTTP token per the rules defined in RFC 7230
+ * @see https://tools.ietf.org/html/rfc7230#section-3.2.6
+ * @see https://github.com/nodejs/node/blob/8cf5ae07e9e80747c19e0fc04fad48423707f62c/lib/_http_common.js#L222
+ */
+export const isHttpToken = (val) => TOKEN_REGEX.test(val);
+
+const HEADER_CHAR_REGEX = /[^\t\x20-\x7e\x80-\xff]/;
+
+/**
+ * True if val contains an invalid field-vchar
+ *  field-value    = *( field-content / obs-fold )
+ *  field-content  = field-vchar [ 1*( SP / HTAB ) field-vchar ]
+ *  field-vchar    = VCHAR / obs-text
+ * @see https://github.com/nodejs/node/blob/8cf5ae07e9e80747c19e0fc04fad48423707f62c/lib/_http_common.js#L233
+ */
+export const isInvalidHeaderChar = (val) => HEADER_CHAR_REGEX.test(val);
+
 // This code is based on Node.js' validateHeader() function from _http_outgoing.js module
 // (see https://github.com/nodejs/node/blob/189d29f39e6de9ccf10682bfd1341819b4a2291f/lib/_http_outgoing.js#L485)
 export const isInvalidHeader = (name, value) => {
     // NOTE: These are internal Node.js functions, they might stop working in the future!
     return typeof name !== 'string'
         || !name
-        || !_checkIsHttpToken(name)
+        || !isHttpToken(name)
         || value === undefined
-        || _checkInvalidHeaderChar(value);
+        || isInvalidHeaderChar(value);
 };
 
 const bulletproofDecodeURIComponent = (encodedURIComponent) => {
