@@ -99,6 +99,6 @@ export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRe
         tunnelConnectRespondedCallback(false);
     }
     server.on('tunnelConnectResponded', ({ response, socket, head }) => {
-        tunnelConnectRespondedCallback({ response,socket,head });
+        tunnelConnectRespondedCallback({ response, socket, head });
     });
 };
