@@ -88,17 +88,17 @@ export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callb
 };
 
 /**
- * Add a callback on 'onTrgRequestConnect' Event in order to get headers from CONNECT tunnel to proxy
+ * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy
  * Useful for some proxies that are using headers to send information like ProxyMesh
  * @param anonymizedProxyUrl
- * @param onTrgRequestConnectCallback
+ * @param tunnelConnectRespondedCallback
  */
-export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, onTrgRequestConnectCallback) => {
+export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRespondedCallback) => {
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
-        onTrgRequestConnectCallback(false);
+        tunnelConnectRespondedCallback(false);
     }
-    server.on('onTrgRequestConnect', ({ response, socket, head }) => {
-        onTrgRequestConnectCallback({ response,socket,head });
+    server.on('tunnelConnectResponded', ({ response, socket, head }) => {
+        tunnelConnectRespondedCallback({ response,socket,head });
     });
 };
