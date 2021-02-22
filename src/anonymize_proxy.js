@@ -99,6 +99,6 @@ export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, onTrgRequestCon
         onTrgRequestConnectCallback(false);
     }
     server.on('onTrgRequestConnect', ({ response, socket, head }) => {
-        onTrgRequestConnectCallback(response,socket,head);
+        onTrgRequestConnectCallback({ response,socket,head });
     });
 };

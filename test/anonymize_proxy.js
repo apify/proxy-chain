@@ -8,7 +8,7 @@ const basicAuthParser = require('basic-auth-parser');
 const request = require('request');
 const express = require('express');
 
-const { anonymizeProxy, closeAnonymizedProxy } = require('../build/index');
+const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../build/index');
 const { findFreePort } = require('./tools');
 
 let proxyServer;
@@ -333,6 +333,46 @@ describe('utils.anonymizeProxy', function () {
                 expect(onconnectArgs.url).to.equal(host);
             });
     });
+
+    it('handles HTTP CONNECT callback properly', function () {
+
+        this.timeout(50 * 1000);
+
+        const host = `localhost:${testServerPort}`;
+        let proxyPort;
+        let rawHeadersRetrieved;
+        function onconnect(message, socket) {
+            socket.write("HTTP/1.1 200 OK\r\nfoo: bar\r\n\r\n");
+            socket.end();
+            socket.destroy();
+        }
+        return findFreePort()
+            .then((port) => {
+                var proxy = http.createServer();
+                proxy.on('connect', onconnect);
+                proxyPort = port;
+                return serverListen(proxy, proxyPort);
+            })
+            .then(() => {
+                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`);
+            })
+            .then((proxyUrl) => {
+                listenConnectAnonymizedProxy(proxyUrl, ({ response, socket, head }) => {
+                    rawHeadersRetrieved = response.rawHeaders;
+                });
+                return requestPromised({
+                    uri: `https://${host}`,
+                    proxy: proxyUrl,
+                })
+                .catch(() => {
+                    return Promise.resolve();
+                });
+            })
+            .then(() => {
+                expect(rawHeadersRetrieved).to.eql(['foo', 'bar']);
+            });
+    });
+
 
     it('fails with invalid upstream proxy credentials', () => {
         let anonymousProxyUrl;
