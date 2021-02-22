@@ -354,6 +354,15 @@ export class Server extends EventEmitter {
             this.log(handler.id, '!!! Closed and removed from server');
         });
 
+        handler.once('onTrgRequestConnect', ({ response, socket, head }) => {
+            this.emit('onTrgRequestConnect', {
+                connectionId: handler.id,
+                response,
+                socket,
+                head,
+            });
+        });
+
         handler.run();
     }
 
