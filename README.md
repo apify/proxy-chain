@@ -208,6 +208,32 @@ If it's `false`, the function will wait until all connections are closed, which 
 If the `callback` parameter is omitted, the function returns a promise.
 
 
+## Accessing the CONNECT response headers for proxy tunneling
+
+Some upstream proxy providers might include valuable debugging information in the CONNECT response
+headers when establishing the proxy tunnel, for they may not modify future data in the tunneled
+connection.
+
+The proxy server would emit a `tunnelConnectResponded` event for exposing such information, where
+the parameter types of the event callback are described in [Node.js's documentation][1]. Example:
+
+[1]: https://nodejs.org/api/http.html#http_event_connect
+
+```javascript
+server.on('tunnelConnectResponded', ({ response, socket, head }) => {
+    console.log(`CONNECT response headers received: ${response.headers}`);
+});
+```
+
+Alternatively a [helper function](##helper-functions) may be used:
+
+```javascript
+listenConnectAnonymizedProxy(anonymizedProxyUrl, ({ response, socket, head }) => {
+    console.log(`CONNECT response headers received: ${response.headers}`);
+});
+```
+
+
 ## Helper functions
 
 The package also provides several utility functions.
@@ -306,6 +332,12 @@ If it's `false`, the function will wait until all connections are closed, which 
 
 The function takes an optional callback that receives the result of the function.
 If the callback is not provided, the function returns a promise instead.
+
+### `listenConnectAnonymizedProxy(anonymizedProxyUrl, tunnelConnectRespondedCallback)`
+
+Allows to configure a callback on the anonymized proxy URL for the CONNECT response headers. See the
+above section [Accessing the CONNECT response headers for proxy tunneling](#accessing-the-connect-response-headers-for-proxy-tunneling)
+for details.
 
 ### `parseUrl(url)`
 

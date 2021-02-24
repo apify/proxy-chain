@@ -86,3 +86,24 @@ export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callb
         });
     return nodeify(promise, callback);
 };
+
+/**
+ * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy
+ * Useful for some proxies that are using headers to send information like ProxyMesh
+ * @param anonymizedProxyUrl
+ * @param tunnelConnectRespondedCallback Callback to be invoked upon receiving the response. It
+ * shall take an object as its parameter, with three keys `response`, `socket`, and `head` as
+ * described here: https://nodejs.org/api/http.html#http_event_connect
+ * @returns `true` if the callback is successfully configured, otherwise `false` (e.g. when an
+ * invalid proxy URL is given).
+ */
+export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRespondedCallback) => {
+    const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
+    if (!server) {
+        return false;
+    }
+    server.on('tunnelConnectResponded', ({ response, socket, head }) => {
+        tunnelConnectRespondedCallback({ response, socket, head });
+    });
+    return true;
+};
