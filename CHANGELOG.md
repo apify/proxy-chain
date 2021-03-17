@@ -1,4 +1,4 @@
-1.0.0 / 2021-02-17
+1.0.0 / 2021-03-17
 ===================
 - **BREAKING:** The `parseUrl()` function slightly changed its behavior (see README for details):
   - it no longer returns an object on invalid URLs and throws an exception instead
@@ -21,6 +21,8 @@
 - **BREAKING:** The `createTunnel()` function now lets the system assign potentially
   random listening TCP port, instead of the previous selection from range from 20000 to 60000.
 - **BREAKING:** The undocumented `findFreePort()` function was moved from tools.js to test/tools.js
+- Added the [ability to access proxy CONNECT headers](https://github.com/apify/proxy-chain#accessing-the-connect-response-headers-for-proxy-tunneling) for proxy tunneling.
+- Removed dependency on Node.js internal modules, hopefully allowing usage of this library in Electron.
 - Got rid of the "portastic" NPM package and thus reduced bundle size by ~50%
 - Various code improvements and better tests.
 - Updated packages.
