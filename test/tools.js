@@ -261,6 +261,7 @@ describe('tools.isInvalidHeader()', () => {
     it('works', () => {
         expect(isInvalidHeader('With space', 'a')).to.eql(true);
         expect(isInvalidHeader('', 'a')).to.eql(true);
+        expect(isInvalidHeader(undefined, 'a')).to.eql(true);
         expect(isInvalidHeader(null, 'a')).to.eql(true);
         expect(isInvalidHeader(1234, 'a')).to.eql(true);
         expect(isInvalidHeader('\n', 'a')).to.eql(true);
