@@ -56,7 +56,6 @@ describe('tcp_tunnel.createTunnel', () => {
     it('throws error if proxyUrl is not in correct format', () => {
         assert.throws(() => { createTunnel('socks://user:password@whatever.com:123', 'localhost:9000'); }, /must have the "http" protocol/);
         assert.throws(() => { createTunnel('socks5://user:password@whatever.com', 'localhost:9000'); }, /must contain hostname and port/);
-        assert.throws(() => { createTunnel('http://user:password@whatever.com', 'localhost:9000'); }, /must contain hostname and port/);
         assert.throws(() => { createTunnel('http://us%3Aer:password@whatever.com:345', 'localhost:9000'); }, /cannot contain the colon/);
     });
     it('throws error if target is not in correct format', () => {

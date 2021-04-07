@@ -119,9 +119,7 @@ describe('utils.anonymizeProxy', function () {
     it('throws for invalid URLs', () => {
         assert.throws(() => { anonymizeProxy('://whatever.com'); }, Error);
         assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
-        assert.throws(() => { anonymizeProxy('http://no-port-specified'); }, Error);
         assert.throws(() => { anonymizeProxy('socks5://whatever.com'); }, Error);
-        assert.throws(() => { anonymizeProxy('http://no-port-provided'); }, Error);
     });
 
     it('keeps already anonymous proxies (both with callbacks and promises)', () => {
