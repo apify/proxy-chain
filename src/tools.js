@@ -80,9 +80,13 @@ const bulletproofDecodeURIComponent = (encodedURIComponent) => {
 };
 
 // Ports returned by `parseUrl` when port is not explicitly specified.
+// Values are based on node docs: https://nodejs.org/api/url.html#url_url_port
 const STANDARD_PORTS_BY_PROTOCOL = {
+    'ftp:': 21,
     'http:': 80,
     'https:': 443,
+    'ws:': 80,
+    'wss:': 443,
 };
 
 /**

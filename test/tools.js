@@ -181,8 +181,11 @@ describe('tools.parseUrl()', () => {
         // Test that default ports are added for http and https
         testUrl('https://www.example.com', { port: 443 });
         testUrl('http://www.example.com', { port: 80 });
+        // ... and for web sockets
+        testUrl('wss://www.example.com', { port: 443 });
+        testUrl('ws://www.example.com', { port: 80 });
         // Test that default port is not added for other protocols
-        testUrl('ftp://www.example.com', { port: null });
+        testUrl('sock5://www.example.com', { port: null });
         // Test that explicit port is returned when specified
         testUrl('https://www.example.com:12345', { port: 12345 });
         testUrl('http://www.example.com:12345', { port: 12345 });
