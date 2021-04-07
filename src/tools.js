@@ -79,6 +79,12 @@ const bulletproofDecodeURIComponent = (encodedURIComponent) => {
     }
 };
 
+// Ports returned by `parseUrl` when port is not explicitly specified.
+const STANDARD_PORTS_BY_PROTOCOL = {
+    'http:': 80,
+    'https:': 443,
+};
+
 /**
  * Parses a URL using Node.js' `new URL(url)` and adds the following features:
  *  - `port` is casted to number / null from string
@@ -126,6 +132,11 @@ export const parseUrl = (url) => {
         if (matches && matches.length === 2) {
             parsed.scheme = matches[1];
         }
+    }
+
+    // Add default port based on protocol when no port is explicitly specified.
+    if (parsed.port === null) {
+        parsed.port = STANDARD_PORTS_BY_PROTOCOL[parsed.protocol] || null;
     }
 
     return parsed;
