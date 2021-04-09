@@ -1,3 +1,8 @@
+1.0.1 / 2021-04-09
+==================
+ - Bugfix: `parseUrl()` result now always includes port for `http(s)`, `ftp` and `ws(s)` (even if explicitly specified port is the default one)
+   This fixes [#123](https://github.com/apify/proxy-chain/issues/123).
+
 1.0.0 / 2021-03-17
 ===================
 - **BREAKING:** The `parseUrl()` function slightly changed its behavior (see README for details):
