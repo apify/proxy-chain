@@ -1,3 +1,7 @@
+1.0.2 / 2021-04-14
+==================
+- Bugfix: `closeTunnel()` function didn't work because of `runningServers[port].connections.forEach is not a function` error (see issue [#127](https://github.com/apify/proxy-chain/issues/127))
+
 1.0.1 / 2021-04-09
 ==================
  - Bugfix: `parseUrl()` result now always includes port for `http(s)`, `ftp` and `ws(s)` (even if explicitly specified port is the default one)
@@ -34,7 +38,7 @@
 
 0.4.9 / 2021-01-26
 ===================
-- Bugfix: Added back the `scheme` field to result from`parseUrl()`
+- Bugfix: Added back the `scheme` field to result from `parseUrl()`
 
 0.4.8 / 2021-01-26
 ===================
