@@ -11,6 +11,8 @@ export default class HandlerTunnelChain extends HandlerBase {
 
         if (!this.upstreamProxyUrlParsed) throw new Error('The "upstreamProxyUrlParsed" option is required');
 
+        this.upstreamProxyHeaders = options.upstreamProxyHeaders;
+
         this.bindHandlersToThis(['onTrgRequestConnect', 'onTrgRequestAbort', 'onTrgRequestError']);
     }
 
@@ -26,6 +28,7 @@ export default class HandlerTunnelChain extends HandlerBase {
             path: targetHost,
             headers: {
                 Host: targetHost,
+                ...this.upstreamProxyHeaders
             },
         };
 

@@ -77,6 +77,7 @@ export class Server extends EventEmitter {
      * ```{
      *   requestAuthentication: Boolean,
      *   upstreamProxyUrl: String,
+     *   upstreamProxyHeaders: Object,
      *   customResponseFunction: Function
      * }```
      * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
@@ -185,7 +186,7 @@ export class Server extends EventEmitter {
 
     /**
      * Authenticates a new request and determines upstream proxy URL using the user function.
-     * Returns a promise resolving to an object that can be passed to construcot of one of the HandlerXxx classes.
+     * Returns a promise resolving to an object that can be passed to constructor of one of the HandlerXxx classes.
      * @param request
      */
     prepareRequestHandling(request) {
@@ -251,7 +252,7 @@ export class Server extends EventEmitter {
                     if (!parsed.protocol) {
                         throw new RequestError('Hey, good try, but I\'m a HTTP proxy, not your ordinary web server :)', 400);
                     }
-                    // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
+                    // Only HTTP is supported, other protocols such as HTTPS or FTP must use the CONNECT method
                     if (parsed.protocol !== 'http:') {
                         throw new RequestError(`Only HTTP protocol is supported (was ${parsed.protocol})`, 400);
                     }
@@ -333,6 +334,10 @@ export class Server extends EventEmitter {
 
                 if (handlerOpts.upstreamProxyUrlParsed) {
                     this.log(handlerOpts.id, `Using upstream proxy ${redactParsedUrl(handlerOpts.upstreamProxyUrlParsed)}`);
+
+                    if (funcResult && funcResult.upstreamProxyHeaders) {
+                        handlerOpts.upstreamProxyHeaders = funcResult.upstreamProxyHeaders;
+                    }
                 }
 
                 return handlerOpts;
