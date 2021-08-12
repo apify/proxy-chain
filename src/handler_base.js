@@ -73,6 +73,26 @@ export default class HandlerBase extends EventEmitter {
         this.srcSocket.on('error', this.onSrcSocketError);
     }
 
+    detach() {
+        if (this.isClosed) return;
+
+        this.log('Closing handler');
+        this.isClosed = true;
+
+        // Save stats before sockets are destroyed
+        const stats = this.getStats();
+
+        this.srcSocket.off('end', this.onSrcSocketEnd);
+        this.srcSocket.off('close', this.onSrcSocketClose);
+        this.srcSocket.off('finish', this.onSrcSocketFinish);
+        this.srcSocket.off('error', this.onSrcSocketError);
+
+        this.srcResponse.off('error', this.onSrcResponseError);
+        this.srcResponse.off('finish', this.onSrcResponseFinish);
+
+        this.emit('close', { stats });
+    }
+
     bindHandlersToThis(handlerNames) {
         handlerNames.forEach((evt) => {
             this[evt] = this[evt].bind(this);
@@ -240,6 +260,8 @@ export default class HandlerBase extends EventEmitter {
             this.srcResponse.writeHead(500);
             this.srcResponse.end('Internal error in proxy server');
         }
+
+        this.detach();
     }
 
     getStats() {

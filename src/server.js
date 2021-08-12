@@ -161,6 +161,14 @@ export class Server extends EventEmitter {
      * @param head The first packet of the tunneling stream (may be empty)
      */
     onConnect(request, socket, head) {
+        // We need to consume socket errors, otherwise they could crash the entire process.
+        // See https://github.com/apify/proxy-chain/issues/53
+        // TODO: HandlerBase will also attach its own 'error' handler, we should only attach this one
+        //  if HandlerBase doesn't do it, to avoid duplicate logs
+        socket.on('error', (err) => {
+            this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
+        });
+
         let handlerOpts;
         this.prepareRequestHandling(request)
             .then((result) => {
@@ -206,14 +214,6 @@ export class Server extends EventEmitter {
 
         const { socket } = request;
         let isHttp = false;
-
-        // We need to consume socket errors, otherwise they could crash the entire process.
-        // See https://github.com/apify/proxy-chain/issues/53
-        // TODO: HandlerBase will also attach its own 'error' handler, we should only attach this one
-        //  if HandlerBase doesn't do it, to avoid duplicate logs
-        socket.on('error', (err) => {
-            this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
-        });
 
         return Promise.resolve()
             .then(() => {

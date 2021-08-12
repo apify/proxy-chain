@@ -154,6 +154,10 @@ export default class HandlerForward extends HandlerBase {
 
         this.srcResponse.writeHead(response.statusCode, headers);
         response.pipe(this.srcResponse);
+
+        response.once('end', () => {
+            this.detach();
+        });
     }
 
     onTrgError(err) {
