@@ -156,7 +156,7 @@ export default class HandlerForward extends HandlerBase {
         response.pipe(this.srcResponse);
 
         response.once('end', () => {
-            this.detach();
+            // this.detach();
         });
     }
 

@@ -261,7 +261,8 @@ export default class HandlerBase extends EventEmitter {
             this.srcResponse.end('Internal error in proxy server');
         }
 
-        this.detach();
+        // No need to call `this.detach()` here,
+        // destruction is handled by `onSrcResponseFinish`
     }
 
     getStats() {
