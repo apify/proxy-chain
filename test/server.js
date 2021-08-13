@@ -767,7 +767,7 @@ const createTestSuite = ({
         }
 
         if (mainProxyAuth && mainProxyAuth.username) {
-            it.only('handles GET request from curl with invalid credentials', async () => {
+            it('handles GET request from curl with invalid credentials', async () => {
                 const curlUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 // For SSL, we need to return curl's stderr to check what kind of error was there
                 const output = await curlGet(curlUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`, !useSsl);

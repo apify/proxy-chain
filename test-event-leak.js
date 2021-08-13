@@ -1,7 +1,8 @@
-// npm run build && node --trace-warnings demo.js
+// npm run build && node --trace-warnings test-memory-leak.js
+// Outputs listener count, should be 2 or 1.
 
-const ProxyChain = require('.');
 const net = require('net');
+const ProxyChain = require('./build');
 
 const server = new ProxyChain.Server({
     port: 8080,

@@ -155,8 +155,11 @@ export default class HandlerForward extends HandlerBase {
         this.srcResponse.writeHead(response.statusCode, headers);
         response.pipe(this.srcResponse);
 
+        // Only detach on success, if there's an error
+        // it will be handled by `onTrgError` which calls `fail`,
+        // which forces the socket to disconnect.
         response.once('end', () => {
-            // this.detach();
+            this.detach();
         });
     }
 
