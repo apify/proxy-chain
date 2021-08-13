@@ -30,7 +30,6 @@ describe('ProxyChain server', () => {
         });
 
         const callback = () => {
-            console.log(socket.listenerCount('error'), registeredCount);
 
             assert.equal(socket.listenerCount('error'), registeredCount);
             done();
