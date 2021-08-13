@@ -73,10 +73,15 @@ export default class HandlerBase extends EventEmitter {
         this.srcSocket.on('error', this.onSrcSocketError);
     }
 
+    /**
+     * Detach removes all listeners registered by HandlerBase.
+     * Must be called when the handler finishes on success,
+     * in order to prevent event emitter memory leak.
+     */
     detach() {
         if (this.isClosed) return;
 
-        this.log('Closing handler');
+        this.log('Closing handler (detach)');
         this.isClosed = true;
 
         // Save stats before sockets are destroyed
