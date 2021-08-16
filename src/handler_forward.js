@@ -168,4 +168,29 @@ export default class HandlerForward extends HandlerBase {
         this.log(`Target socket failed: ${err.stack || err}`);
         this.fail(err);
     }
+
+    /**
+     * Detach removes all listeners registered by HandlerBase.
+     * Must be called when the handler finishes on success,
+     * in order to prevent event emitter memory leak.
+     */
+    detach() {
+        if (this.isClosed) return;
+
+        this.log('Closing handler (detach)');
+        this.isClosed = true;
+
+        // Save stats before sockets are destroyed
+        const stats = this.getStats();
+
+        this.srcSocket.off('end', this.onSrcSocketEnd);
+        this.srcSocket.off('close', this.onSrcSocketClose);
+        this.srcSocket.off('finish', this.onSrcSocketFinish);
+        this.srcSocket.off('error', this.onSrcSocketError);
+
+        this.srcResponse.off('error', this.onSrcResponseError);
+        this.srcResponse.off('finish', this.onSrcResponseFinish);
+
+        this.emit('close', { stats });
+    }
 }
