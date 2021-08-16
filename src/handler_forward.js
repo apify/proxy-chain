@@ -170,6 +170,7 @@ export default class HandlerForward extends HandlerBase {
     }
 
     /**
+     * @see https://github.com/apify/proxy-chain/pull/130
      * Detach removes all listeners registered by HandlerBase.
      * Must be called when the handler finishes on success,
      * in order to prevent event emitter memory leak.
