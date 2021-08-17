@@ -60,7 +60,7 @@
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jsx-a11y": "^6.2.3",
-    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-promise": "^5.0.0",
     "eslint-plugin-react": "^7.0.1",
     "express": "^4.16.2",
     "faye-websocket": "^0.11.3",
