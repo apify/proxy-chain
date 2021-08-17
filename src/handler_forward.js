@@ -154,11 +154,44 @@ export default class HandlerForward extends HandlerBase {
 
         this.srcResponse.writeHead(response.statusCode, headers);
         response.pipe(this.srcResponse);
+
+        // Only detach on success, if there's an error
+        // it will be handled by `onTrgError` which calls `fail`,
+        // which forces the socket to disconnect.
+        response.once('end', () => {
+            this.detach();
+        });
     }
 
     onTrgError(err) {
         if (this.isClosed) return;
         this.log(`Target socket failed: ${err.stack || err}`);
         this.fail(err);
+    }
+
+    /**
+     * @see https://github.com/apify/proxy-chain/issues/81
+     * Detach removes all listeners registered by HandlerBase.
+     * Must be called when the handler finishes on success,
+     * in order to prevent event emitter memory leak.
+     */
+    detach() {
+        if (this.isClosed) return;
+
+        this.log('Closing handler (detach)');
+        this.isClosed = true;
+
+        // Save stats before sockets are destroyed
+        const stats = this.getStats();
+
+        this.srcSocket.off('end', this.onSrcSocketEnd);
+        this.srcSocket.off('close', this.onSrcSocketClose);
+        this.srcSocket.off('finish', this.onSrcSocketFinish);
+        this.srcSocket.off('error', this.onSrcSocketError);
+
+        this.srcResponse.off('error', this.onSrcResponseError);
+        this.srcResponse.off('finish', this.onSrcResponseFinish);
+
+        this.emit('close', { stats });
     }
 }
