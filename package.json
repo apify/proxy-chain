@@ -65,7 +65,7 @@
     "express": "^4.16.2",
     "faye-websocket": "^0.11.3",
     "isparta": "^4.0.0",
-    "mocha": "^8.2.1",
+    "mocha": "^9.0.3",
     "phantomjs-prebuilt": "^2.1.16",
     "portastic": "^1.0.1",
     "proxy": "^1.0.1",
