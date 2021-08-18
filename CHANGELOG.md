@@ -1,3 +1,9 @@
+1.0.3 / 2021-08-17
+==================
+- Fixed `EventEmitter` memory leak (see issue [#81](https://github.com/apify/proxy-chain/issues/81))
+- Added automated tests for Node 16
+- Updated dev dependencies
+
 1.0.2 / 2021-04-14
 ==================
 - Bugfix: `closeTunnel()` function didn't work because of `runningServers[port].connections.forEach is not a function` error (see issue [#127](https://github.com/apify/proxy-chain/issues/127))

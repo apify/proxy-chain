@@ -1,6 +1,6 @@
 {
   "name": "proxy-chain",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
   "main": "build/index.js",
   "keywords": [
