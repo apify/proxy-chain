@@ -17,7 +17,7 @@ export default class HandlerTunnelChain extends HandlerBase {
     run() {
         this.log('Connecting to upstream proxy...');
 
-        const targetHost = `${this.trgParsed.hostname}:${this.trgParsed.port}`;
+        this.targetHost = `${this.trgParsed.hostname}:${this.trgParsed.port}`;
 
         const options = {
             method: 'CONNECT',
@@ -44,6 +44,20 @@ export default class HandlerTunnelChain extends HandlerBase {
 
     onTrgRequestConnect(response, socket, head) {
         if (this.isClosed) return;
+
+        if (response.statusCode !== 200) {
+            this.log(`Failed to connect to ${targetHost} via ${this.upstreamProxyUrlParsed.hostname}`);
+
+            this.srcSocket.write([
+                'HTTP/1.1 502 Bad Gateway',
+                'Content-Length: 0',
+                'Connection: close',
+                '',
+            ].join('\r\n'));
+            this.close();
+            return;
+        }
+
         this.log('Connected to upstream proxy');
 
         // Attempt to fix https://github.com/apify/proxy-chain/issues/64,
