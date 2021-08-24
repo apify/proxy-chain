@@ -1084,6 +1084,7 @@ describe('non-200 upstream connect response', () => {
         server.listen(() => {
             const serverPort = server.address().port;
             const proxyServer = new ProxyChain.Server({
+                port: 0,
                 prepareRequestFunction: () => {
                     return {
                         upstreamProxyUrl: `http://localhost:${serverPort}`,
