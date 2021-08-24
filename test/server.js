@@ -1091,7 +1091,7 @@ describe('non-200 upstream connect response', () => {
                 },
             });
             proxyServer.listen(() => {
-                const proxyServerPort = proxyServer.server.address().port;
+                const proxyServerPort = proxyServer.port;
 
                 const req = http.request({
                     method: 'CONNECT',
