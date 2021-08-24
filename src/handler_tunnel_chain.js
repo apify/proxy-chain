@@ -17,15 +17,15 @@ export default class HandlerTunnelChain extends HandlerBase {
     run() {
         this.log('Connecting to upstream proxy...');
 
-        const targetHost = `${this.trgParsed.hostname}:${this.trgParsed.port}`;
+        this.targetHost = `${this.trgParsed.hostname}:${this.trgParsed.port}`;
 
         const options = {
             method: 'CONNECT',
             hostname: this.upstreamProxyUrlParsed.hostname,
             port: this.upstreamProxyUrlParsed.port,
-            path: targetHost,
+            path: this.targetHost,
             headers: {
-                Host: targetHost,
+                Host: this.targetHost,
             },
         };
 
@@ -44,6 +44,7 @@ export default class HandlerTunnelChain extends HandlerBase {
 
     onTrgRequestConnect(response, socket, head) {
         if (this.isClosed) return;
+
         this.log('Connected to upstream proxy');
 
         // Attempt to fix https://github.com/apify/proxy-chain/issues/64,
@@ -56,7 +57,7 @@ export default class HandlerTunnelChain extends HandlerBase {
 
         this.srcGotResponse = true;
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
-        this.srcResponse.writeHead(200, 'Connection Established');
+        this.srcResponse.writeHead(response.statusCode === 200 ? 200 : 502);
 
         this.emit('tunnelConnectResponded', { response, socket, head });
 
@@ -64,6 +65,13 @@ export default class HandlerTunnelChain extends HandlerBase {
         // assert at https://github.com/request/tunnel-agent/blob/master/index.js#L160
         // See also https://github.com/nodejs/node/blob/master/lib/_http_outgoing.js#L217
         this.srcResponse._send('');
+
+        if (response.statusCode !== 200) {
+            this.log(`Failed to connect to ${this.targetHost} via ${this.upstreamProxyUrlParsed.hostname} (${response.statusCode})`);
+
+            this.close();
+            return;
+        }
 
         // It can happen that this.close() it called in the meanwhile, so this.srcSocket becomes null
         // and the detachSocket() call below fails with "Cannot read property '_httpMessage' of null"
