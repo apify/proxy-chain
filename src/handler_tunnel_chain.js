@@ -57,7 +57,7 @@ export default class HandlerTunnelChain extends HandlerBase {
 
         this.srcGotResponse = true;
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
-        this.srcResponse.writeHead(response.statusCode);
+        this.srcResponse.writeHead(response.statusCode === 200 ? 200 : 502);
 
         this.emit('tunnelConnectResponded', { response, socket, head });
 

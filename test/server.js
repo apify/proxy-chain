@@ -16,6 +16,7 @@ const WebSocket = require('faye-websocket');
 const { parseUrl, parseProxyAuthorizationHeader } = require('../build/tools');
 const { Server, RequestError } = require('../build/index');
 const { TargetServer } = require('./target_server');
+const ProxyChain = require('../build/index');
 
 /*
 TODO - add following tests:
@@ -1062,6 +1063,63 @@ describe('Server (HTTPS -> Target)', createTestSuite({
     useSsl: true,
     useMainProxy: false,
 }));
+
+describe('non-200 upstream connect response', () => {
+    // No assertion planning :(
+    // https://github.com/chaijs/chai/issues/670
+    let success = false;
+
+    after(() => {
+        if (!success) {
+            throw new Error('Failed');
+        }
+    });
+
+    it('fails downstream with 502', (done) => {
+        const server = http.createServer();
+        server.on('connect', (_request, socket) => {
+            socket.once('error', () => {});
+            socket.end('HTTP/1.1 403 Forbidden\r\ncontent-length: 1\r\n\r\na');
+        });
+        server.listen(() => {
+            const serverPort = server.address().port;
+            const proxyServer = new ProxyChain.Server({
+                prepareRequestFunction: () => {
+                    return {
+                        upstreamProxyUrl: `http://localhost:${serverPort}`,
+                    };
+                },
+            });
+            proxyServer.listen(() => {
+                const proxyServerPort = proxyServer.server.address().port;
+
+                const req = http.request({
+                    method: 'CONNECT',
+                    host: 'localhost',
+                    port: proxyServerPort,
+                    path: 'example.com:443',
+                    headers: {
+                        host: 'example.com:443',
+                    },
+                });
+                req.once('connect', (response, socket, head) => {
+                    expect(response.statusCode).to.equal(502);
+                    expect(head.length).to.equal(0);
+                    success = true;
+
+                    socket.once('close', () => {
+                        proxyServer.close();
+                        server.close();
+
+                        done();
+                    });
+                });
+
+                req.end();
+            });
+        });
+    });
+});
 
 // Run all combinations of test parameters
 const useSslVariants = [
