@@ -179,7 +179,10 @@ class Server extends EventEmitter {
     static async forward(request, response, handlerOpts) {
         const pipeline = util.promisify(stream.pipeline);
 
+        const proxyUrl = handlerOpts.upstreamProxyUrlParsed ? handlerOpts.upstreamProxyUrlParsed.href : undefined;
+
         await pipeline(
+            request,
             got.stream(request.url, {
                 method: request.method,
                 headers: request.headers,
@@ -187,7 +190,7 @@ class Server extends EventEmitter {
                 followRedirect: false,
                 throwHttpErrors: false,
                 http2: false,
-                proxyUrl: handlerOpts.upstreamProxyUrlParsed.href,
+                proxyUrl,
             }),
             response,
         );
