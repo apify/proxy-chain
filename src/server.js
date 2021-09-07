@@ -14,6 +14,9 @@ const got = gotScraping.extend({
     headers: {
         'user-agent': undefined,
     },
+    context: {
+        useHeaderGenerator: false,
+    },
 });
 
 // TODO:
@@ -181,6 +184,8 @@ class Server extends EventEmitter {
                 headers: request.headers,
                 decompress: false,
                 followRedirect: false,
+                throwHttpErrors: false,
+                http2: false,
             }),
             response,
         );
