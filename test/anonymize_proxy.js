@@ -8,7 +8,7 @@ const basicAuthParser = require('basic-auth-parser');
 const request = require('request');
 const express = require('express');
 
-const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../build/index');
+const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../src/index');
 const { findFreePort } = require('./tools');
 
 let proxyServer;

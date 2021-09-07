@@ -5,7 +5,7 @@ const {
     parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
     parseProxyAuthorizationHeader, addHeader,
     nodeify, maybeAddProxyAuthorizationHeader,
-} = require('../build/tools');
+} = require('../src/tools');
 
 /* global describe, it */
 

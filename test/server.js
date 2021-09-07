@@ -13,10 +13,10 @@ const portastic = require('portastic');
 const request = require('request');
 const WebSocket = require('faye-websocket');
 
-const { parseUrl, parseProxyAuthorizationHeader } = require('../build/tools');
-const { Server, RequestError } = require('../build/index');
+const { parseUrl, parseProxyAuthorizationHeader } = require('../src/tools');
+const { Server, RequestError } = require('../src/index');
 const { TargetServer } = require('./target_server');
-const ProxyChain = require('../build/index');
+const ProxyChain = require('../src/index');
 
 /*
 TODO - add following tests:

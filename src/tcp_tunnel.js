@@ -1,10 +1,10 @@
-import http from 'http';
-import { maybeAddProxyAuthorizationHeader } from './tools';
+const http = require('http');
+const { maybeAddProxyAuthorizationHeader } = require('./tools');
 
 /**
  * Represents a connection from source client to an external proxy using HTTP CONNECT tunnel, allows TCP connection.
  */
-export default class TcpTunnel {
+class TcpTunnel {
     constructor({
         srcSocket, trgParsed, upstreamProxyUrlParsed, log,
     }) {
@@ -226,3 +226,5 @@ export default class TcpTunnel {
         }
     }
 }
+
+module.exports = TcpTunnel;

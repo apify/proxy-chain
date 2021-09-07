@@ -1,10 +1,10 @@
-import net from 'net';
-import TcpTunnel from './tcp_tunnel';
-import { parseUrl, nodeify } from './tools';
+const net = require('net');
+const TcpTunnel = require('./tcp_tunnel');
+const { parseUrl, nodeify } = require('./tools');
 
 const runningServers = {};
 
-export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
+function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
     const parsedProxyUrl = parseUrl(proxyUrl);
     if (!parsedProxyUrl.hostname || !parsedProxyUrl.port) {
         throw new Error(`The proxy URL must contain hostname and port (was "${proxyUrl}")`);
@@ -85,7 +85,9 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
     return nodeify(promise, callback);
 }
 
-export function closeTunnel(serverPath, closeConnections, callback) {
+module.exports.createTunnel = createTunnel;
+
+function closeTunnel(serverPath, closeConnections, callback) {
     const [hostname, port] = serverPath.split(':');
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
@@ -106,3 +108,5 @@ export function closeTunnel(serverPath, closeConnections, callback) {
 
     return nodeify(promise, callback);
 }
+
+module.exports.closeTunnel = closeTunnel;

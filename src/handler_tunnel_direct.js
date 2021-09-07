@@ -1,10 +1,10 @@
-import net from 'net';
-import HandlerBase from './handler_base';
+const net = require('net');
+const HandlerBase = require('./handler_base');
 
 /**
  * Represents a proxied connection from source to the target HTTPS server.
  */
-export default class HandlerTunnelDirect extends HandlerBase {
+class HandlerTunnelDirect extends HandlerBase {
     constructor(options) {
         super(options);
 
@@ -62,3 +62,5 @@ export default class HandlerTunnelDirect extends HandlerBase {
         this.srcSocket.pipe(this.trgSocket);
     }
 }
+
+module.exports = HandlerTunnelDirect;

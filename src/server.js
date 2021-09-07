@@ -1,14 +1,14 @@
-import http from 'http';
-import util from 'util';
-import EventEmitter from 'events';
-import _ from 'underscore';
-import { gotScraping } from 'got-scraping';
-import {
+const http = require('http');
+const util = require('util');
+const EventEmitter = require('events');
+const _ = require('underscore');
+const { gotScraping } = require('got-scraping');
+const {
     parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
-} from './tools';
-import HandlerTunnelDirect from './handler_tunnel_direct';
-import HandlerTunnelChain from './handler_tunnel_chain';
-import HandlerCustomResponse from './handler_custom_response';
+} = require('./tools');
+const HandlerTunnelDirect = require('./handler_tunnel_direct');
+const HandlerTunnelChain = require('./handler_tunnel_chain');
+const HandlerCustomResponse = require('./handler_custom_response');
 
 const got = gotScraping.extend({
     headers: {
@@ -46,7 +46,7 @@ const REQUEST_ERROR_NAME = 'RequestError';
  * By default, the response will have Content-Type: text/plain
  * and for the 407 status the Proxy-Authenticate header will be added.
  */
-export class RequestError extends Error {
+class RequestError extends Error {
     constructor(message, statusCode, headers) {
         super(message);
         this.name = REQUEST_ERROR_NAME;
@@ -62,7 +62,7 @@ export class RequestError extends Error {
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
  */
-export class Server extends EventEmitter {
+class Server extends EventEmitter {
     /**
      * Initializes a new instance of Server class.
      * @param options
@@ -554,3 +554,8 @@ export class Server extends EventEmitter {
         }
     }
 }
+
+module.exports = {
+    Server,
+    RequestError,
+};
