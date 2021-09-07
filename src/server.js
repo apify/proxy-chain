@@ -1,3 +1,4 @@
+const stream = require('stream');
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
@@ -168,24 +169,41 @@ class Server extends EventEmitter {
                 }
 
                 this.log(handlerOpts.id, 'Using forward');
-                return Server.forward(request, response);
+                return Server.forward(request, response, handlerOpts);
             })
             .catch((err) => {
                 this.failRequest(request, err, handlerOpts);
             });
     }
 
-    static async forward(request, response) {
+    static async forward(request, response, handlerOpts) {
         const pipeline = util.promisify(stream.pipeline);
 
+        const opts = {
+            headers: { ...request.headers },
+        };
+
+        let destination = request.url;
+
+        const { upstreamProxyUrlParsed } = handlerOpts;
+        if (upstreamProxyUrlParsed) {
+            destination = upstreamProxyUrlParsed.origin;
+            opts._unixOptions = {
+                path: request.url,
+            };
+
+            maybeAddProxyAuthorizationHeader(upstreamProxyUrlParsed, opts.headers);
+        }
+
         await pipeline(
-            got.stream(request.url, {
+            got.stream(destination, {
                 method: request.method,
                 headers: request.headers,
                 decompress: false,
                 followRedirect: false,
                 throwHttpErrors: false,
                 http2: false,
+                ...opts,
             }),
             response,
         );
