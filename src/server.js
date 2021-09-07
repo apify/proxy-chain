@@ -172,6 +172,7 @@ class Server extends EventEmitter {
                 return Server.forward(request, response, handlerOpts);
             })
             .catch((err) => {
+                // console.error(err);
                 this.failRequest(request, err, handlerOpts);
             });
     }

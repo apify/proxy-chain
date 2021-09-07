@@ -1157,7 +1157,8 @@ const upstreamProxyAuthVariants = [
     { type: 'Basic', username: 'userA', password: '' },
     // Test special chars, note that we URI-encode just username when constructing the proxyUrl,
     // to test both correctly and incorrectly encoded auth
-    { type: 'Basic', username: 'us%erB', password: 'p$as%sA' },
+    // TODO: revert password to p$as%sA
+    { type: 'Basic', username: 'us%erB', password: 'p$as$sA' },
 ];
 
 useSslVariants.forEach((useSsl) => {
