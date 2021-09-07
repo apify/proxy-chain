@@ -2,13 +2,19 @@ import http from 'http';
 import util from 'util';
 import EventEmitter from 'events';
 import _ from 'underscore';
+import { gotScraping } from 'got-scraping';
 import {
     parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
 } from './tools';
-import HandlerForward from './handler_forward';
 import HandlerTunnelDirect from './handler_tunnel_direct';
 import HandlerTunnelChain from './handler_tunnel_chain';
 import HandlerCustomResponse from './handler_custom_response';
+
+const got = gotScraping.extend({
+    headers: {
+        'user-agent': undefined,
+    },
+});
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -153,20 +159,31 @@ export class Server extends EventEmitter {
                 handlerOpts = result;
                 handlerOpts.srcResponse = response;
 
-                let handler;
                 if (handlerOpts.customResponseFunction) {
                     this.log(handlerOpts.id, 'Using HandlerCustomResponse');
-                    handler = new HandlerCustomResponse(handlerOpts);
-                } else {
-                    this.log(handlerOpts.id, 'Using HandlerForward');
-                    handler = new HandlerForward(handlerOpts);
+                    return this.handlerRun(new HandlerCustomResponse(handlerOpts));
                 }
 
-                this.handlerRun(handler);
+                this.log(handlerOpts.id, 'Using forward');
+                return Server.forward(request, response);
             })
             .catch((err) => {
                 this.failRequest(request, err, handlerOpts);
             });
+    }
+
+    static async forward(request, response) {
+        const pipeline = util.promisify(stream.pipeline);
+
+        await pipeline(
+            got.stream(request.url, {
+                method: request.method,
+                headers: request.headers,
+                decompress: false,
+                followRedirect: false,
+            }),
+            response,
+        );
     }
 
     /**

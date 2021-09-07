@@ -43,6 +43,7 @@
     "node": ">=10"
   },
   "dependencies": {
+    "got-scraping": "^3.2.3",
     "underscore": "^1.9.1"
   },
   "devDependencies": {
@@ -74,6 +75,5 @@
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
     "ws": "^8.0.0"
-  },
-  "optionalDependencies": {}
+  }
 }
