@@ -58,7 +58,7 @@ const anonymizeProxy = (proxyUrl, callback) => {
     return nodeify(promise, callback);
 };
 
-module.exports = anonymizeProxy;
+module.exports.anonymizeProxy = anonymizeProxy;
 
 /**
  * Closes anonymous proxy previously started by `anonymizeProxy()`.
@@ -89,7 +89,7 @@ const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) =>
     return nodeify(promise, callback);
 };
 
-module.exports = closeAnonymizedProxy;
+module.exports.closeAnonymizedProxy = closeAnonymizedProxy;
 
 /**
  * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy
@@ -112,4 +112,4 @@ const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectResponded
     return true;
 };
 
-module.exports = listenConnectAnonymizedProxy;
+module.exports.listenConnectAnonymizedProxy = listenConnectAnonymizedProxy;
