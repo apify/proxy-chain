@@ -185,6 +185,7 @@ class Server extends EventEmitter {
             request,
             got.stream(request.url, {
                 method: request.method,
+                // TODO: exclude hop by hop headers
                 headers: request.headers,
                 decompress: false,
                 followRedirect: false,

@@ -32,7 +32,7 @@
   ],
   "scripts": {
     "local-proxy": "node ./src/run_locally.js",
-    "test": "cross-env NODE_OPTIONS=--insecure-http-parser mocha --exit --recursive",
+    "test": "cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail --exit --recursive",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix"
   },
