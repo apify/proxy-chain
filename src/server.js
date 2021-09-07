@@ -179,31 +179,15 @@ class Server extends EventEmitter {
     static async forward(request, response, handlerOpts) {
         const pipeline = util.promisify(stream.pipeline);
 
-        const opts = {
-            headers: { ...request.headers },
-        };
-
-        let destination = request.url;
-
-        const { upstreamProxyUrlParsed } = handlerOpts;
-        if (upstreamProxyUrlParsed) {
-            destination = upstreamProxyUrlParsed.origin;
-            opts._unixOptions = {
-                path: request.url,
-            };
-
-            maybeAddProxyAuthorizationHeader(upstreamProxyUrlParsed, opts.headers);
-        }
-
         await pipeline(
-            got.stream(destination, {
+            got.stream(request.url, {
                 method: request.method,
                 headers: request.headers,
                 decompress: false,
                 followRedirect: false,
                 throwHttpErrors: false,
                 http2: false,
-                ...opts,
+                proxyUrl: handlerOpts.upstreamProxyUrlParsed.href,
             }),
             response,
         );
