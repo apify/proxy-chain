@@ -196,6 +196,13 @@ class Server extends EventEmitter {
                 http2: false,
                 proxyUrl,
             }).on('response', (httpResponse) => {
+                if (httpResponse.statusCode === 407) {
+                    response.statusCode = 502;
+                    response.end();
+
+                    return;
+                }
+
                 httpResponse.headers = withoutHopByHop(httpResponse.headers);
             }),
             response,

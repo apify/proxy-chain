@@ -372,7 +372,7 @@ describe('utils.anonymizeProxy', function () {
     });
 
 
-    it.skip('fails with invalid upstream proxy credentials', () => {
+    it('fails with invalid upstream proxy credentials', () => {
         let anonymousProxyUrl;
         return Promise.resolve()
             .then(() => {
