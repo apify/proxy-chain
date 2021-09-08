@@ -152,7 +152,10 @@ class Server extends EventEmitter {
                 return Server.forward(request, response, handlerOpts);
             })
             .catch((err) => {
+                console.log('error');
                 this.failRequest(request, err, handlerOpts);
+            }).then(() => {
+                console.log(':D');
             });
     }
 
@@ -161,20 +164,39 @@ class Server extends EventEmitter {
 
         const proxyUrl = handlerOpts.upstreamProxyUrlParsed ? handlerOpts.upstreamProxyUrlParsed.href : undefined;
 
-        // PassThrough is needed here.
-        // See https://github.com/sindresorhus/got/issues/1863
+        console.log('asd');
+
+        request.headers = withoutHopByHop(request.headers);
+
+        const validHeadersOnly = (headers) => {
+            const result = {};
+
+            // eslint is crazy
+            // eslint-disable-next-line no-restricted-syntax
+            for (const [header, value] of Object.entries(headers)) {
+                try {
+                    http.validateHeaderName(header);
+                    http.validateHeaderValue(value);
+
+                    result[header] = value;
+                // eslint-disable-next-line no-empty
+                } catch (_error) {}
+            }
+
+            return result;
+        };
+
         await pipeline(
             request,
-            new stream.PassThrough(),
             got.stream(request.url, {
                 method: request.method,
-                headers: withoutHopByHop(request.headers),
                 decompress: false,
                 followRedirect: false,
                 throwHttpErrors: false,
                 http2: false,
                 proxyUrl,
             }).on('response', (httpResponse) => {
+                console.log('got response');
                 if (httpResponse.statusCode === 407) {
                     response.statusCode = 502;
                     response.setHeader('content-type', 'text/plain; charset=utf-8');
@@ -184,7 +206,13 @@ class Server extends EventEmitter {
                 }
 
                 httpResponse.headers = withoutHopByHop(httpResponse.headers);
+                console.log('success', httpResponse.headers);
+                // delete httpResponse.headers['invalid header with space'];
+                if (global.woot) {
+                    // httpResponse.headers = {};
+                }
             }).on('error', (error) => {
+                console.log('sfdgsdfg');
                 if (error.code === 'ENOTFOUND') {
                     if (proxyUrl) {
                         response.statusCode = 502;

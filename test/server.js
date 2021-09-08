@@ -507,8 +507,7 @@ const createTestSuite = ({
         });
 
         // NOTE: upstream proxy cannot handle non-standard headers
-        // TODO: unskip this
-        if (!useUpstreamProxy && false) {
+        if (!useUpstreamProxy) {
             _it('ignores non-standard server HTTP headers', () => {
                 // Node 12+ uses a new HTTP parser (https://llhttp.org/),
                 // which throws error on HTTP headers values with invalid chars.
@@ -521,8 +520,10 @@ const createTestSuite = ({
 
                 const opts = getRequestOpts(`/get-non-standard-headers?skipInvalidHeaderValue=${skipInvalidHeaderValue ? '1' : '0'}`);
                 opts.method = 'GET';
+                global.woot = 'woot';
                 return requestPromised(opts)
                     .then((response) => {
+                        console.log('yay');
                         expect(response.body).to.eql('Hello sir!');
                         expect(response.statusCode).to.eql(200);
                         expect(response.headers).to.be.an('object');
