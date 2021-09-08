@@ -1,4 +1,5 @@
-const { Server, RequestError } = require('./server');
+const { RequestError } = require('./request_error');
+const { Server } = require('./server');
 const { parseUrl, redactUrl, redactParsedUrl } = require('./tools');
 const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('./anonymize_proxy');
 const { createTunnel, closeTunnel } = require('./tcp_tunnel_tools');

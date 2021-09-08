@@ -7,6 +7,7 @@ const { gotScraping } = require('got-scraping');
 const {
     parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify, withoutHopByHop,
 } = require('./tools');
+const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const HandlerTunnelDirect = require('./handler_tunnel_direct');
 const HandlerTunnelChain = require('./handler_tunnel_chain');
 const HandlerCustomResponse = require('./handler_custom_response');
@@ -39,27 +40,6 @@ const got = gotScraping.extend({
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 const DEFAULT_TARGET_PORT = 80;
-
-const REQUEST_ERROR_NAME = 'RequestError';
-
-/**
- * Represents custom request error. The message is emitted as HTTP response
- * with a specific HTTP code and headers.
- * If this error is thrown from the `prepareRequestFunction` function,
- * the message and status code is sent to client.
- * By default, the response will have Content-Type: text/plain
- * and for the 407 status the Proxy-Authenticate header will be added.
- */
-class RequestError extends Error {
-    constructor(message, statusCode, headers) {
-        super(message);
-        this.name = REQUEST_ERROR_NAME;
-        this.statusCode = statusCode;
-        this.headers = headers;
-
-        Error.captureStackTrace(this, RequestError);
-    }
-}
 
 /**
  * Represents the proxy server.
@@ -172,7 +152,6 @@ class Server extends EventEmitter {
                 return Server.forward(request, response, handlerOpts);
             })
             .catch((err) => {
-                // console.error(err);
                 this.failRequest(request, err, handlerOpts);
             });
     }
@@ -198,6 +177,7 @@ class Server extends EventEmitter {
             }).on('response', (httpResponse) => {
                 if (httpResponse.statusCode === 407) {
                     response.statusCode = 502;
+                    response.setHeader('content-type', 'text/plain; charset=utf-8');
                     response.end();
 
                     return;
@@ -205,7 +185,17 @@ class Server extends EventEmitter {
 
                 httpResponse.headers = withoutHopByHop(httpResponse.headers);
             }).on('error', (error) => {
-                response.statusCode = error.code === 'ENOTFOUND' ? 404 : 500;
+                if (error.code === 'ENOTFOUND') {
+                    if (proxyUrl) {
+                        response.statusCode = 502;
+                    } else {
+                        response.statusCode = 404;
+                    }
+                } else {
+                    response.statusCode = 500;
+                }
+
+                response.setHeader('content-type', 'text/plain; charset=utf-8');
                 response.end();
             }),
             response,
@@ -583,5 +573,4 @@ class Server extends EventEmitter {
 
 module.exports = {
     Server,
-    RequestError,
 };

@@ -896,8 +896,7 @@ const createTestSuite = ({
                 });
             }
 
-            // TODO: unskip this
-            if (useUpstreamProxy && false) {
+            if (useUpstreamProxy) {
                 it('fails gracefully on invalid upstream proxy scheme', () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-scheme.gov`);
                     return testForErrorResponse(opts, 500);

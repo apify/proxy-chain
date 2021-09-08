@@ -1,6 +1,6 @@
 const http = require('http');
 const EventEmitter = require('events');
-const { RequestError } = require('./server');
+const {RequestError} = require('./request_error');
 
 /**
  * Base class for proxy connection handlers. It emits the `destroyed` event
