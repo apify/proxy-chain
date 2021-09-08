@@ -561,27 +561,18 @@ const createTestSuite = ({
             }
         }
 
-        // TODO: unskip this
-        if (false) {
-            _it('save repeating server HTTP headers', () => {
-                const opts = getRequestOpts('/get-repeating-headers');
-                opts.method = 'GET';
-                return requestPromised(opts)
-                    .then((response) => {
-                        expect(response.body).to.eql('Hooray!');
-                        expect(response.statusCode).to.eql(200);
-                        expect(response.headers).to.be.an('object');
+        _it('save repeating server HTTP headers', () => {
+            const opts = getRequestOpts('/get-repeating-headers');
+            opts.method = 'GET';
+            return requestPromised(opts)
+                .then((response) => {
+                    expect(response.body).to.eql('Hooray!');
+                    expect(response.statusCode).to.eql(200);
+                    expect(response.headers).to.be.an('object');
 
-                        // The server returns two headers with same names:
-                        //  ... 'Repeating-Header', 'HeaderValue1' ... 'Repeating-Header', 'HeaderValue2' ...
-                        // All headers should be present
-                        const firstIndex = response.rawHeaders.indexOf('Repeating-Header');
-                        expect(response.rawHeaders[firstIndex + 1]).to.eql('HeaderValue1');
-                        const secondIndex = response.rawHeaders.indexOf('Repeating-Header', firstIndex + 1);
-                        expect(response.rawHeaders[secondIndex + 1]).to.eql('HeaderValue2');
-                    });
-            });
-        }
+                    expect(response.headers['repeating-header']).to.eql('HeaderValue1, HeaderValue2');
+                });
+        });
 
         if (!useSsl) {
             _it('handles double Host header', () => {
