@@ -826,7 +826,7 @@ const createTestSuite = ({
                     });
             });
 
-            _it('removes hop-by-hop headers (HTTP-only) and leaves other ones', async () => {
+            _it('removes hop-by-hop headers (HTTP-only) and leaves other ones', () => {
                 const opts = getRequestOpts('/echo-request-info');
                 opts.headers['X-Test-Header'] = 'my-test-value';
                 opts.headers['TE'] = 'MyTest';
