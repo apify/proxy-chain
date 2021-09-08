@@ -5,7 +5,7 @@ const EventEmitter = require('events');
 const _ = require('underscore');
 const { gotScraping } = require('got-scraping');
 const {
-    parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
+    parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify, withoutHopByHop,
 } = require('./tools');
 const HandlerTunnelDirect = require('./handler_tunnel_direct');
 const HandlerTunnelChain = require('./handler_tunnel_chain');
@@ -182,17 +182,21 @@ class Server extends EventEmitter {
 
         const proxyUrl = handlerOpts.upstreamProxyUrlParsed ? handlerOpts.upstreamProxyUrlParsed.href : undefined;
 
+        // PassThrough is needed here.
+        // See https://github.com/sindresorhus/got/issues/1863
         await pipeline(
             request,
+            new stream.PassThrough(),
             got.stream(request.url, {
                 method: request.method,
-                // TODO: exclude hop by hop headers
-                headers: request.headers,
+                headers: withoutHopByHop(request.headers),
                 decompress: false,
                 followRedirect: false,
                 throwHttpErrors: false,
                 http2: false,
                 proxyUrl,
+            }).on('response', (httpResponse) => {
+                httpResponse.headers = withoutHopByHop(httpResponse.headers);
             }),
             response,
         );
