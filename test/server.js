@@ -810,16 +810,13 @@ const createTestSuite = ({
         });
 
         if (useMainProxy) {
-            // TODO: unskip this
-            if (false) {
-                _it('returns 404 for non-existent hostname', () => {
-                    const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
-                    return requestPromised(opts)
-                        .then((response) => {
-                            expect(response.statusCode).to.eql(404);
-                        });
-                });
-            }
+            _it('returns 404 for non-existent hostname', () => {
+                const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
+                return requestPromised(opts)
+                    .then((response) => {
+                        expect(response.statusCode).to.eql(404);
+                    });
+            });
 
             it('returns 400 for direct connection to main proxy', () => {
                 const opts = { url: `${mainProxyUrl}` };

@@ -204,6 +204,9 @@ class Server extends EventEmitter {
                 }
 
                 httpResponse.headers = withoutHopByHop(httpResponse.headers);
+            }).on('error', (error) => {
+                response.statusCode = error.code === 'ENOTFOUND' ? 404 : 500;
+                response.end();
             }),
             response,
         );
