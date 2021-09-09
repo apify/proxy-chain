@@ -145,7 +145,6 @@ class TargetServer {
             // Unfortunately calling end() will not close the socket
             // if client refuses to close it. Hence calling destroy after a short while.
             setTimeout(() => {
-                console.log('destroyed the socket');
                 request.socket.destroy();
             }, 100);
         });
