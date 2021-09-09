@@ -551,8 +551,8 @@ const createTestSuite = ({
                     return requestPromised(opts)
                         .then((response) => {
                             if (useMainProxy) {
-                                expect(response.statusCode).to.eql(500);
-                                expect(response.body).to.match(/with an invalid HTTP status code/);
+                                expect(response.statusCode).to.eql(502);
+                                expect(response.body).to.eql('Bad status!');
                             } else {
                                 expect(response.statusCode).to.eql(55);
                                 expect(response.body).to.eql('Bad status!');

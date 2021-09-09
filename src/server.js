@@ -3,23 +3,14 @@ const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
 const _ = require('underscore');
-const { gotScraping } = require('got-scraping');
 const {
-    parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify, withoutHopByHop,
+    parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
 } = require('./tools');
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const HandlerTunnelDirect = require('./handler_tunnel_direct');
 const HandlerTunnelChain = require('./handler_tunnel_chain');
 const HandlerCustomResponse = require('./handler_custom_response');
-
-const got = gotScraping.extend({
-    headers: {
-        'user-agent': undefined,
-    },
-    context: {
-        useHeaderGenerator: false,
-    },
-});
+const { forward } = require('./forward');
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -149,85 +140,30 @@ class Server extends EventEmitter {
                 }
 
                 this.log(handlerOpts.id, 'Using forward');
-                return Server.forward(request, response, handlerOpts);
+                return forward(request, response, handlerOpts);
             })
             .catch((err) => {
-                console.log('error');
-                this.failRequest(request, err, handlerOpts);
-            }).then(() => {
-                console.log(':D');
-            });
-    }
-
-    static async forward(request, response, handlerOpts) {
-        const pipeline = util.promisify(stream.pipeline);
-
-        const proxyUrl = handlerOpts.upstreamProxyUrlParsed ? handlerOpts.upstreamProxyUrlParsed.href : undefined;
-
-        console.log('asd');
-
-        request.headers = withoutHopByHop(request.headers);
-
-        const validHeadersOnly = (headers) => {
-            const result = {};
-
-            // eslint is crazy
-            // eslint-disable-next-line no-restricted-syntax
-            for (const [header, value] of Object.entries(headers)) {
-                try {
-                    http.validateHeaderName(header);
-                    http.validateHeaderValue(value);
-
-                    result[header] = value;
-                // eslint-disable-next-line no-empty
-                } catch (_error) {}
-            }
-
-            return result;
-        };
-
-        await pipeline(
-            request,
-            got.stream(request.url, {
-                method: request.method,
-                decompress: false,
-                followRedirect: false,
-                throwHttpErrors: false,
-                http2: false,
-                proxyUrl,
-            }).on('response', (httpResponse) => {
-                console.log('got response');
-                if (httpResponse.statusCode === 407) {
-                    response.statusCode = 502;
+                if (err.message === '407 Proxy Authentication Required') {
                     response.setHeader('content-type', 'text/plain; charset=utf-8');
+                    response.statusCode = 502;
                     response.end();
-
                     return;
                 }
 
-                httpResponse.headers = withoutHopByHop(httpResponse.headers);
-                console.log('success', httpResponse.headers);
-                // delete httpResponse.headers['invalid header with space'];
-                if (global.woot) {
-                    // httpResponse.headers = {};
-                }
-            }).on('error', (error) => {
-                console.log('sfdgsdfg');
-                if (error.code === 'ENOTFOUND') {
-                    if (proxyUrl) {
+                if (err.code === 'ENOTFOUND') {
+                    if (err.proxy) {
                         response.statusCode = 502;
                     } else {
                         response.statusCode = 404;
                     }
                 } else {
-                    response.statusCode = 500;
+                    this.failRequest(request, err, handlerOpts);
+                    return;
                 }
 
                 response.setHeader('content-type', 'text/plain; charset=utf-8');
                 response.end();
-            }),
-            response,
-        );
+            });
     }
 
     /**
