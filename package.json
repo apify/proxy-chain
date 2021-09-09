@@ -40,9 +40,7 @@
     "node": ">=10"
   },
   "dependencies": {
-    "got-scraping": "^3.2.3",
-    "underscore": "^1.9.1",
-    "undici": "^4.5.1"
+    "underscore": "^1.9.1"
   },
   "devDependencies": {
     "basic-auth": "^2.0.0",
