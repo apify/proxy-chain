@@ -39,9 +39,6 @@
   "engines": {
     "node": ">=10"
   },
-  "dependencies": {
-    "underscore": "^1.9.1"
-  },
   "devDependencies": {
     "basic-auth": "^2.0.0",
     "body-parser": "^1.18.2",
@@ -65,6 +62,7 @@
     "sinon": "^11.1.2",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
+    "underscore": "^1.13.1",
     "ws": "^8.0.0"
   }
 }

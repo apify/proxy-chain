@@ -1,4 +1,3 @@
-const _ = require('underscore');
 const HandlerBase = require('./handler_base');
 
 /**
@@ -38,9 +37,13 @@ class HandlerCustomResponse extends HandlerBase {
                 this.srcGotResponse = true;
                 this.srcResponse.statusCode = statusCode;
 
-                _.each(customResponse.headers, (value, key) => {
-                    this.srcResponse.setHeader(key, value);
-                });
+                if (customResponse.headers) {
+                    // eslint is broken
+                    // eslint-disable-next-line no-restricted-syntax
+                    for (const [key, value] of Object.entries(customResponse.headers)) {
+                        this.srcResponse.setHeader(key, value);
+                    }
+                }
 
                 return new Promise((resolve, reject) => {
                     this.srcGotResponse = true;

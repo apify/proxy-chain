@@ -1,7 +1,6 @@
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
-const _ = require('underscore');
 const {
     parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
 } = require('./tools');
@@ -200,10 +199,6 @@ class Server extends EventEmitter {
      * @param request
      */
     prepareRequestHandling(request) {
-        // console.log('XXX prepareRequestHandling');
-        // console.dir(_.pick(request, 'url', 'method'));
-        // console.dir(url.parse(request.url));
-
         const handlerOpts = {
             server: this,
             id: ++this.lastHandlerId,
@@ -220,7 +215,6 @@ class Server extends EventEmitter {
 
         return Promise.resolve()
             .then(() => {
-                // console.dir(_.pick(request, 'url', 'headers', 'method'));
                 // Determine target hostname and port
                 if (request.method === 'CONNECT') {
                     // The request should look like:
@@ -426,9 +420,11 @@ class Server extends EventEmitter {
             }
 
             let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
-            _.each(headers, (value, key) => {
+            // eslint is broken
+            // eslint-disable-next-line no-restricted-syntax
+            for (const [key, value] of Object.entries(headers)) {
                 msg += `${key}: ${value}\r\n`;
-            });
+            }
             msg += `\r\n${message}`;
 
             // console.log("RESPONSE:\n" + msg);
@@ -486,7 +482,7 @@ class Server extends EventEmitter {
      * @returns {*}
      */
     getConnectionIds() {
-        return _.keys(this.handlers);
+        return Object.keys(this.handlers);
     }
 
     /**
@@ -518,10 +514,12 @@ class Server extends EventEmitter {
         if (closeConnections) {
             this.log(null, 'Closing pending handlers');
             let count = 0;
-            _.each(this.handlers, (handler) => {
+            // eslint is broken
+            // eslint-disable-next-line no-restricted-syntax
+            for (const handler of Object.values(this.handlers)) {
                 count++;
                 handler.close();
-            });
+            }
             this.log(null, `Destroyed ${count} pending handlers`);
         }
 
