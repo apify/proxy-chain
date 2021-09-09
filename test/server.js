@@ -520,10 +520,8 @@ const createTestSuite = ({
 
                 const opts = getRequestOpts(`/get-non-standard-headers?skipInvalidHeaderValue=${skipInvalidHeaderValue ? '1' : '0'}`);
                 opts.method = 'GET';
-                global.woot = 'woot';
                 return requestPromised(opts)
                     .then((response) => {
-                        console.log('yay');
                         expect(response.body).to.eql('Hello sir!');
                         expect(response.statusCode).to.eql(200);
                         expect(response.headers).to.be.an('object');
