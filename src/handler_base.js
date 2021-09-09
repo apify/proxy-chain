@@ -8,7 +8,7 @@ import { RequestError } from './server';
  */
 export default class HandlerBase extends EventEmitter {
     constructor({
-        server, id, srcRequest, srcHead, srcResponse, trgParsed, upstreamProxyUrlParsed,
+        server, id, srcRequest, srcHead, srcResponse, trgParsed, upstreamProxyUrlParsed, proxyHeaders
     }) {
         super();
 
@@ -37,6 +37,7 @@ export default class HandlerBase extends EventEmitter {
         this.isClosed = false;
 
         this.upstreamProxyUrlParsed = upstreamProxyUrlParsed;
+        this.proxyHeaders = proxyHeaders;
 
         // Create ServerResponse for the client HTTP request if it doesn't exist
         // NOTE: This is undocumented API, it might break in the future
