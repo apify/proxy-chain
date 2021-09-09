@@ -156,13 +156,13 @@ class Server extends EventEmitter {
                     } else {
                         response.statusCode = 404;
                     }
-                } else {
-                    this.failRequest(request, err, handlerOpts);
+
+                    response.setHeader('content-type', 'text/plain; charset=utf-8');
+                    response.end();
                     return;
                 }
 
-                response.setHeader('content-type', 'text/plain; charset=utf-8');
-                response.end();
+                this.failRequest(request, err, handlerOpts);
             });
     }
 
