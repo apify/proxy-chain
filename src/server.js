@@ -1,4 +1,3 @@
-const stream = require('stream');
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
