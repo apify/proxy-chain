@@ -292,32 +292,3 @@ const nodeify = (promise, callback) => {
 };
 
 module.exports.nodeify = nodeify;
-
-const withoutHopByHop = (headers) => {
-    const result = {};
-
-    const hopByHop = [
-        'connection',
-        'keep-alive',
-        'proxy-authenticate',
-        'proxy-authorization',
-        'te',
-        'trailer',
-        'transfer-encoding',
-        'upgrade',
-    ];
-
-    // eslint is crazy
-    // eslint-disable-next-line no-restricted-syntax
-    for (const [header, value] of Object.entries(headers)) {
-        if (hopByHop.includes(header.toLowerCase())) {
-            continue;
-        }
-
-        result[header] = value;
-    }
-
-    return result;
-};
-
-module.exports.withoutHopByHop = withoutHopByHop;
