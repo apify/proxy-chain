@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const stream = require('stream');
 const util = require('util');
 const { isHopByHopHeader } = require('./tools');
@@ -64,7 +65,9 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
         }
     }
 
-    const client = http.request(origin, options, async (clientResponse) => {
+    const fn = origin.startsWith('https:') ? https.request : http.request;
+
+    const client = fn(origin, options, async (clientResponse) => {
         try {
             let { statusCode } = clientResponse;
             if (statusCode < 100 || statusCode > 999) {
