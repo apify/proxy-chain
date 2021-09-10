@@ -109,6 +109,7 @@ export class Server extends EventEmitter {
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
         this.server.on('connect', this.onConnect.bind(this));
+        this.server.on('connection', this.onConnection.bind(this));
 
         this.stats = {
             httpRequestCount: 0,
@@ -128,6 +129,20 @@ export class Server extends EventEmitter {
     onClientError(err, socket) {
         this.log(null, `onClientError: ${err}`);
         this.sendResponse(socket, 400, null, 'Invalid request');
+    }
+
+    /**
+     * Handles incoming sockets, useful for error handling
+     */
+    onConnection(socket) {
+        // We need to consume socket errors, otherwise they could crash the entire process.
+        // See https://github.com/apify/proxy-chain/issues/53
+        socket.on('error', (err) => {
+            // Handle errors only if there's no other handler
+            if (this.listenerCount('error') === 1) {
+                this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
+            }
+        });
     }
 
     /**
@@ -208,14 +223,6 @@ export class Server extends EventEmitter {
 
         const { socket } = request;
         let isHttp = false;
-
-        // We need to consume socket errors, otherwise they could crash the entire process.
-        // See https://github.com/apify/proxy-chain/issues/53
-        // TODO: HandlerBase will also attach its own 'error' handler, we should only attach this one
-        //  if HandlerBase doesn't do it, to avoid duplicate logs
-        socket.on('error', (err) => {
-            this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
-        });
 
         return Promise.resolve()
             .then(() => {

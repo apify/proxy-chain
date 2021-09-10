@@ -36,7 +36,7 @@ export function createTunnel(proxyUrl, targetHost, providedOptions = {}, callbac
     server.on('connection', (srcSocket) => {
         const port = server.address().port;
 
-        runningServers[port].connections = srcSocket;
+        runningServers[port].connections.push(srcSocket);
         const remoteAddress = `${srcSocket.remoteAddress}:${srcSocket.remotePort}`;
         log('new client connection from %s', remoteAddress);
 

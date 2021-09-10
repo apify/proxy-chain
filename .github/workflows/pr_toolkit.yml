@@ -1,0 +1,22 @@
+name: Apify pull request toolkit
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  apify-pr-toolkit:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: clone pull-request-toolkit-action
+        uses: actions/checkout@v2
+        with:
+          repository: apify/pull-request-toolkit-action
+          path: ./.github/actions/pull-request-toolkit-action
+
+      - name: run pull-request-toolkit action
+        uses: ./.github/actions/pull-request-toolkit-action
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          org-token: ${{ secrets.PULL_REQUEST_TOOLKIT_ACTION_GITHUB_TOKEN }}

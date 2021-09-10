@@ -1,3 +1,18 @@
+1.0.3 / 2021-08-17
+==================
+- Fixed `EventEmitter` memory leak (see issue [#81](https://github.com/apify/proxy-chain/issues/81))
+- Added automated tests for Node 16
+- Updated dev dependencies
+
+1.0.2 / 2021-04-14
+==================
+- Bugfix: `closeTunnel()` function didn't work because of `runningServers[port].connections.forEach is not a function` error (see issue [#127](https://github.com/apify/proxy-chain/issues/127))
+
+1.0.1 / 2021-04-09
+==================
+ - Bugfix: `parseUrl()` result now always includes port for `http(s)`, `ftp` and `ws(s)` (even if explicitly specified port is the default one)
+   This fixes [#123](https://github.com/apify/proxy-chain/issues/123).
+
 1.0.0 / 2021-03-17
 ===================
 - **BREAKING:** The `parseUrl()` function slightly changed its behavior (see README for details):
@@ -29,7 +44,7 @@
 
 0.4.9 / 2021-01-26
 ===================
-- Bugfix: Added back the `scheme` field to result from`parseUrl()`
+- Bugfix: Added back the `scheme` field to result from `parseUrl()`
 
 0.4.8 / 2021-01-26
 ===================

@@ -59,7 +59,7 @@ describe('tools.parseUrl()', () => {
             password: 'password',
             host: 'www.example.com',
             hostname: 'www.example.com',
-            port: null,
+            port: 443,
             path: '/some/path',
         });
 
@@ -136,7 +136,7 @@ describe('tools.parseUrl()', () => {
             scheme: 'http',
             username: '',
             password: '',
-            port: null,
+            port: 80,
         });
 
         testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/', {
@@ -145,7 +145,7 @@ describe('tools.parseUrl()', () => {
             username: '',
             password: '',
             hostname: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
-            port: null,
+            port: 80,
         });
 
         testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
@@ -177,6 +177,19 @@ describe('tools.parseUrl()', () => {
             port: 12345,
             path: '/',
         });
+
+        // Test that default ports are added for http and https
+        testUrl('https://www.example.com', { port: 443 });
+        testUrl('http://www.example.com', { port: 80 });
+        // ... and for web sockets
+        testUrl('wss://www.example.com', { port: 443 });
+        testUrl('ws://www.example.com', { port: 80 });
+        // Test that default port is not added for other protocols
+        testUrl('socks5://www.example.com', { port: null });
+        testUrl('socks5://www.example.com:1080', { port: 1080 });
+        // Test that explicit port is returned when specified
+        testUrl('https://www.example.com:12345', { port: 12345 });
+        testUrl('http://www.example.com:12345', { port: 12345 });
 
         expect(() => {
             parseUrl('/some-relative-url?a=1');

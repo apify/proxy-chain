@@ -351,6 +351,8 @@ It parses the URL using Node.js' `new URL(url)` and adds the following features:
   (if not, the function keeps the username and password as is)
 - `auth` field is added, and it contains username + ":" + password, or an empty string.
 
+Note that `port` is returned even if it is a default port for `http(s)` and few other protocols. This differs from `new URL(url)` where port is null when default.
+
 If the URL is invalid, the function throws an error.
 
 The username and password parsing should make it possible to parse proxy URLs containing
