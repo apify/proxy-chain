@@ -1,3 +1,5 @@
+const http = require('http');
+
 const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
 
 /**
@@ -292,3 +294,44 @@ const nodeify = (promise, callback) => {
 };
 
 module.exports.nodeify = nodeify;
+
+/**
+ * Filters out invalid headers.
+ * @param {string[]} array
+ * @returns Filtered headers.
+ */
+const validHeadersOnly = (array) => {
+    const rawHeaders = [];
+
+    let containsHost = false;
+
+    for (let i = 0; i < array.length; i += 2) {
+        const name = array[i];
+        const value = array[i + 1];
+
+        try {
+            http.validateHeaderName(name);
+            http.validateHeaderValue(name, value);
+        } catch (error) {
+            continue;
+        }
+
+        if (isHopByHopHeader(name)) {
+            continue;
+        }
+
+        if (name.toLowerCase() === 'host') {
+            if (containsHost) {
+                continue;
+            }
+
+            containsHost = true;
+        }
+
+        rawHeaders.push(name, value);
+    }
+
+    return rawHeaders;
+};
+
+module.exports.validHeadersOnly = validHeadersOnly;

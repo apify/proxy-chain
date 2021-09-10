@@ -2,44 +2,16 @@ const http = require('http');
 const https = require('https');
 const stream = require('stream');
 const util = require('util');
-const { isHopByHopHeader } = require('./tools');
+const { validHeadersOnly } = require('./tools');
 
 const pipeline = util.promisify(stream.pipeline);
 
-const validHeadersOnly = (array) => {
-    const rawHeaders = [];
-
-    let containsHost = false;
-
-    for (let i = 0; i < array.length; i += 2) {
-        const name = array[i];
-        const value = array[i + 1];
-
-        try {
-            http.validateHeaderName(name);
-            http.validateHeaderValue(name, value);
-        } catch (error) {
-            continue;
-        }
-
-        if (isHopByHopHeader(name)) {
-            continue;
-        }
-
-        if (name.toLowerCase() === 'host') {
-            if (containsHost) {
-                continue;
-            }
-
-            containsHost = true;
-        }
-
-        rawHeaders.push(name, value);
-    }
-
-    return rawHeaders;
-};
-
+/**
+ * @param {http.IncomingMessage} request
+ * @param {http.ServerResponse} response
+ * @param {*} handlerOpts
+ * @returns Promise.
+ */
 // eslint-disable-next-line no-async-promise-executor
 const forward = async (request, response, handlerOpts) => new Promise(async (resolve, reject) => {
     const proxy = handlerOpts.upstreamProxyUrlParsed;
@@ -50,6 +22,7 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
         headers: validHeadersOnly(request.rawHeaders),
     };
 
+    // In case of proxy the path needs to be an absolute URL
     if (proxy) {
         options.path = request.url;
 
@@ -69,11 +42,13 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
 
     const client = fn(origin, options, async (clientResponse) => {
         try {
+            // This is necessary to prevent Node.js throwing an error
             let { statusCode } = clientResponse;
             if (statusCode < 100 || statusCode > 999) {
                 statusCode = 502;
             }
 
+            // 407 is handled separately
             if (clientResponse.statusCode === 407) {
                 reject(new Error('407 Proxy Authentication Required'));
                 return;
@@ -85,6 +60,7 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
                 validHeadersOnly(clientResponse.rawHeaders),
             );
 
+            // `pipeline` automatically handles all the events and data
             await pipeline(
                 clientResponse,
                 response,
@@ -97,6 +73,7 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
     });
 
     try {
+        // `pipeline` automatically handles all the events and data
         await pipeline(
             request,
             client,
