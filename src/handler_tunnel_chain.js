@@ -1,4 +1,5 @@
 import http from 'http';
+import tls from 'tls';
 import HandlerBase from './handler_base';
 import { maybeAddProxyAuthorizationHeader } from './tools';
 
@@ -14,10 +15,23 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.bindHandlersToThis(['onTrgRequestConnect', 'onTrgRequestAbort', 'onTrgRequestError']);
     }
 
+    createTlsConnection() {
+        return tls.connect({
+            host: this.upstreamProxyUrlParsed.hostname,
+            port: this.upstreamProxyUrlParsed.port,
+        });
+    }
+
     run() {
         this.log('Connecting to upstream proxy...');
 
         const targetHost = `${this.trgParsed.hostname}:${this.trgParsed.port}`;
+        /*
+        * So if the scheme of the upstream proxy is 'https',
+        * then we should create tls connection.
+        * */
+        const createConnection = this.upstreamProxyUrlParsed.scheme === 'https'
+            ? () => this.createTlsConnection() : undefined;
 
         const options = {
             method: 'CONNECT',
@@ -28,6 +42,7 @@ export default class HandlerTunnelChain extends HandlerBase {
                 ...this.proxyHeaders,
                 Host: targetHost,
             },
+            createConnection,
         };
 
         maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, options.headers);
@@ -59,7 +74,11 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.srcResponse.removeListener('finish', this.onSrcResponseFinish);
         this.srcResponse.writeHead(200, 'Connection Established');
 
-        this.emit('tunnelConnectResponded', { response, socket, head });
+        this.emit('tunnelConnectResponded', {
+            response,
+            socket,
+            head
+        });
 
         // HACK: force a flush of the HTTP header. This is to ensure 'head' is empty to avoid
         // assert at https://github.com/request/tunnel-agent/blob/master/index.js#L160

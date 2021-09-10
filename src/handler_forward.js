@@ -1,4 +1,5 @@
 import http from 'http';
+import tls from 'tls';
 import {
     isHopByHopHeader, isInvalidHeader, addHeader, maybeAddProxyAuthorizationHeader,
 } from './tools';
@@ -16,9 +17,104 @@ export default class HandlerForward extends HandlerBase {
     }
 
     run() {
+        /*
+        * Here we decide if we should create a tls socket or just forward the request
+        * */
+        if (this.upstreamProxyUrlParsed.scheme === 'http') {
+            this.forwardRequest({});
+            return;
+        }
+
+        const tlsSocket = tls.connect({
+            host: this.upstreamProxyUrlParsed.hostname,
+            port: this.upstreamProxyUrlParsed.port
+        });
+
+        const headers = { ...this.proxyHeaders };
+        maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, headers);
+        const requestUrl = new URL(this.srcRequest.url);
+        const hostname = `${requestUrl.hostname}:${requestUrl.port || '80'}`;
+
+        let payload = `CONNECT ${hostname} HTTP/1.1\r\n`;
+
+        headers.Host = hostname;
+        headers.Connection = 'close';
+
+        for (const name of Object.keys(headers)) {
+            payload += `${name}: ${headers[name]}\r\n`;
+        }
+
+        const proxyResponsePromise = this.parseProxyResponse(tlsSocket);
+
+        tlsSocket.write(`${payload}\r\n`);
+
+        proxyResponsePromise.then((statusCode) => {
+            this.forwardRequest({
+                socket: statusCode === 200 && tlsSocket,
+                path: requestUrl.path
+            });
+        });
+    }
+
+    parseProxyResponse(socket) {
+        return new Promise((resolve, reject) => {
+            let buffersLength = 0;
+            const buffers = [];
+
+            function read() {
+                const b = socket.read();
+                if (b) {
+                    ondata(b);
+                } else {
+                    socket.once('readable', read);
+                }
+            }
+
+            function cleanup() {
+                socket.removeListener('error', onerror);
+                socket.removeListener('readable', read);
+            }
+
+            function onerror(err) {
+                cleanup();
+                console.log('onerror', err);
+                reject(err);
+            }
+
+            function ondata(b) {
+                buffers.push(b);
+                buffersLength += b.length;
+
+                const buffered = Buffer.concat(buffers, buffersLength);
+                const endOfHeaders = buffered.indexOf('\r\n\r\n');
+
+                if (endOfHeaders === -1) {
+                    // keep buffering
+                    console.log('have not received end of HTTP headers yet...');
+                    read();
+                    return;
+                }
+
+                const firstLine = buffered.toString('ascii', 0, buffered.indexOf('\r\n'));
+                const statusCode = +firstLine.split(' ')[1];
+                resolve(statusCode);
+            }
+
+            socket.on('error', onerror);
+
+            read();
+        });
+    }
+
+    forwardRequest({
+        socket,
+        path = this.srcRequest.url
+    }) {
         const reqOpts = this.trgParsed;
         reqOpts.method = this.srcRequest.method;
         reqOpts.headers = {};
+        /* If we have created a socket, we should use it :) */
+        socket && (reqOpts.createConnection = () => socket);
 
         // TODO:
         //  - We should probably use a raw HTTP message via socket instead of http.request(),
@@ -100,9 +196,11 @@ export default class HandlerForward extends HandlerBase {
             // HTTP requests to proxy contain the full URL in path, for example:
             // "GET http://www.example.com HTTP/1.1\r\n"
             // So we need to replicate it here
-            reqOpts.path = this.srcRequest.url;
+            reqOpts.path = path;
 
-            maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, reqOpts.headers);
+            if (!socket) {
+                (maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, reqOpts.headers));
+            }
 
             this.log(`Connecting to upstream proxy ${reqOpts.host}:${reqOpts.port}`);
         } else {
