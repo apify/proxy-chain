@@ -106,15 +106,14 @@ export default class HandlerForward extends HandlerBase {
         });
     }
 
-    forwardRequest({
-        socket,
-        path = this.srcRequest.url
-    }) {
+    forwardRequest({ socket, path }) {
         const reqOpts = this.trgParsed;
         reqOpts.method = this.srcRequest.method;
         reqOpts.headers = {};
         /* If we have created a socket, we should use it :) */
-        socket && (reqOpts.createConnection = () => socket);
+        if (socket) {
+            reqOpts.createConnection = () => socket;
+        }
 
         // TODO:
         //  - We should probably use a raw HTTP message via socket instead of http.request(),
@@ -196,7 +195,7 @@ export default class HandlerForward extends HandlerBase {
             // HTTP requests to proxy contain the full URL in path, for example:
             // "GET http://www.example.com HTTP/1.1\r\n"
             // So we need to replicate it here
-            reqOpts.path = path;
+            reqOpts.path = path || this.srcRequest.url;
 
             if (!socket) {
                 (maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, reqOpts.headers));
