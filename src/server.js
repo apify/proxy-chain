@@ -7,8 +7,8 @@ const {
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const HandlerTunnelDirect = require('./handler_tunnel_direct');
 const HandlerTunnelChain = require('./handler_tunnel_chain');
-const HandlerCustomResponse = require('./handler_custom_response');
 const { forward } = require('./forward');
+const { handleCustomResponse } = require('./custom_response');
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -117,7 +117,7 @@ class Server extends EventEmitter {
         socket.on('error', (err) => {
             // Handle errors only if there's no other handler
             if (this.listenerCount('error') === 1) {
-                this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
+                this.log(null, `Source socket emitted error: ${err.stack || err}`);
             }
         });
     }
@@ -134,7 +134,7 @@ class Server extends EventEmitter {
 
                 if (handlerOpts.customResponseFunction) {
                     this.log(handlerOpts.id, 'Using HandlerCustomResponse');
-                    return this.handlerRun(new HandlerCustomResponse(handlerOpts));
+                    return handleCustomResponse(request, response, handlerOpts);
                 }
 
                 this.log(handlerOpts.id, 'Using forward');
@@ -307,13 +307,16 @@ class Server extends EventEmitter {
                     }
 
                     if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`); // eslint-disable-line max-len
+                        // eslint-disable-next-line max-len
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`);
                     }
                     if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`); // eslint-disable-line max-len
+                        // eslint-disable-next-line max-len
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
                     }
                     if (/:/.test(handlerOpts.upstreamProxyUrlParsed.username)) {
-                        throw new Error('Invalid "upstreamProxyUrl" provided: The username cannot contain the colon (:) character according to RFC 7617.'); // eslint-disable-line max-len
+                        // eslint-disable-next-line max-len
+                        throw new Error('Invalid "upstreamProxyUrl" provided: The username cannot contain the colon (:) character according to RFC 7617.');
                     }
                 }
 
@@ -420,8 +423,6 @@ class Server extends EventEmitter {
             }
 
             let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
-            // eslint is broken
-            // eslint-disable-next-line no-restricted-syntax
             for (const [key, value] of Object.entries(headers)) {
                 msg += `${key}: ${value}\r\n`;
             }
@@ -514,8 +515,6 @@ class Server extends EventEmitter {
         if (closeConnections) {
             this.log(null, 'Closing pending handlers');
             let count = 0;
-            // eslint is broken
-            // eslint-disable-next-line no-restricted-syntax
             for (const handler of Object.values(this.handlers)) {
                 count++;
                 handler.close();

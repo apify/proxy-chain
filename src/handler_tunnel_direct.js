@@ -32,6 +32,7 @@ class HandlerTunnelDirect extends HandlerBase {
         // HACK: force a flush of the HTTP header. This is to ensure 'head' is empty to avoid
         // assert at https://github.com/request/tunnel-agent/blob/master/index.js#L160
         // See also https://github.com/nodejs/node/blob/master/lib/_http_outgoing.js#L217
+        // eslint-disable-next-line no-underscore-dangle
         this.srcResponse._send('');
 
         // It can happen that this.close() it called in the meanwhile, so this.srcSocket becomes null

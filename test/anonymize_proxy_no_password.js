@@ -11,13 +11,11 @@ const express = require('express');
 const { anonymizeProxy, closeAnonymizedProxy } = require('../src/index');
 const { PORT_SELECTION_CONFIG } = require('./tools');
 
-const ORIG_PORT_SELECTION_CONFIG = { ...PORT_SELECTION_CONFIG };
-
 let proxyServer;
-let proxyPort; // eslint-disable-line no-unused-vars
+let proxyPort;
 let testServerPort;
 const proxyAuth = { scheme: 'Basic', username: 'username', password: '' };
-let wasProxyCalled = false; // eslint-disable-line no-unused-vars
+let wasProxyCalled = false;
 
 // Setup local proxy server and web server for the tests
 before(() => {

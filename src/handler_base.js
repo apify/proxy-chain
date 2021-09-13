@@ -29,7 +29,6 @@ class HandlerBase extends EventEmitter {
         this.trgRequest = null;
         this.trgSocket = null;
         this.trgParsed = trgParsed;
-        this.trgParsed.port = this.trgParsed.port || DEFAULT_TARGET_PORT;
 
         // Indicates that source socket might have received some data already
         this.srcGotResponse = false;
@@ -84,7 +83,7 @@ class HandlerBase extends EventEmitter {
     }
 
     // Abstract method, needs to be overridden
-    run() {} // eslint-disable-line
+    run() {}
 
     onSrcSocketEnd() {
         if (this.isClosed) return;

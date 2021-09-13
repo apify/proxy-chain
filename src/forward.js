@@ -10,7 +10,7 @@ const pipeline = util.promisify(stream.pipeline);
  * @param {http.IncomingMessage} request
  * @param {http.ServerResponse} response
  * @param {*} handlerOpts
- * @returns Promise.
+ * @returns {Promise}
  */
 // eslint-disable-next-line no-async-promise-executor
 const forward = async (request, response, handlerOpts) => new Promise(async (resolve, reject) => {

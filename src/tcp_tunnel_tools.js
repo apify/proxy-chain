@@ -34,7 +34,7 @@ function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
     };
 
     server.on('connection', (srcSocket) => {
-        const port = server.address().port;
+        const { port } = server.address();
 
         runningServers[port].connections.push(srcSocket);
         const remoteAddress = `${srcSocket.remoteAddress}:${srcSocket.remotePort}`;
@@ -71,7 +71,7 @@ function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
         }
     });
 
-    const promise = new Promise((resolve) => {
+    const promise = new Promise((resolve, reject) => {
         // Let the system pick a random listening port
         server.listen(0, (err) => {
             if (err) return reject(err);

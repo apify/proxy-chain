@@ -12,10 +12,10 @@ const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = r
 const { findFreePort } = require('./tools');
 
 let proxyServer;
-let proxyPort; // eslint-disable-line no-unused-vars
+let proxyPort;
 let testServerPort;
 const proxyAuth = { scheme: 'Basic', username: 'username', password: 'password' };
-let wasProxyCalled = false; // eslint-disable-line no-unused-vars
+let wasProxyCalled = false;
 
 const serverListen = (server, port) => new Promise((resolve, reject) => {
     server.listen(port, (err) => {

@@ -142,6 +142,7 @@ const parseUrl = (url) => {
     if (parsed.protocol) {
         const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
         if (matches && matches.length === 2) {
+            // eslint-disable-next-line prefer-destructuring
             parsed.scheme = matches[1];
         }
     }
@@ -313,15 +314,18 @@ const validHeadersOnly = (array) => {
             http.validateHeaderName(name);
             http.validateHeaderValue(name, value);
         } catch (error) {
+            // eslint-disable-next-line no-continue
             continue;
         }
 
         if (isHopByHopHeader(name)) {
+            // eslint-disable-next-line no-continue
             continue;
         }
 
         if (name.toLowerCase() === 'host') {
             if (containsHost) {
+                // eslint-disable-next-line no-continue
                 continue;
             }
 
