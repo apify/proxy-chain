@@ -81,7 +81,10 @@ const chain = (request, source, head, handlerOpts, server) => {
     client.on('error', (error) => {
         server.log(null, `Failed to connect to upstream proxy: ${error.stack}`);
 
-        source.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+        // The end socket may get connected after the client to proxy one gets disconnected.
+        if (source.readyState === 'open') {
+            source.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+        }
     });
 
     source.on('error', () => {
