@@ -2,7 +2,7 @@
  * @param {http.IncomingMessage} request
  * @param {http.ServerResponse} response
  * @param {*} handlerOpts
- * @returns Promise.
+ * @returns {Promise}
  */
 const handleCustomResponse = async (request, response, handlerOpts) => {
     const { customResponseFunction } = handlerOpts;
