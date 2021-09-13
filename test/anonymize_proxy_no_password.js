@@ -8,7 +8,7 @@ const basicAuthParser = require('basic-auth-parser');
 const request = require('request');
 const express = require('express');
 
-const { anonymizeProxy, closeAnonymizedProxy } = require('../build/index');
+const { anonymizeProxy, closeAnonymizedProxy } = require('../src/index');
 const { PORT_SELECTION_CONFIG } = require('./tools');
 
 const ORIG_PORT_SELECTION_CONFIG = { ...PORT_SELECTION_CONFIG };

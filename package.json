@@ -2,7 +2,7 @@
   "name": "proxy-chain",
   "version": "1.0.4",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
-  "main": "build/index.js",
+  "main": "src/index.js",
   "keywords": [
     "proxy",
     "squid",
@@ -28,29 +28,18 @@
   },
   "homepage": "https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212",
   "files": [
-    "build"
+    "src"
   ],
   "scripts": {
-    "build": "rm -rf ./build && babel src --out-dir build",
-    "local-proxy": "npm run build && node ./build/run_locally.js",
-    "test": "npm run build && cross-env NODE_OPTIONS=--insecure-http-parser mocha --exit --recursive",
-    "prepare": "npm run build",
-    "clean": "rm -rf build",
-    "lint": "npm run build && eslint src",
-    "lint-fix": "npm run build && eslint src --fix"
+    "local-proxy": "node ./src/run_locally.js",
+    "test": "cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail --exit --recursive",
+    "lint": "eslint src",
+    "lint-fix": "eslint src --fix"
   },
   "engines": {
     "node": ">=10"
   },
-  "dependencies": {
-    "underscore": "^1.9.1"
-  },
   "devDependencies": {
-    "babel-cli": "^6.6.5",
-    "babel-core": "^6.1.21",
-    "babel-eslint": "^10.0.3",
-    "babel-preset-es2015": "^6.1.18",
-    "babel-preset-stage-0": "^6.1.18",
     "basic-auth": "^2.0.0",
     "body-parser": "^1.18.2",
     "chai": "^4.3.0",
@@ -73,7 +62,7 @@
     "sinon": "^11.1.2",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
+    "underscore": "^1.13.1",
     "ws": "^8.0.0"
-  },
-  "optionalDependencies": {}
+  }
 }

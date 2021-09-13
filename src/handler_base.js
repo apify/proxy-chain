@@ -1,12 +1,12 @@
-import http from 'http';
-import EventEmitter from 'events';
-import { RequestError } from './server';
+const http = require('http');
+const EventEmitter = require('events');
+const { RequestError } = require('./request_error');
 
 /**
  * Base class for proxy connection handlers. It emits the `destroyed` event
  * when the handler is no longer used.
  */
-export default class HandlerBase extends EventEmitter {
+class HandlerBase extends EventEmitter {
     constructor({
         server, id, srcRequest, srcHead, srcResponse, trgParsed, upstreamProxyUrlParsed,
     }) {
@@ -289,3 +289,5 @@ export default class HandlerBase extends EventEmitter {
         this.emit('close', { stats });
     }
 }
+
+module.exports = HandlerBase;

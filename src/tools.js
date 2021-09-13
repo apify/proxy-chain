@@ -1,3 +1,5 @@
+const http = require('http');
+
 const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
 
 /**
@@ -8,7 +10,7 @@ const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\
  * @param hostHeader
  * @return {*}
  */
-export const parseHostHeader = (hostHeader) => {
+const parseHostHeader = (hostHeader) => {
     const matches = HOST_HEADER_REGEX.exec(hostHeader || '');
     if (!matches) return null;
 
@@ -24,6 +26,8 @@ export const parseHostHeader = (hostHeader) => {
     return { hostname, port };
 };
 
+module.exports.parseHostHeader = parseHostHeader;
+
 // As per HTTP specification, hop-by-hop headers should be consumed but the proxy, and not forwarded
 const HOP_BY_HOP_HEADERS = [
     'Connection',
@@ -38,7 +42,9 @@ const HOP_BY_HOP_HEADERS = [
 
 const HOP_BY_HOP_HEADERS_REGEX = new RegExp(`^(${HOP_BY_HOP_HEADERS.join('|')})$`, 'i');
 
-export const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS_REGEX.test(header);
+const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS_REGEX.test(header);
+
+module.exports.isHopByHopHeader = isHopByHopHeader;
 
 const TOKEN_REGEX = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
 
@@ -62,7 +68,7 @@ const isInvalidHeaderChar = (val) => HEADER_CHAR_REGEX.test(val);
 
 // This code is based on Node.js' validateHeader() function from _http_outgoing.js module
 // (see https://github.com/nodejs/node/blob/189d29f39e6de9ccf10682bfd1341819b4a2291f/lib/_http_outgoing.js#L485)
-export const isInvalidHeader = (name, value) => {
+const isInvalidHeader = (name, value) => {
     // NOTE: These are internal Node.js functions, they might stop working in the future!
     return typeof name !== 'string'
         || !name
@@ -70,6 +76,8 @@ export const isInvalidHeader = (name, value) => {
         || value === undefined
         || isInvalidHeaderChar(value);
 };
+
+module.exports.isInvalidHeader = isInvalidHeader;
 
 const bulletproofDecodeURIComponent = (encodedURIComponent) => {
     try {
@@ -104,7 +112,7 @@ const STANDARD_PORTS_BY_PROTOCOL = {
  * @param url
  * @ignore
  */
-export const parseUrl = (url) => {
+const parseUrl = (url) => {
     // NOTE: In the past we used url.parse() here, but it can't handle IPv6 and other special URLs,
     // so we moved to new URL()
     const urlObj = new URL(url);
@@ -146,6 +154,8 @@ export const parseUrl = (url) => {
     return parsed;
 };
 
+module.exports.parseUrl = parseUrl;
+
 /**
  * Redacts password from a URL, so that it can be shown in logs, results etc.
  * For example, converts URL such as
@@ -156,11 +166,13 @@ export const parseUrl = (url) => {
  * @returns {string}
  * @ignore
  */
-export const redactUrl = (url, passwordReplacement) => {
+const redactUrl = (url, passwordReplacement) => {
     return redactParsedUrl(parseUrl(url), passwordReplacement);
 };
 
-export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') => {
+module.exports.redactUrl = redactUrl;
+
+const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') => {
     const p = parsedUrl;
     let auth = null;
     if (p.username) {
@@ -173,6 +185,8 @@ export const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') =
     return `${p.protocol}//${auth || ''}${auth ? '@' : ''}${p.host}${p.path || ''}${p.hash || ''}`;
 };
 
+module.exports.redactParsedUrl = redactParsedUrl;
+
 const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;
 
 /**
@@ -181,7 +195,7 @@ const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;
  * @returns {*} Object with fields { type: String, username: String, password: String }
  * or null if string parsing failed. Note that password and username might be empty strings.
  */
-export const parseProxyAuthorizationHeader = (header) => {
+const parseProxyAuthorizationHeader = (header) => {
     const matches = PROXY_AUTH_HEADER_REGEX.exec(header);
     if (!matches) return null;
 
@@ -195,6 +209,8 @@ export const parseProxyAuthorizationHeader = (header) => {
         password: index >= 0 ? auth.substr(index + 1) : '',
     };
 };
+
+module.exports.parseProxyAuthorizationHeader = parseProxyAuthorizationHeader;
 
 /**
  * Works like Bash tee, but instead of passing output to file,
@@ -224,7 +240,7 @@ export const tee = (name, initialOnly = true) => {
 };
 */
 
-export const addHeader = (headers, name, value) => {
+const addHeader = (headers, name, value) => {
     if (headers[name] === undefined) {
         headers[name] = value;
     } else if (Array.isArray(headers[name])) {
@@ -237,13 +253,17 @@ export const addHeader = (headers, name, value) => {
     }
 };
 
-export const PORT_SELECTION_CONFIG = {
+module.exports.addHeader = addHeader;
+
+const PORT_SELECTION_CONFIG = {
     FROM: 20000,
     TO: 60000,
     RETRY_COUNT: 10,
 };
 
-export const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
+module.exports.PORT_SELECTION_CONFIG = PORT_SELECTION_CONFIG;
+
+const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
     if (parsedUrl && (parsedUrl.username || parsedUrl.password)) {
         // According to RFC 7617 (see https://tools.ietf.org/html/rfc7617#page-5):
         //  "Furthermore, a user-id containing a colon character is invalid, as
@@ -257,8 +277,10 @@ export const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
     }
 };
 
+module.exports.maybeAddProxyAuthorizationHeader = maybeAddProxyAuthorizationHeader;
+
 // Replacement for Bluebird's Promise.nodeify()
-export const nodeify = (promise, callback) => {
+const nodeify = (promise, callback) => {
     if (typeof callback !== 'function') return promise;
 
     const p = promise.then((result) => callback(null, result), callback);
@@ -270,3 +292,46 @@ export const nodeify = (promise, callback) => {
 
     return promise;
 };
+
+module.exports.nodeify = nodeify;
+
+/**
+ * Filters out invalid headers.
+ * @param {string[]} array
+ * @returns Filtered headers.
+ */
+const validHeadersOnly = (array) => {
+    const rawHeaders = [];
+
+    let containsHost = false;
+
+    for (let i = 0; i < array.length; i += 2) {
+        const name = array[i];
+        const value = array[i + 1];
+
+        try {
+            http.validateHeaderName(name);
+            http.validateHeaderValue(name, value);
+        } catch (error) {
+            continue;
+        }
+
+        if (isHopByHopHeader(name)) {
+            continue;
+        }
+
+        if (name.toLowerCase() === 'host') {
+            if (containsHost) {
+                continue;
+            }
+
+            containsHost = true;
+        }
+
+        rawHeaders.push(name, value);
+    }
+
+    return rawHeaders;
+};
+
+module.exports.validHeadersOnly = validHeadersOnly;

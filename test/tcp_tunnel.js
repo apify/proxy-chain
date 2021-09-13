@@ -4,7 +4,7 @@ const { expect, assert } = require('chai');
 const http = require('http');
 const proxy = require('proxy');
 
-const { createTunnel, closeTunnel } = require('../build/index');
+const { createTunnel, closeTunnel } = require('../src/index');
 const { findFreePort } = require('./tools');
 
 const destroySocket = socket => new Promise((resolve, reject) => {

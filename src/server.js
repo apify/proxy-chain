@@ -1,14 +1,14 @@
-import http from 'http';
-import util from 'util';
-import EventEmitter from 'events';
-import _ from 'underscore';
-import {
+const http = require('http');
+const util = require('util');
+const EventEmitter = require('events');
+const {
     parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
-} from './tools';
-import HandlerForward from './handler_forward';
-import HandlerTunnelDirect from './handler_tunnel_direct';
-import HandlerTunnelChain from './handler_tunnel_chain';
-import HandlerCustomResponse from './handler_custom_response';
+} = require('./tools');
+const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
+const HandlerTunnelDirect = require('./handler_tunnel_direct');
+const HandlerTunnelChain = require('./handler_tunnel_chain');
+const HandlerCustomResponse = require('./handler_custom_response');
+const { forward } = require('./forward');
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -30,33 +30,12 @@ const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 const DEFAULT_TARGET_PORT = 80;
 
-const REQUEST_ERROR_NAME = 'RequestError';
-
-/**
- * Represents custom request error. The message is emitted as HTTP response
- * with a specific HTTP code and headers.
- * If this error is thrown from the `prepareRequestFunction` function,
- * the message and status code is sent to client.
- * By default, the response will have Content-Type: text/plain
- * and for the 407 status the Proxy-Authenticate header will be added.
- */
-export class RequestError extends Error {
-    constructor(message, statusCode, headers) {
-        super(message);
-        this.name = REQUEST_ERROR_NAME;
-        this.statusCode = statusCode;
-        this.headers = headers;
-
-        Error.captureStackTrace(this, RequestError);
-    }
-}
-
 /**
  * Represents the proxy server.
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
  */
-export class Server extends EventEmitter {
+class Server extends EventEmitter {
     /**
      * Initializes a new instance of Server class.
      * @param options
@@ -153,18 +132,34 @@ export class Server extends EventEmitter {
                 handlerOpts = result;
                 handlerOpts.srcResponse = response;
 
-                let handler;
                 if (handlerOpts.customResponseFunction) {
                     this.log(handlerOpts.id, 'Using HandlerCustomResponse');
-                    handler = new HandlerCustomResponse(handlerOpts);
-                } else {
-                    this.log(handlerOpts.id, 'Using HandlerForward');
-                    handler = new HandlerForward(handlerOpts);
+                    return this.handlerRun(new HandlerCustomResponse(handlerOpts));
                 }
 
-                this.handlerRun(handler);
+                this.log(handlerOpts.id, 'Using forward');
+                return forward(request, response, handlerOpts);
             })
             .catch((err) => {
+                if (err.message === '407 Proxy Authentication Required') {
+                    response.setHeader('content-type', 'text/plain; charset=utf-8');
+                    response.statusCode = 502;
+                    response.end();
+                    return;
+                }
+
+                if (err.code === 'ENOTFOUND') {
+                    if (err.proxy) {
+                        response.statusCode = 502;
+                    } else {
+                        response.statusCode = 404;
+                    }
+
+                    response.setHeader('content-type', 'text/plain; charset=utf-8');
+                    response.end();
+                    return;
+                }
+
                 this.failRequest(request, err, handlerOpts);
             });
     }
@@ -204,10 +199,6 @@ export class Server extends EventEmitter {
      * @param request
      */
     prepareRequestHandling(request) {
-        // console.log('XXX prepareRequestHandling');
-        // console.dir(_.pick(request, 'url', 'method'));
-        // console.dir(url.parse(request.url));
-
         const handlerOpts = {
             server: this,
             id: ++this.lastHandlerId,
@@ -224,7 +215,6 @@ export class Server extends EventEmitter {
 
         return Promise.resolve()
             .then(() => {
-                // console.dir(_.pick(request, 'url', 'headers', 'method'));
                 // Determine target hostname and port
                 if (request.method === 'CONNECT') {
                     // The request should look like:
@@ -430,9 +420,11 @@ export class Server extends EventEmitter {
             }
 
             let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
-            _.each(headers, (value, key) => {
+            // eslint is broken
+            // eslint-disable-next-line no-restricted-syntax
+            for (const [key, value] of Object.entries(headers)) {
                 msg += `${key}: ${value}\r\n`;
-            });
+            }
             msg += `\r\n${message}`;
 
             // console.log("RESPONSE:\n" + msg);
@@ -490,7 +482,7 @@ export class Server extends EventEmitter {
      * @returns {*}
      */
     getConnectionIds() {
-        return _.keys(this.handlers);
+        return Object.keys(this.handlers);
     }
 
     /**
@@ -522,10 +514,12 @@ export class Server extends EventEmitter {
         if (closeConnections) {
             this.log(null, 'Closing pending handlers');
             let count = 0;
-            _.each(this.handlers, (handler) => {
+            // eslint is broken
+            // eslint-disable-next-line no-restricted-syntax
+            for (const handler of Object.values(this.handlers)) {
                 count++;
                 handler.close();
-            });
+            }
             this.log(null, `Destroyed ${count} pending handlers`);
         }
 
@@ -537,3 +531,7 @@ export class Server extends EventEmitter {
         }
     }
 }
+
+module.exports = {
+    Server,
+};

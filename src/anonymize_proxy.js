@@ -1,7 +1,7 @@
-import { Server } from './server';
-import {
+const { Server } = require('./server');
+const {
     parseUrl, nodeify,
-} from './tools';
+} = require('./tools');
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer = {};
@@ -14,7 +14,7 @@ const anonymizedProxyUrlToServer = {};
  * @return If no callback was supplied, returns a promise that resolves to a String with
  * anonymous proxy URL or the original URL if it was already anonymous.
  */
-export const anonymizeProxy = (proxyUrl, callback) => {
+const anonymizeProxy = (proxyUrl, callback) => {
     const parsedProxyUrl = parseUrl(proxyUrl);
     if (!parsedProxyUrl.host || !parsedProxyUrl.port) {
         throw new Error('Invalid "proxyUrl" option: the URL must contain both hostname and port.');
@@ -58,6 +58,8 @@ export const anonymizeProxy = (proxyUrl, callback) => {
     return nodeify(promise, callback);
 };
 
+module.exports.anonymizeProxy = anonymizeProxy;
+
 /**
  * Closes anonymous proxy previously started by `anonymizeProxy()`.
  * If proxy was not found or was already closed, the function has no effect
@@ -68,7 +70,7 @@ export const anonymizeProxy = (proxyUrl, callback) => {
  * @param callback Optional callback
  * @returns Returns a promise if no callback was supplied
  */
-export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) => {
+const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) => {
     if (typeof anonymizedProxyUrl !== 'string') {
         throw new Error('The "anonymizedProxyUrl" parameter must be a string');
     }
@@ -87,6 +89,8 @@ export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callb
     return nodeify(promise, callback);
 };
 
+module.exports.closeAnonymizedProxy = closeAnonymizedProxy;
+
 /**
  * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy
  * Useful for some proxies that are using headers to send information like ProxyMesh
@@ -97,7 +101,7 @@ export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callb
  * @returns `true` if the callback is successfully configured, otherwise `false` (e.g. when an
  * invalid proxy URL is given).
  */
-export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRespondedCallback) => {
+const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRespondedCallback) => {
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
         return false;
@@ -107,3 +111,5 @@ export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRe
     });
     return true;
 };
+
+module.exports.listenConnectAnonymizedProxy = listenConnectAnonymizedProxy;

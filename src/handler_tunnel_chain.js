@@ -1,11 +1,11 @@
-import http from 'http';
-import HandlerBase from './handler_base';
-import { maybeAddProxyAuthorizationHeader } from './tools';
+const http = require('http');
+const HandlerBase = require('./handler_base');
+const { maybeAddProxyAuthorizationHeader } = require('./tools');
 
 /**
  * Represents a connection from source client to an external proxy using HTTP CONNECT tunnel.
  */
-export default class HandlerTunnelChain extends HandlerBase {
+class HandlerTunnelChain extends HandlerBase {
     constructor(options) {
         super(options);
 
@@ -114,3 +114,5 @@ export default class HandlerTunnelChain extends HandlerBase {
         this.fail(err);
     }
 }
+
+module.exports = HandlerTunnelChain;
