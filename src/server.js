@@ -7,7 +7,6 @@ const {
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const HandlerTunnelDirect = require('./handler_tunnel_direct');
 const HandlerTunnelChain = require('./handler_tunnel_chain');
-const HandlerCustomResponse = require('./handler_custom_response');
 const { forward } = require('./forward');
 const { handleCustomResponse } = require('./custom_response');
 
