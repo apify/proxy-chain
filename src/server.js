@@ -9,6 +9,7 @@ const HandlerTunnelDirect = require('./handler_tunnel_direct');
 const HandlerTunnelChain = require('./handler_tunnel_chain');
 const HandlerCustomResponse = require('./handler_custom_response');
 const { forward } = require('./forward');
+const { handleCustomResponse } = require('./custom_response');
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -134,7 +135,7 @@ class Server extends EventEmitter {
 
                 if (handlerOpts.customResponseFunction) {
                     this.log(handlerOpts.id, 'Using HandlerCustomResponse');
-                    return this.handlerRun(new HandlerCustomResponse(handlerOpts));
+                    return handleCustomResponse(request, response, handlerOpts);
                 }
 
                 this.log(handlerOpts.id, 'Using forward');
