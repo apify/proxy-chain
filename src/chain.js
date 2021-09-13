@@ -41,9 +41,15 @@ const chain = (request, source, head, handlerOpts, server) => {
         }
 
         socket.on('error', (error) => {
-            server.log(null, `Chain Socket Error: ${error.stack}`);
+            server.log(null, `Chain Destination Socket Error: ${error.stack}`);
 
             source.destroy();
+        });
+
+        source.on('error', (error) => {
+            server.log(null, `Chain Source Socket Error: ${error.stack}`);
+
+            socket.destroy();
         });
 
         if (response.statusCode !== 200) {
@@ -68,14 +74,6 @@ const chain = (request, source, head, handlerOpts, server) => {
 
         source.pipe(socket);
         socket.pipe(source);
-
-        socket.on('error', () => {
-            source.destroy();
-        });
-
-        source.on('error', () => {
-            socket.destroy();
-        });
     });
 
     client.on('error', (error) => {
@@ -91,6 +89,7 @@ const chain = (request, source, head, handlerOpts, server) => {
         client.destroy();
     });
 
+    // In case the client ends the socket too early
     source.on('close', () => {
         client.destroy();
     });
