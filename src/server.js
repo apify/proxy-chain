@@ -5,9 +5,9 @@ const {
     parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
 } = require('./tools');
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
-const HandlerTunnelDirect = require('./handler_tunnel_direct');
 const HandlerTunnelChain = require('./handler_tunnel_chain');
 const { forward } = require('./forward');
+const { direct } = require('./direct');
 const { handleCustomResponse } = require('./custom_response');
 
 // TODO:
@@ -177,16 +177,13 @@ class Server extends EventEmitter {
                 handlerOpts = result;
                 handlerOpts.srcHead = head;
 
-                let handler;
                 if (handlerOpts.upstreamProxyUrlParsed) {
                     this.log(handlerOpts.id, 'Using HandlerTunnelChain');
-                    handler = new HandlerTunnelChain(handlerOpts);
-                } else {
-                    this.log(handlerOpts.id, 'Using HandlerTunnelDirect');
-                    handler = new HandlerTunnelDirect(handlerOpts);
+                    return this.handlerRun(new HandlerTunnelChain(handlerOpts));
                 }
 
-                this.handlerRun(handler);
+                this.log(handlerOpts.id, 'Using HandlerTunnelDirect');
+                return direct(request, socket, head);
             })
             .catch((err) => {
                 this.failRequest(request, err, handlerOpts);
