@@ -4,9 +4,10 @@ const net = require('net');
  * @param {http.ClientRequest} request
  * @param {net.Socket} source
  * @param {buffer.Buffer} head
+ * @param {*} handlerOpts
  * @param {*} server
  */
-const direct = (request, source, head, server) => {
+const direct = (request, source, head, handlerOpts, server) => {
     const url = new URL(`connect://${request.url}`);
 
     if (!url.port) {
