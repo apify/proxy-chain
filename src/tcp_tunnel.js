@@ -23,7 +23,6 @@ class TcpTunnel {
         this.trgRequest = null;
         this.trgSocket = null;
         this.trgParsed = trgParsed;
-        this.trgParsed.port = this.trgParsed.port || DEFAULT_TARGET_PORT;
 
         this.srcSocket = srcSocket;
         this.srcSocket.on('close', this.onSrcSocketClose);

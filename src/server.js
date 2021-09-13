@@ -117,7 +117,7 @@ class Server extends EventEmitter {
         socket.on('error', (err) => {
             // Handle errors only if there's no other handler
             if (this.listenerCount('error') === 1) {
-                this.log(handlerOpts.id, `Source socket emitted error: ${err.stack || err}`);
+                this.log(null, `Source socket emitted error: ${err.stack || err}`);
             }
         });
     }

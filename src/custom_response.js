@@ -5,7 +5,7 @@
  * @returns Promise.
  */
 const handleCustomResponse = async (request, response, handlerOpts) => {
-    const customResponseFunction = handlerOpts.customResponseFunction;
+    const { customResponseFunction } = handlerOpts;
     if (!customResponseFunction) {
         throw new Error('The "customResponseFunction" option is required');
     }
