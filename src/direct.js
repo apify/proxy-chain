@@ -37,4 +37,4 @@ const direct = (request, source, head) => {
     });
 };
 
-module.exports = { direct };
+module.exports.direct = direct;
