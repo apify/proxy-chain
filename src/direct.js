@@ -1,7 +1,6 @@
 const net = require('net');
 
 /**
- *
  * @param {http.ClientRequest} request
  * @param {net.Socket} source
  * @param {buffer.Buffer} head
