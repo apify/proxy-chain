@@ -83,7 +83,7 @@ class HandlerBase extends EventEmitter {
     }
 
     // Abstract method, needs to be overridden
-    run() {} // eslint-disable-line
+    run() {}
 
     onSrcSocketEnd() {
         if (this.isClosed) return;

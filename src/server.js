@@ -307,13 +307,16 @@ class Server extends EventEmitter {
                     }
 
                     if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`); // eslint-disable-line max-len
+                        // eslint-disable-next-line max-len
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`);
                     }
                     if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`); // eslint-disable-line max-len
+                        // eslint-disable-next-line max-len
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
                     }
                     if (/:/.test(handlerOpts.upstreamProxyUrlParsed.username)) {
-                        throw new Error('Invalid "upstreamProxyUrl" provided: The username cannot contain the colon (:) character according to RFC 7617.'); // eslint-disable-line max-len
+                        // eslint-disable-next-line max-len
+                        throw new Error('Invalid "upstreamProxyUrl" provided: The username cannot contain the colon (:) character according to RFC 7617.');
                     }
                 }
 
@@ -420,8 +423,6 @@ class Server extends EventEmitter {
             }
 
             let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
-            // eslint is broken
-            // eslint-disable-next-line no-restricted-syntax
             for (const [key, value] of Object.entries(headers)) {
                 msg += `${key}: ${value}\r\n`;
             }
@@ -514,8 +515,6 @@ class Server extends EventEmitter {
         if (closeConnections) {
             this.log(null, 'Closing pending handlers');
             let count = 0;
-            // eslint is broken
-            // eslint-disable-next-line no-restricted-syntax
             for (const handler of Object.values(this.handlers)) {
                 count++;
                 handler.close();

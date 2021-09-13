@@ -28,7 +28,9 @@ const findFreePort = () => {
 
     return portastic.find(opts)
         .then((ports) => {
-            if (ports.length < 1) throw new Error(`There are no more free ports in range from ${PORT_SELECTION_CONFIG.FROM} to ${PORT_SELECTION_CONFIG.TO}`); // eslint-disable-line max-len
+            if (ports.length < 1) {
+                throw new Error(`There are no more free ports in range from ${PORT_SELECTION_CONFIG.FROM} to ${PORT_SELECTION_CONFIG.TO}`);
+            }
             return ports[0];
         });
 };
@@ -321,7 +323,8 @@ describe('tools.parseProxyAuthorizationHeader()', () => {
 
         expect(parse(authStr('Basic', 'username:password'))).to.eql({ type: 'Basic', username: 'username', password: 'password' });
         expect(parse(authStr('Basic', 'user1234:password567'))).to.eql({ type: 'Basic', username: 'user1234', password: 'password567' });
-        expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({ type: 'Basic', username: 'username', password: 'pass:with:many:colons' }); //eslint-disable-line
+        // eslint-disable-next-line max-len
+        expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({ type: 'Basic', username: 'username', password: 'pass:with:many:colons' });
         expect(parse(authStr('Basic', 'username:'))).to.eql({ type: 'Basic', username: 'username', password: '' });
         expect(parse(authStr('Basic', 'username'))).to.eql({ type: 'Basic', username: 'username', password: '' });
         expect(parse(authStr('Basic', ':'))).to.eql({ type: 'Basic', username: '', password: '' });

@@ -19,8 +19,6 @@ const handleCustomResponse = async (request, response, handlerOpts) => {
     response.statusCode = customResponse.statusCode || 200;
 
     if (customResponse.headers) {
-        // eslint is broken
-        // eslint-disable-next-line no-restricted-syntax
         for (const [key, value] of Object.entries(customResponse.headers)) {
             response.setHeader(key, value);
         }
