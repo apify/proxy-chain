@@ -34,6 +34,12 @@ const chain = (request, source, head, handlerOpts, server) => {
     const client = http.request(options);
 
     client.on('connect', (response, socket, clientHead) => {
+        if (source.readyState !== 'open') {
+            // Sanity check, should never reach.
+            socket.destroy();
+            return;
+        }
+
         socket.on('error', (error) => {
             server.log(null, `Chain Socket Error: ${error.stack}`);
 
@@ -79,6 +85,10 @@ const chain = (request, source, head, handlerOpts, server) => {
     });
 
     source.on('error', () => {
+        client.destroy();
+    });
+
+    source.on('close', () => {
         client.destroy();
     });
 
