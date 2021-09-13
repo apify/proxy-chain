@@ -34,11 +34,15 @@ const chain = (request, source, head, handlerOpts, server) => {
     const client = http.request(options);
 
     client.on('connect', (response, socket, clientHead) => {
-        socket.on('error', () => {
+        socket.on('error', (error) => {
+            server.log(null, `Chain Socket Error: ${error.stack}`);
+
             source.destroy();
         });
 
         if (response.statusCode !== 200) {
+            server.log(null, `Failed to authenticate upstream proxy: ${response.statusCode}`);
+
             source.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
             return;
         }
@@ -68,7 +72,9 @@ const chain = (request, source, head, handlerOpts, server) => {
         });
     });
 
-    client.on('error', () => {
+    client.on('error', (error) => {
+        server.log(null, `Failed to connect to upstream proxy: ${error.stack}`);
+
         source.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
     });
 

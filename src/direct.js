@@ -4,8 +4,9 @@ const net = require('net');
  * @param {http.ClientRequest} request
  * @param {net.Socket} source
  * @param {buffer.Buffer} head
+ * @param {*} server
  */
-const direct = (request, source, head) => {
+const direct = (request, source, head, server) => {
     const url = new URL(`connect://${request.url}`);
 
     if (!url.port) {
@@ -27,7 +28,9 @@ const direct = (request, source, head) => {
     source.pipe(socket);
     socket.pipe(source);
 
-    socket.on('error', () => {
+    socket.on('error', (error) => {
+        server.log(null, `Direct Socket Error: ${error.stack}`);
+
         source.destroy();
     });
 
