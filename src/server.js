@@ -1,9 +1,9 @@
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
-const {
-    parseProxyAuthorizationHeader, redactUrl, nodeify,
-} = require('./tools');
+const { parseAuthorizationHeader } = require('./utils/parse_authorization_header');
+const { redactUrl } = require('./utils/redact_url');
+const { nodeify } = require('./utils/nodeify');
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const { chain } = require('./chain');
 const { forward } = require('./forward');
@@ -269,7 +269,7 @@ class Server extends EventEmitter {
 
                 const proxyAuth = request.headers['proxy-authorization'];
                 if (proxyAuth) {
-                    const auth = parseProxyAuthorizationHeader(proxyAuth);
+                    const auth = parseAuthorizationHeader(proxyAuth);
                     if (!auth) {
                         throw new RequestError('Invalid "Proxy-Authorization" header', 400);
                     }

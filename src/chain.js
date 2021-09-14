@@ -1,5 +1,5 @@
 const http = require('http');
-const { decodeURIComponentSafe } = require('./tools');
+const { decodeURIComponentSafe } = require('./utils/decode_uri_component_safe');
 
 /**
  * @param {http.ClientRequest} request

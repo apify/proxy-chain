@@ -2,7 +2,8 @@ const http = require('http');
 const https = require('https');
 const stream = require('stream');
 const util = require('util');
-const { validHeadersOnly, decodeURIComponentSafe } = require('./tools');
+const { validHeadersOnly } = require('./utils/valid_headers_only');
+const { decodeURIComponentSafe } = require('./utils/decode_uri_component_safe');
 
 const pipeline = util.promisify(stream.pipeline);
 

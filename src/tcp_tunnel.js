@@ -1,5 +1,5 @@
 const http = require('http');
-const { decodeURIComponentSafe } = require('./tools');
+const { decodeURIComponentSafe } = require('./utils/decode_uri_component_safe');
 
 /**
  * Represents a connection from source client to an external proxy using HTTP CONNECT tunnel, allows TCP connection.

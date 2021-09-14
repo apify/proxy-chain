@@ -1,5 +1,5 @@
 const { Server } = require('./server');
-const { nodeify } = require('./tools');
+const { nodeify } = require('./utils/nodeify');
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer = {};

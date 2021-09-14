@@ -1,6 +1,6 @@
 const net = require('net');
 const TcpTunnel = require('./tcp_tunnel');
-const { nodeify } = require('./tools');
+const { nodeify } = require('./utils/nodeify');
 
 const runningServers = {};
 

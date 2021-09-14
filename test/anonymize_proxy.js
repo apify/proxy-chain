@@ -158,7 +158,9 @@ describe('utils.anonymizeProxy', function () {
                 ]);
             })
             .then((results) => {
+                // eslint-disable-next-line prefer-destructuring
                 proxyUrl1 = results[0];
+                // eslint-disable-next-line prefer-destructuring
                 proxyUrl2 = results[1];
                 expect(proxyUrl1).to.not.contain(`${proxyPort}`);
                 expect(proxyUrl2).to.not.contain(`${proxyPort}`);
@@ -209,12 +211,12 @@ describe('utils.anonymizeProxy', function () {
                 return requestPromised({
                     uri: proxyUrl1,
                 })
-                .then(() => {
-                    assert.fail();
-                })
-                .catch((err) => {
-                    expect(err.message).to.contain('ECONNREFUSED');
-                });
+                    .then(() => {
+                        assert.fail();
+                    })
+                    .catch((err) => {
+                        expect(err.message).to.contain('ECONNREFUSED');
+                    });
             })
             .then(() => {
                 // Test callback-style
@@ -280,28 +282,27 @@ describe('utils.anonymizeProxy', function () {
                 expect(wasProxyCalled).to.equal(true);
                 const promises = [];
 
-                for (let i=0; i<N; i++) {
+                for (let i = 0; i < N; i++) {
                     promises.push(closeAnonymizedProxy(proxyUrls[i], true));
                 }
 
                 return Promise.all(promises);
             })
             .then((results) => {
-                for (let i=0; i<N; i++) {
+                for (let i = 0; i < N; i++) {
                     expect(results[i]).to.eql(true);
                 }
             });
     });
 
     it('handles HTTP CONNECT request properly', function () {
-
         this.timeout(50 * 1000);
 
         const host = `localhost:${testServerPort}`;
         let onconnectArgs;
         function onconnect(message, socket) {
             onconnectArgs = message;
-            socket.write("HTTP/1.1 401 UNAUTHORIZED\r\n\r\n");
+            socket.write('HTTP/1.1 401 UNAUTHORIZED\r\n\r\n');
             socket.end();
             socket.destroy();
         }
@@ -334,7 +335,7 @@ describe('utils.anonymizeProxy', function () {
         const host = `localhost:${testServerPort}`;
         let rawHeadersRetrieved;
         function onconnect(message, socket) {
-            socket.write("HTTP/1.1 200 OK\r\nfoo: bar\r\n\r\n");
+            socket.write('HTTP/1.1 200 OK\r\nfoo: bar\r\n\r\n');
             socket.end();
             socket.destroy();
         }
@@ -354,9 +355,9 @@ describe('utils.anonymizeProxy', function () {
                     uri: `https://${host}`,
                     proxy: proxyUrl,
                 })
-                .catch(() => {
-                    return Promise.resolve();
-                });
+                    .catch(() => {
+                        return Promise.resolve();
+                    });
             })
             .then(() => {
                 expect(rawHeadersRetrieved).to.eql(['foo', 'bar']);

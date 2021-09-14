@@ -1,4 +1,3 @@
-const _ = require('underscore');
 const net = require('net');
 const { expect, assert } = require('chai');
 const http = require('http');
@@ -6,7 +5,7 @@ const proxy = require('proxy');
 
 const { createTunnel, closeTunnel } = require('../src/index');
 
-const destroySocket = socket => new Promise((resolve, reject) => {
+const destroySocket = (socket) => new Promise((resolve, reject) => {
     if (!socket || socket.destroyed) return resolve();
     socket.destroy((err) => {
         if (err) return reject(err);
@@ -21,7 +20,7 @@ const serverListen = (server, port) => new Promise((resolve, reject) => {
     });
 });
 
-const connect = port => new Promise((resolve, reject) => {
+const connect = (port) => new Promise((resolve, reject) => {
     const socket = net.connect({ port }, (err) => {
         if (err) return reject(err);
         return resolve(socket);
@@ -102,16 +101,14 @@ describe('tcp_tunnel.createTunnel', () => {
                     return resolve(tunnel);
                 });
             })
-            .then(tunnel => new Promise((resolve, reject) => {
-                closeTunnel(tunnel, true, (err, closed) => {
-                    if (err) return reject(err);
-                    return resolve(closed);
-                });
-            })));
+                .then((tunnel) => new Promise((resolve, reject) => {
+                    closeTunnel(tunnel, true, (err, closed) => {
+                        if (err) return reject(err);
+                        return resolve(closed);
+                    });
+                })));
     });
     it('creates tunnel that is able to transfer data', () => {
-        let proxyPort;
-        let servicePort;
         let tunnel;
         let response = '';
         const expected = [
@@ -121,7 +118,7 @@ describe('tcp_tunnel.createTunnel', () => {
         ];
 
         proxyServer = proxy(http.createServer());
-        proxyServer.on('connection', conn => proxyServerConnections.push(conn));
+        proxyServer.on('connection', (conn) => proxyServerConnections.push(conn));
 
         return serverListen(proxyServer, 0)
             .then(() => {
@@ -130,7 +127,7 @@ describe('tcp_tunnel.createTunnel', () => {
                     targetServiceConnections.push(conn);
                     conn.setEncoding('utf8');
                     conn.on('data', conn.write);
-                    conn.on('error', err => conn.write(JSON.stringify(err)));
+                    conn.on('error', (err) => conn.write(JSON.stringify(err)));
                 });
                 return serverListen(targetService, 0);
             })
@@ -144,8 +141,8 @@ describe('tcp_tunnel.createTunnel', () => {
                 localConnection = connection;
                 connection.setEncoding('utf8');
                 connection.on('data', (d) => { response += d; });
-                expected.forEach(text => connection.write(`${text}\r\n`));
-                return new Promise(resolve => setTimeout(() => {
+                expected.forEach((text) => connection.write(`${text}\r\n`));
+                return new Promise((resolve) => setTimeout(() => {
                     connection.end();
                     resolve(tunnel);
                 }, 500));

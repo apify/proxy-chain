@@ -1,13 +1,8 @@
 const { expect } = require('chai');
-const net = require('net');
-const portastic = require('portastic');
-const {
-    redactUrl, isHopByHopHeader,
-    parseProxyAuthorizationHeader,
-    nodeify,
-} = require('../src/tools');
-
-/* global describe, it */
+const { redactUrl } = require('../src/utils/redact_url');
+const { isHopByHopHeader } = require('../src/utils/is_hop_by_hop_header');
+const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
+const { nodeify } = require('../src/utils/nodeify');
 
 describe('tools.redactUrl()', () => {
     it('works', () => {
@@ -52,31 +47,91 @@ const authStr = (type, usernameAndPassword) => {
     return `${type} ${Buffer.from(usernameAndPassword).toString('base64')}`;
 };
 
-describe('tools.parseProxyAuthorizationHeader()', () => {
+describe('tools.parseAuthorizationHeader()', () => {
     it('works with valid input', () => {
-        const parse = parseProxyAuthorizationHeader;
+        const parse = parseAuthorizationHeader;
 
-        expect(parse(authStr('Basic', 'username:password'))).to.eql({ type: 'Basic', username: 'username', password: 'password' });
-        expect(parse(authStr('Basic', 'user1234:password567'))).to.eql({ type: 'Basic', username: 'user1234', password: 'password567' });
-        // eslint-disable-next-line max-len
-        expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({ type: 'Basic', username: 'username', password: 'pass:with:many:colons' });
-        expect(parse(authStr('Basic', 'username:'))).to.eql({ type: 'Basic', username: 'username', password: '' });
-        expect(parse(authStr('Basic', 'username'))).to.eql({ type: 'Basic', username: 'username', password: '' });
-        expect(parse(authStr('Basic', ':'))).to.eql({ type: 'Basic', username: '', password: '' });
-        expect(parse(authStr('Basic', ':passWord'))).to.eql({ type: 'Basic', username: '', password: 'passWord' });
-        expect(parse(authStr('SCRAM-SHA-256', 'something:else'))).to.eql({ type: 'SCRAM-SHA-256', username: 'something', password: 'else' });
+        expect(parse(authStr('Basic', 'username:password'))).to.eql({
+            type: 'Basic',
+            username: 'username',
+            password: 'password',
+            data: 'dXNlcm5hbWU6cGFzc3dvcmQ=',
+        });
+
+        expect(parse(authStr('Basic', 'user1234:password567'))).to.eql({
+            type: 'Basic',
+            username: 'user1234',
+            password: 'password567',
+            data: 'dXNlcjEyMzQ6cGFzc3dvcmQ1Njc=',
+        });
+
+        expect(parse(authStr('Basic', 'username:pass:with:many:colons'))).to.eql({
+            type: 'Basic',
+            username: 'username',
+            password: 'pass:with:many:colons',
+            data: 'dXNlcm5hbWU6cGFzczp3aXRoOm1hbnk6Y29sb25z',
+        });
+
+        expect(parse(authStr('Basic', 'username:'))).to.eql({
+            type: 'Basic',
+            username: 'username',
+            password: '',
+            data: 'dXNlcm5hbWU6',
+        });
+
+        expect(parse(authStr('Basic', 'username'))).to.eql({
+            type: 'Basic',
+            username: '',
+            password: '',
+            data: 'dXNlcm5hbWU=',
+        });
+
+        expect(parse(authStr('Basic', ':'))).to.eql({
+            type: 'Basic',
+            username: '',
+            password: '',
+            data: 'Og==',
+        });
+
+        expect(parse(authStr('Basic', ':passWord'))).to.eql({
+            type: 'Basic',
+            username: '',
+            password: 'passWord',
+            data: 'OnBhc3NXb3Jk',
+        });
+
+        expect(parse(authStr('SCRAM-SHA-256', 'something:else'))).to.eql({
+            type: 'SCRAM-SHA-256',
+            data: 'c29tZXRoaW5nOmVsc2U=',
+        });
     });
 
     it('works with invalid input', () => {
-        const parse = parseProxyAuthorizationHeader;
+        const parse = parseAuthorizationHeader;
 
         expect(parse(null)).to.eql(null);
         expect(parse('')).to.eql(null);
         expect(parse('    ')).to.eql(null);
-        expect(parse('whatever')).to.eql(null);
-        expect(parse('bla bla bla')).to.eql(null);
-        expect(parse(authStr('Basic', ''))).to.eql(null);
-        expect(parse('123124')).to.eql(null);
+
+        expect(parse('whatever')).to.eql({
+            type: '',
+            data: '',
+        });
+
+        expect(parse('bla bla bla')).to.eql({
+            type: 'bla',
+            data: 'bla bla',
+        });
+
+        expect(parse(authStr('Basic', ''))).to.eql({
+            type: '',
+            data: '',
+        });
+
+        expect(parse('123124')).to.eql({
+            type: '',
+            data: '',
+        });
     });
 });
 
@@ -97,9 +152,8 @@ describe('tools.nodeify()', () => {
         {
             // Test promised exception
             const promise = asyncFunction(true);
-            let result;
             try {
-                result = await nodeify(promise, null);
+                await nodeify(promise, null);
                 throw new Error('This should not be reached!');
             } catch (e) {
                 expect(e.message).to.eql('Test error');
