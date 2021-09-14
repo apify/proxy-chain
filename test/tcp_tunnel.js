@@ -5,7 +5,6 @@ const http = require('http');
 const proxy = require('proxy');
 
 const { createTunnel, closeTunnel } = require('../src/index');
-const { findFreePort } = require('./tools');
 
 const destroySocket = socket => new Promise((resolve, reject) => {
     if (!socket || socket.destroyed) return resolve();
@@ -67,52 +66,38 @@ describe('tcp_tunnel.createTunnel', () => {
         assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /target host needs to include both/);
     });
     it('correctly tunnels to tcp service and then is able to close the connection', () => {
-        let proxyPort;
-        let servicePort;
-        return findFreePort()
-            .then((port) => {
-                proxyServer = proxy(http.createServer());
-                proxyPort = port;
-                return serverListen(proxyServer, proxyPort);
-            })
-            .then(() => findFreePort())
-            .then((port) => {
+        proxyServer = proxy(http.createServer());
+
+        return serverListen(proxyServer, 0)
+            .then(() => {
                 targetService = net.createServer();
-                servicePort = port;
                 targetService.on('connection', (conn) => {
                     conn.setEncoding('utf8');
                     conn.on('data', conn.write);
                     conn.on('error', (err) => { throw err; });
                 });
-                return serverListen(targetService, servicePort);
+                return serverListen(targetService, 0);
             })
             .then(() => {
-                return createTunnel(`http://localhost:${proxyPort}`, `localhost:${servicePort}`);
+                return createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetService.address().port}`);
             })
             .then(closeTunnel);
     });
     it('correctly tunnels to tcp service and then is able to close the connection when used with callbacks', () => {
-        let proxyPort;
-        let servicePort;
-        return findFreePort()
-            .then((port) => {
-                proxyServer = proxy(http.createServer());
-                proxyPort = port;
-                return serverListen(proxyServer, proxyPort);
-            })
-            .then(() => findFreePort())
-            .then((port) => {
+        proxyServer = proxy(http.createServer());
+
+        return serverListen(proxyServer, 0)
+            .then(() => {
                 targetService = net.createServer();
-                servicePort = port;
                 targetService.on('connection', (conn) => {
                     conn.setEncoding('utf8');
                     conn.on('data', conn.write);
                     conn.on('error', (err) => { throw err; });
                 });
-                return serverListen(targetService, servicePort);
+                return serverListen(targetService, 0);
             })
             .then(() => new Promise((resolve, reject) => {
-                createTunnel(`http://localhost:${proxyPort}`, `localhost:${servicePort}`, {}, (err, tunnel) => {
+                createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetService.address().port}`, {}, (err, tunnel) => {
                     if (err) return reject(err);
                     return resolve(tunnel);
                 });
@@ -134,26 +119,22 @@ describe('tcp_tunnel.createTunnel', () => {
             'testB',
             'testC',
         ];
-        return findFreePort()
-            .then((port) => {
-                proxyServer = proxy(http.createServer());
-                proxyServer.on('connection', conn => proxyServerConnections.push(conn));
-                proxyPort = port;
-                return serverListen(proxyServer, proxyPort);
-            })
-            .then(() => findFreePort())
-            .then((port) => {
+
+        proxyServer = proxy(http.createServer());
+        proxyServer.on('connection', conn => proxyServerConnections.push(conn));
+
+        return serverListen(proxyServer, 0)
+            .then(() => {
                 targetService = net.createServer();
-                servicePort = port;
                 targetService.on('connection', (conn) => {
                     targetServiceConnections.push(conn);
                     conn.setEncoding('utf8');
                     conn.on('data', conn.write);
                     conn.on('error', err => conn.write(JSON.stringify(err)));
                 });
-                return serverListen(targetService, servicePort);
+                return serverListen(targetService, 0);
             })
-            .then(() => createTunnel(`http://localhost:${proxyPort}`, `localhost:${servicePort}`))
+            .then(() => createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetService.address().port}`))
             .then((newTunnel) => {
                 tunnel = newTunnel;
                 const [hostname, port] = tunnel.split(':'); // eslint-disable-line

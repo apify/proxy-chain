@@ -15,26 +15,6 @@ const PORT_SELECTION_CONFIG = {
     RETRY_COUNT: 10,
 };
 
-const findFreePort = () => {
-    // Let 'min' be a random value in the first half of the PORT_FROM-PORT_TO range,
-    // to reduce a chance of collision if other ProxyChain is started at the same time.
-    const half = Math.floor((PORT_SELECTION_CONFIG.TO - PORT_SELECTION_CONFIG.FROM) / 2);
-
-    const opts = {
-        min: PORT_SELECTION_CONFIG.FROM + Math.floor(Math.random() * half),
-        max: PORT_SELECTION_CONFIG.TO,
-        retrieve: 1,
-    };
-
-    return portastic.find(opts)
-        .then((ports) => {
-            if (ports.length < 1) {
-                throw new Error(`There are no more free ports in range from ${PORT_SELECTION_CONFIG.FROM} to ${PORT_SELECTION_CONFIG.TO}`);
-            }
-            return ports[0];
-        });
-};
-
 describe('tools.redactUrl()', () => {
     it('works', () => {
         // Test that the function lower-cases the schema and path
@@ -182,35 +162,6 @@ describe('tools.maybeAddProxyAuthorizationHeader()', () => {
     });
 });
 
-describe('tools.findFreePort()', () => {
-    it('throws nice error when no more free ports available', () => {
-        const server = net.createServer();
-        const startServer = ports => new Promise((resolve, reject) => {
-            server.listen(ports[0], (err) => {
-                if (err) return reject(err);
-                resolve(ports[0]);
-            });
-        });
-        const PORT_SELECTION_CONFIG_BACKUP = { ...PORT_SELECTION_CONFIG };
-        return portastic.find({ min: 50000, max: 50100 })
-            .then(startServer)
-            .then((port) => {
-                PORT_SELECTION_CONFIG.FROM = port;
-                PORT_SELECTION_CONFIG.TO = port;
-                return findFreePort();
-            })
-            .then(() => assert.fail())
-            .catch((err) => {
-                expect(err.message).to.contain('There are no more free ports');
-            })
-            .finally(() => {
-                PORT_SELECTION_CONFIG.FROM = PORT_SELECTION_CONFIG_BACKUP.FROM;
-                PORT_SELECTION_CONFIG.TO = PORT_SELECTION_CONFIG_BACKUP.TO;
-                if (server.listening) server.close();
-            });
-    });
-});
-
 const asyncFunction = async (throwError) => {
     if (throwError) throw new Error('Test error');
     return 123;
@@ -263,5 +214,4 @@ describe('tools.nodeify()', () => {
 
 module.exports = {
     PORT_SELECTION_CONFIG,
-    findFreePort,
 };

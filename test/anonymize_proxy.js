@@ -9,7 +9,6 @@ const request = require('request');
 const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../src/index');
-const { findFreePort } = require('./tools');
 
 let proxyServer;
 let proxyPort;
@@ -299,7 +298,6 @@ describe('utils.anonymizeProxy', function () {
         this.timeout(50 * 1000);
 
         const host = `localhost:${testServerPort}`;
-        let proxyPort;
         let onconnectArgs;
         function onconnect(message, socket) {
             onconnectArgs = message;
@@ -307,15 +305,13 @@ describe('utils.anonymizeProxy', function () {
             socket.end();
             socket.destroy();
         }
-        return findFreePort()
-            .then((port) => {
-                var proxy = http.createServer();
-                proxy.on('connect', onconnect);
-                proxyPort = port;
-                return serverListen(proxy, proxyPort);
-            })
+
+        const localProxy = http.createServer();
+        localProxy.on('connect', onconnect);
+
+        return serverListen(localProxy, 0)
             .then(() => {
-                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`);
+                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`);
             })
             .then((proxyUrl) => {
                 return requestPromised({
@@ -333,26 +329,22 @@ describe('utils.anonymizeProxy', function () {
     });
 
     it('handles HTTP CONNECT callback properly', function () {
-
         this.timeout(50 * 1000);
 
         const host = `localhost:${testServerPort}`;
-        let proxyPort;
         let rawHeadersRetrieved;
         function onconnect(message, socket) {
             socket.write("HTTP/1.1 200 OK\r\nfoo: bar\r\n\r\n");
             socket.end();
             socket.destroy();
         }
-        return findFreePort()
-            .then((port) => {
-                var proxy = http.createServer();
-                proxy.on('connect', onconnect);
-                proxyPort = port;
-                return serverListen(proxy, proxyPort);
-            })
+
+        const localProxy = http.createServer();
+        localProxy.on('connect', onconnect);
+
+        return serverListen(localProxy, 0)
             .then(() => {
-                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`);
+                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`);
             })
             .then((proxyUrl) => {
                 listenConnectAnonymizedProxy(proxyUrl, ({ response, socket, head }) => {
@@ -370,7 +362,6 @@ describe('utils.anonymizeProxy', function () {
                 expect(rawHeadersRetrieved).to.eql(['foo', 'bar']);
             });
     });
-
 
     it('fails with invalid upstream proxy credentials', () => {
         let anonymousProxyUrl;
