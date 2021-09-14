@@ -3,7 +3,7 @@ const net = require('net');
 const portastic = require('portastic');
 const {
     redactUrl, isHopByHopHeader,
-    parseProxyAuthorizationHeader, addHeader,
+    parseProxyAuthorizationHeader,
     nodeify, maybeAddProxyAuthorizationHeader,
 } = require('../src/tools');
 
@@ -83,49 +83,6 @@ describe('tools.parseProxyAuthorizationHeader()', () => {
         expect(parse('bla bla bla')).to.eql(null);
         expect(parse(authStr('Basic', ''))).to.eql(null);
         expect(parse('123124')).to.eql(null);
-    });
-});
-
-describe('tools.addHeader()', () => {
-    it('works for new header', () => {
-        const headers = {
-            foo: 'bar',
-        };
-
-        addHeader(headers, 'someHeaderName', 'someHeaderValue');
-
-        expect(headers).to.be.eql({
-            foo: 'bar',
-            someHeaderName: 'someHeaderValue',
-        });
-    });
-
-    it('works for existing single header with the same name', () => {
-        const headers = {
-            foo: 'bar',
-            someHeaderName: 'originalValue',
-        };
-
-        addHeader(headers, 'someHeaderName', 'newValue');
-
-        expect(headers).to.be.eql({
-            foo: 'bar',
-            someHeaderName: ['originalValue', 'newValue'],
-        });
-    });
-
-    it('works for existing multiple headers with the same name', () => {
-        const headers = {
-            foo: 'bar',
-            someHeaderName: ['originalValue1', 'originalValue2'],
-        };
-
-        addHeader(headers, 'someHeaderName', 'newValue');
-
-        expect(headers).to.be.eql({
-            foo: 'bar',
-            someHeaderName: ['originalValue1', 'originalValue2', 'newValue'],
-        });
     });
 });
 

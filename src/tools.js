@@ -75,49 +75,6 @@ const parseProxyAuthorizationHeader = (header) => {
 
 module.exports.parseProxyAuthorizationHeader = parseProxyAuthorizationHeader;
 
-/**
- * Works like Bash tee, but instead of passing output to file,
- * passes output to log
- *
- * @param   {String}   name          identifier
- * @param   {Boolean}  initialOnly   log only initial chunk of data
- * @return  {through}                duplex stream (pipe)
-
-export const tee = (name, initialOnly = true) => {
-    console.log('tee');
-    let maxChunks = 2;
-    const duplex = through((chunk) => {
-        if (maxChunks || !initialOnly) {
-            // let msg = chunk.toString();
-            // msg += '';
-            maxChunks--;
-            console.log(`pipe: ${JSON.stringify({
-                context: name,
-                chunkHead: chunk.toString().slice(0, 100),
-            })}`);
-        }
-        duplex.queue(chunk);
-    });
-
-    return duplex;
-};
-*/
-
-const addHeader = (headers, name, value) => {
-    if (headers[name] === undefined) {
-        headers[name] = value;
-    } else if (Array.isArray(headers[name])) {
-        headers[name].push(value);
-    } else {
-        headers[name] = [
-            headers[name],
-            value,
-        ];
-    }
-};
-
-module.exports.addHeader = addHeader;
-
 const PORT_SELECTION_CONFIG = {
     FROM: 20000,
     TO: 60000,
