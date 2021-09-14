@@ -1,11 +1,11 @@
 const net = require('net');
 const TcpTunnel = require('./tcp_tunnel');
-const { parseUrl, nodeify } = require('./tools');
+const { nodeify } = require('./tools');
 
 const runningServers = {};
 
 function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
-    const parsedProxyUrl = parseUrl(proxyUrl);
+    const parsedProxyUrl = new URL(proxyUrl);
     if (!parsedProxyUrl.hostname || !parsedProxyUrl.port) {
         throw new Error(`The proxy URL must contain hostname and port (was "${proxyUrl}")`);
     }

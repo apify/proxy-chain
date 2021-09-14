@@ -2,7 +2,7 @@ const http = require('http');
 const https = require('https');
 const stream = require('stream');
 const util = require('util');
-const { validHeadersOnly } = require('./tools');
+const { validHeadersOnly, decodeURIComponentSafe } = require('./tools');
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -28,7 +28,7 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
 
         try {
             if (proxy.username || proxy.password) {
-                const auth = `${proxy.username}:${proxy.password}`;
+                const auth = `${decodeURIComponentSafe(proxy.username)}:${decodeURIComponentSafe(proxy.password)}`;
 
                 options.headers.push('proxy-authorization', `Basic ${Buffer.from(auth).toString('base64')}`);
             }

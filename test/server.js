@@ -13,7 +13,7 @@ const portastic = require('portastic');
 const request = require('request');
 const WebSocket = require('faye-websocket');
 
-const { parseUrl, parseProxyAuthorizationHeader } = require('../src/tools');
+const { parseProxyAuthorizationHeader } = require('../src/tools');
 const { Server, RequestError } = require('../src/index');
 const { TargetServer } = require('./target_server');
 const ProxyChain = require('../src/index');
@@ -76,13 +76,16 @@ const phantomGet = (url, proxyUrl) => {
 
     let proxyParams = '';
     if (proxyUrl) {
-        const parsed = parseUrl(proxyUrl);
+        const parsed = new URL(proxyUrl);
+        const username = decodeURIComponent(parsed.username);
+        const password = decodeURIComponent(parsed.password);
+
         proxyParams += `--proxy-type=http --proxy=${parsed.hostname}:${parsed.port} `;
-        if (parsed.username || parsed.password) {
-            if ((parsed.username && !parsed.password) || (!parsed.username && parsed.password)) {
+        if (username || password) {
+            if ((username && !password) || (!username && password)) {
                 throw new Error('PhantomJS cannot handle proxy only username or password!');
             }
-            proxyParams += `--proxy-auth=${parsed.username}:${parsed.password} `;
+            proxyParams += `--proxy-auth=${username}:${password} `;
         }
     }
 
@@ -247,7 +250,7 @@ const createTestSuite = ({
                             let addToMainProxyServerConnectionIds = true;
 
                             expect(request).to.be.an('object');
-                            expect(port).to.be.an('number');
+                            expect(port).to.be.an('string');
 
                             // All the fake hostnames here have a .gov TLD, because without a TLD,
                             // the tests would fail on GitHub Actions. We assume nobody will register
@@ -268,11 +271,9 @@ const createTestSuite = ({
 
                             if (hostname === 'test-custom-response-simple.gov') {
                                 result.customResponseFunction = () => {
-                                    const trgParsed = parseUrl(request.url);
-                                    expect(trgParsed).to.deep.include({
-                                        host: hostname,
-                                        path: '/some/path'
-                                    });
+                                    const trgParsed = new URL(request.url);
+                                    expect(trgParsed.host).to.be.eql(hostname);
+                                    expect(trgParsed.pathname).to.be.eql('/some/path');
                                     return {
                                         body: 'TEST CUSTOM RESPONSE SIMPLE',
                                     };
@@ -284,12 +285,11 @@ const createTestSuite = ({
 
                             if (hostname === 'test-custom-response-complex.gov') {
                                 result.customResponseFunction = () => {
-                                    const trgParsed = parseUrl(request.url);
-                                    expect(trgParsed).to.deep.include({
-                                        hostname,
-                                        path: '/some/path?query=456',
-                                    });
-                                    expect(port).to.be.eql(1234);
+                                    const trgParsed = new URL(request.url);
+                                    expect(trgParsed.hostname).to.be.eql(hostname);
+                                    expect(trgParsed.pathname).to.be.eql('/some/path');
+                                    expect(trgParsed.search).to.be.eql('?query=456');
+                                    expect(port).to.be.eql('1234');
                                     return {
                                         statusCode: 201,
                                         headers: {
@@ -303,11 +303,9 @@ const createTestSuite = ({
 
                             if (hostname === 'test-custom-response-long.gov') {
                                 result.customResponseFunction = () => {
-                                    const trgParsed = parseUrl(request.url);
-                                    expect(trgParsed).to.deep.include({
-                                        host: hostname,
-                                        path: '/'
-                                    });
+                                    const trgParsed = new URL(request.url);
+                                    expect(trgParsed.host).to.be.eql(hostname);
+                                    expect(trgParsed.pathname).to.be.eql('/');
                                     return {
                                         body: 'X'.repeat(5000000),
                                     };
@@ -316,11 +314,9 @@ const createTestSuite = ({
 
                             if (hostname === 'test-custom-response-promised.gov') {
                                 result.customResponseFunction = () => {
-                                    const trgParsed = parseUrl(request.url);
-                                    expect(trgParsed).to.deep.include({
-                                        host: hostname,
-                                        path: '/some/path'
-                                    });
+                                    const trgParsed = new URL(request.url);
+                                    expect(trgParsed.host).to.be.eql(hostname);
+                                    expect(trgParsed.pathname).to.be.eql('/some/path');
                                     return Promise.resolve().then(() => {
                                         return {
                                             body: 'TEST CUSTOM RESPONSE PROMISED',
@@ -908,7 +904,7 @@ const createTestSuite = ({
 
                 it('fails gracefully on invalid upstream proxy username', () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-username`);
-                    return testForErrorResponse(opts, 500);
+                    return testForErrorResponse(opts, 502);
                 });
 
                 it('fails gracefully on non-existent upstream proxy host', () => {

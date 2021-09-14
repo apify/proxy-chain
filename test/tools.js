@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const net = require('net');
 const portastic = require('portastic');
 const {
-    parseUrl, redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
+    redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
     parseProxyAuthorizationHeader, addHeader,
     nodeify, maybeAddProxyAuthorizationHeader,
 } = require('../src/tools');
@@ -35,174 +35,6 @@ const findFreePort = () => {
         });
 };
 
-const testUrl = (url, expected) => {
-    const parsed1 = parseUrl(url);
-    expect(parsed1).to.contain(expected);
-};
-
-describe('tools.parseUrl()', () => {
-    it('works', () => {
-        testUrl('https://username:password@www.example.COM:12345/some/path', {
-            auth: 'username:password',
-            protocol: 'https:',
-            scheme: 'https',
-            username: 'username',
-            password: 'password',
-            host: 'www.example.com:12345',
-            hostname: 'www.example.com',
-            port: 12345,
-        });
-
-        testUrl('https://username:password@www.example.com/some/path', {
-            auth: 'username:password',
-            protocol: 'https:',
-            scheme: 'https',
-            username: 'username',
-            password: 'password',
-            host: 'www.example.com',
-            hostname: 'www.example.com',
-            port: 443,
-            path: '/some/path',
-        });
-
-        testUrl('http://us-er+na12345me:@WWW.EXAMPLE.COM:12345/some/path', {
-            auth: 'us-er+na12345me:',
-            protocol: 'http:',
-            scheme: 'http',
-            username: 'us-er+na12345me',
-            password: '',
-            host: 'www.example.com:12345',
-            hostname: 'www.example.com',
-            port: 12345,
-            path: '/some/path',
-        });
-
-        testUrl('https://EXAMPLE.COM:12345/some/path', {
-            auth: '',
-            protocol: 'https:',
-            scheme: 'https',
-            username: '',
-            password: '', // not null!
-            host: 'example.com:12345',
-            hostname: 'example.com',
-            port: 12345,
-            path: '/some/path',
-        });
-
-        testUrl('https://:passwrd@EXAMPLE.COM:12345/some/path', {
-            auth: ':passwrd',
-            protocol: 'https:',
-            scheme: 'https',
-            username: '',
-            password: 'passwrd',
-            host: 'example.com:12345',
-            hostname: 'example.com',
-            port: 12345,
-            path: '/some/path',
-        });
-
-        testUrl('socks5://username@EXAMPLE.com:12345/some/path', {
-            auth: 'username:',
-            protocol: 'socks5:',
-            scheme: 'socks5',
-            username: 'username',
-            password: '',
-            // TODO: Why the hell it's UPPERCASE here??? And lower-case above for EXAMPLE.COM ?
-            host: 'EXAMPLE.com:12345',
-            hostname: 'EXAMPLE.com',
-            port: 12345,
-        });
-
-        testUrl('FTP://@FTP.EXAMPLE.COM:12345/some/path', {
-            auth: '',
-            protocol: 'ftp:',
-            scheme: 'ftp',
-            username: '',
-            password: '',
-            hostname: 'ftp.example.com',
-            port: 12345,
-        });
-
-        testUrl('HTTP://www.example.com:12345/some/path', {
-            protocol: 'http:',
-            scheme: 'http',
-            username: '',
-            password: '',
-            hostname: 'www.example.com',
-            port: 12345,
-            path: '/some/path',
-        });
-
-        testUrl('HTTP://www.example.com/some/path', {
-            protocol: 'http:',
-            scheme: 'http',
-            username: '',
-            password: '',
-            port: 80,
-        });
-
-        testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/', {
-            protocol: 'http:',
-            scheme: 'http',
-            username: '',
-            password: '',
-            hostname: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
-            port: 80,
-        });
-
-        testUrl('http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
-            protocol: 'http:',
-            scheme: 'http',
-            username: '',
-            password: '',
-            hostname: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
-            port: 12345,
-        });
-
-        // Note the upper-case "DB" here and lower-case "db" below
-        testUrl('http://username:password@[2001:DB8:85a3:8d3:1319:8a2e:370:7348]:12345/', {
-            protocol: 'http:',
-            scheme: 'http',
-            username: 'username',
-            password: 'password',
-            host: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345',
-            hostname: '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
-            port: 12345,
-        });
-
-        testUrl('http://user%35name:p%%w0rd@EXAMPLE.COM:12345/', {
-            protocol: 'http:',
-            scheme: 'http',
-            username: 'user5name',
-            password: 'p%%w0rd',
-            hostname: 'example.com',
-            port: 12345,
-            path: '/',
-        });
-
-        // Test that default ports are added for http and https
-        testUrl('https://www.example.com', { port: 443 });
-        testUrl('http://www.example.com', { port: 80 });
-        // ... and for web sockets
-        testUrl('wss://www.example.com', { port: 443 });
-        testUrl('ws://www.example.com', { port: 80 });
-        // Test that default port is not added for other protocols
-        testUrl('socks5://www.example.com', { port: null });
-        testUrl('socks5://www.example.com:1080', { port: 1080 });
-        // Test that explicit port is returned when specified
-        testUrl('https://www.example.com:12345', { port: 12345 });
-        testUrl('http://www.example.com:12345', { port: 12345 });
-
-        expect(() => {
-            parseUrl('/some-relative-url?a=1');
-        }).to.throw(/Invalid URL/);
-
-        expect(() => {
-            parseUrl('A nonsense, really.');
-        }).to.throw(/Invalid URL/);
-    });
-});
-
 describe('tools.redactUrl()', () => {
     it('works', () => {
         // Test that the function lower-cases the schema and path
@@ -231,13 +63,13 @@ describe('tools.redactUrl()', () => {
 
 describe('tools.parseHostHeader()', () => {
     it('works with valid input', () => {
-        expect(parseHostHeader('www.example.com:80')).to.eql({ hostname: 'www.example.com', port: 80 });
-        expect(parseHostHeader('something:1')).to.eql({ hostname: 'something', port: 1 });
-        expect(parseHostHeader('something:65535')).to.eql({ hostname: 'something', port: 65535 });
-        expect(parseHostHeader('example.com')).to.eql({ hostname: 'example.com', port: null });
-        expect(parseHostHeader('1.2.3.4')).to.eql({ hostname: '1.2.3.4', port: null });
-        expect(parseHostHeader('1.2.3.4:5555')).to.eql({ hostname: '1.2.3.4', port: 5555 });
-        expect(parseHostHeader('a.b.c.d.e.f.g:1')).to.eql({ hostname: 'a.b.c.d.e.f.g', port: 1 });
+        expect(parseHostHeader('www.example.com:80')).to.eql({ hostname: 'www.example.com', port: '80' });
+        expect(parseHostHeader('something:1')).to.eql({ hostname: 'something', port: '1' });
+        expect(parseHostHeader('something:65535')).to.eql({ hostname: 'something', port: '65535' });
+        expect(parseHostHeader('example.com')).to.eql({ hostname: 'example.com', port: '' });
+        expect(parseHostHeader('1.2.3.4')).to.eql({ hostname: '1.2.3.4', port: '' });
+        expect(parseHostHeader('1.2.3.4:5555')).to.eql({ hostname: '1.2.3.4', port: '5555' });
+        expect(parseHostHeader('a.b.c.d.e.f.g:1')).to.eql({ hostname: 'a.b.c.d.e.f.g', port: '1' });
     });
 
     it('works with invalid input', () => {
@@ -390,14 +222,14 @@ describe('tools.addHeader()', () => {
 
 describe('tools.maybeAddProxyAuthorizationHeader()', () => {
     it('works', () => {
-        const parsedUrl1 = parseUrl('http://example.com');
+        const parsedUrl1 = new URL('http://example.com');
         const headers1 = { AAA: 123 };
         maybeAddProxyAuthorizationHeader(parsedUrl1, headers1);
         expect(headers1).to.eql({
             AAA: 123,
         });
 
-        const parsedUrl2 = parseUrl('http://aladdin:opensesame@userexample.com');
+        const parsedUrl2 = new URL('http://aladdin:opensesame@userexample.com');
         const headers2 = { BBB: 123 };
         maybeAddProxyAuthorizationHeader(parsedUrl2, headers2);
         expect(headers2).to.eql({
@@ -405,7 +237,7 @@ describe('tools.maybeAddProxyAuthorizationHeader()', () => {
             'Proxy-Authorization': 'Basic YWxhZGRpbjpvcGVuc2VzYW1l',
         });
 
-        const parsedUrl3 = parseUrl('http://ala%35ddin:opensesame@userexample.com');
+        const parsedUrl3 = new URL('http://ala%35ddin:opensesame@userexample.com');
         const headers3 = { BBB: 123 };
         maybeAddProxyAuthorizationHeader(parsedUrl3, headers3);
         expect(headers3).to.eql({
@@ -413,7 +245,7 @@ describe('tools.maybeAddProxyAuthorizationHeader()', () => {
             'Proxy-Authorization': 'Basic YWxhNWRkaW46b3BlbnNlc2FtZQ==',
         });
 
-        const parsedUrl4 = parseUrl('http://ala%3Addin:opensesame@userexample.com');
+        const parsedUrl4 = new URL('http://ala%3Addin:opensesame@userexample.com');
         const headers4 = { BBB: 123 };
         expect(() => {
             maybeAddProxyAuthorizationHeader(parsedUrl4, headers4);

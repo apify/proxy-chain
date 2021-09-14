@@ -23,26 +23,24 @@ const parseHostHeader = (hostHeader) => {
         if (!(port > 0 && port <= 65535)) return null;
     }
 
-    return { hostname, port };
+    return { hostname, port: port === null ? '' : String(port) };
 };
 
 module.exports.parseHostHeader = parseHostHeader;
 
 // As per HTTP specification, hop-by-hop headers should be consumed but the proxy, and not forwarded
 const HOP_BY_HOP_HEADERS = [
-    'Connection',
-    'Keep-Alive',
-    'Proxy-Authenticate',
-    'Proxy-Authorization',
-    'TE',
-    'Trailer',
-    'Transfer-Encoding',
-    'Upgrade',
-];
+    'connection',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailer',
+    'transfer-encoding',
+    'upgrade',
+];;
 
-const HOP_BY_HOP_HEADERS_REGEX = new RegExp(`^(${HOP_BY_HOP_HEADERS.join('|')})$`, 'i');
-
-const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS_REGEX.test(header);
+const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS.includes(header.toLowerCase());
 
 module.exports.isHopByHopHeader = isHopByHopHeader;
 
@@ -79,7 +77,7 @@ const isInvalidHeader = (name, value) => {
 
 module.exports.isInvalidHeader = isInvalidHeader;
 
-const bulletproofDecodeURIComponent = (encodedURIComponent) => {
+const decodeURIComponentSafe = (encodedURIComponent) => {
     try {
         return decodeURIComponent(encodedURIComponent);
     } catch (e) {
@@ -87,75 +85,7 @@ const bulletproofDecodeURIComponent = (encodedURIComponent) => {
     }
 };
 
-// Ports returned by `parseUrl` when port is not explicitly specified.
-// Values are based on node docs: https://nodejs.org/api/url.html#url_url_port
-const STANDARD_PORTS_BY_PROTOCOL = {
-    'ftp:': 21,
-    'http:': 80,
-    'https:': 443,
-    'ws:': 80,
-    'wss:': 443,
-};
-
-/**
- * Parses a URL using Node.js' `new URL(url)` and adds the following features:
- *  - `port` is casted to number / null from string
- *  - `path` field is added (pathname + search)
- *  - both username and password is URI-decoded
- *  - `auth` field is added (username + ":" + password, or empty string)
- *
- * Note that compared to the old implementation using `url.parse()`, the new function:
- *  - is unable to distinguish empty password and missing password
- *  - password and username are empty string if not present (or empty)
- *  - we are able to parse IPv6
- *
- * @param url
- * @ignore
- */
-const parseUrl = (url) => {
-    // NOTE: In the past we used url.parse() here, but it can't handle IPv6 and other special URLs,
-    // so we moved to new URL()
-    const urlObj = new URL(url);
-
-    const parsed = {
-        auth: urlObj.username || urlObj.password ? `${urlObj.username}:${urlObj.password}` : '',
-        hash: urlObj.hash,
-        host: urlObj.host,
-        hostname: urlObj.hostname,
-        href: urlObj.href,
-        origin: urlObj.origin,
-        // The username and password might not be correctly URI-encoded, try to make it work anyway
-        username: bulletproofDecodeURIComponent(urlObj.username),
-        password: bulletproofDecodeURIComponent(urlObj.password),
-        pathname: urlObj.pathname,
-        // Path was present on the original UrlObject, it's kept for backwards compatibility
-        path: `${urlObj.pathname}${urlObj.search}`,
-        // Port is turned into a number if available
-        port: urlObj.port ? parseInt(urlObj.port, 10) : null,
-        protocol: urlObj.protocol,
-        scheme: null,
-        search: urlObj.search,
-        searchParams: urlObj.searchParams,
-    };
-
-    // Add scheme field (as some other external tools rely on that)
-    if (parsed.protocol) {
-        const matches = /^([a-z0-9]+):$/i.exec(parsed.protocol);
-        if (matches && matches.length === 2) {
-            // eslint-disable-next-line prefer-destructuring
-            parsed.scheme = matches[1];
-        }
-    }
-
-    // Add default port based on protocol when no port is explicitly specified.
-    if (parsed.port === null) {
-        parsed.port = STANDARD_PORTS_BY_PROTOCOL[parsed.protocol] || null;
-    }
-
-    return parsed;
-};
-
-module.exports.parseUrl = parseUrl;
+module.exports.decodeURIComponentSafe = decodeURIComponentSafe;
 
 /**
  * Redacts password from a URL, so that it can be shown in logs, results etc.
@@ -167,26 +97,19 @@ module.exports.parseUrl = parseUrl;
  * @returns {string}
  * @ignore
  */
-const redactUrl = (url, passwordReplacement) => {
-    return redactParsedUrl(parseUrl(url), passwordReplacement);
+const redactUrl = (url, passwordReplacement = '<redacted>') => {
+    if (typeof url !== 'object') {
+        url = new URL(url);
+    }
+
+    if (url.password) {
+        return url.href.replace(`:${url.password}`, `:${passwordReplacement}`)
+    }
+
+    return url.href;
 };
 
 module.exports.redactUrl = redactUrl;
-
-const redactParsedUrl = (parsedUrl, passwordReplacement = '<redacted>') => {
-    const p = parsedUrl;
-    let auth = null;
-    if (p.username) {
-        if (p.password) {
-            auth = `${p.username}:${passwordReplacement}`;
-        } else {
-            auth = `${p.username}`;
-        }
-    }
-    return `${p.protocol}//${auth || ''}${auth ? '@' : ''}${p.host}${p.path || ''}${p.hash || ''}`;
-};
-
-module.exports.redactParsedUrl = redactParsedUrl;
 
 const PROXY_AUTH_HEADER_REGEX = /^([a-z0-9-]+) ([a-z0-9+/=]+)$/i;
 
@@ -266,14 +189,17 @@ module.exports.PORT_SELECTION_CONFIG = PORT_SELECTION_CONFIG;
 
 const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
     if (parsedUrl && (parsedUrl.username || parsedUrl.password)) {
+        const username = decodeURIComponentSafe(parsedUrl.username);
+        const password = decodeURIComponentSafe(parsedUrl.password);
+
         // According to RFC 7617 (see https://tools.ietf.org/html/rfc7617#page-5):
         //  "Furthermore, a user-id containing a colon character is invalid, as
         //   the first colon in a user-pass string separates user-id and password
         //   from one another; text after the first colon is part of the password.
         //   User-ids containing colons cannot be encoded in user-pass strings."
         // So to be correct and avoid strange errors later, we just throw an error
-        if (/:/.test(parsedUrl.username)) throw new Error('The proxy username cannot contain the colon (:) character according to RFC 7617.');
-        const auth = `${parsedUrl.username || ''}:${parsedUrl.password || ''}`;
+        if (/:/.test(username)) throw new Error('The proxy username cannot contain the colon (:) character according to RFC 7617.');
+        const auth = `${username || ''}:${password || ''}`;
         headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
     }
 };

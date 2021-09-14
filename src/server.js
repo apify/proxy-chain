@@ -2,7 +2,7 @@ const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
 const {
-    parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
+    parseHostHeader, parseProxyAuthorizationHeader, redactUrl, nodeify,
 } = require('./tools');
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const { chain } = require('./chain');
@@ -28,7 +28,6 @@ const { handleCustomResponse } = require('./custom_response');
 
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
-const DEFAULT_TARGET_PORT = 80;
 
 /**
  * Represents the proxy server.
@@ -236,14 +235,10 @@ class Server extends EventEmitter {
 
                     let parsed;
                     try {
-                        parsed = parseUrl(request.url);
+                        parsed = new URL(request.url);
                     } catch (e) {
                         // If URL is invalid, throw HTTP 400 error
                         throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
-                    }
-                    // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
-                    if (!parsed.protocol) {
-                        throw new RequestError('Hey, good try, but I\'m a HTTP proxy, not your ordinary web server :)', 400);
                     }
                     // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
                     if (parsed.protocol !== 'http:') {
@@ -255,8 +250,6 @@ class Server extends EventEmitter {
 
                     this.stats.httpRequestCount++;
                 }
-
-                handlerOpts.trgParsed.port = handlerOpts.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using a user function (if provided)
                 if (!this.prepareRequestFunction) return { requestAuthentication: false, upstreamProxyUrlParsed: null };
@@ -298,18 +291,17 @@ class Server extends EventEmitter {
 
                 if (funcResult && funcResult.upstreamProxyUrl) {
                     try {
-                        handlerOpts.upstreamProxyUrlParsed = parseUrl(funcResult.upstreamProxyUrl);
+                        handlerOpts.upstreamProxyUrlParsed = new URL(funcResult.upstreamProxyUrl);
                     } catch (e) {
                         throw new Error(`Invalid "upstreamProxyUrl" provided: ${e} (was "${funcResult.upstreamProxyUrl}"`);
-                    }
-
-                    if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
-                        // eslint-disable-next-line max-len
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`);
                     }
                     if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
                         // eslint-disable-next-line max-len
                         throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
+                    }
+                    if (!handlerOpts.upstreamProxyUrlParsed.hostname) {
+                        // eslint-disable-next-line max-len
+                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname (was "${funcResult.upstreamProxyUrl}")`);
                     }
                     if (/:/.test(handlerOpts.upstreamProxyUrlParsed.username)) {
                         // eslint-disable-next-line max-len
@@ -329,7 +321,7 @@ class Server extends EventEmitter {
                 }
 
                 if (handlerOpts.upstreamProxyUrlParsed) {
-                    this.log(handlerOpts.id, `Using upstream proxy ${redactParsedUrl(handlerOpts.upstreamProxyUrlParsed)}`);
+                    this.log(handlerOpts.id, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
                 }
 
                 return handlerOpts;

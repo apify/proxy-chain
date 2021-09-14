@@ -66,8 +66,7 @@ const server = new ProxyChain.Server({
             // Sets up an upstream HTTP proxy to which all the requests are forwarded.
             // If null, the proxy works in direct mode, i.e. the connection is forwarded directly
             // to the target server. This field is ignored if "requestAuthentication" is true.
-            // The username and password should be URI-encoded, in case it contains some special characters.
-            // See `parseUrl()` function for details.
+            // The username and password must be URI-encoded.
             upstreamProxyUrl: `http://username:password@proxy.example.com:3128`,
 
             // If "requestAuthentication" is true, you can use the following property
@@ -338,34 +337,6 @@ If the callback is not provided, the function returns a promise instead.
 Allows to configure a callback on the anonymized proxy URL for the CONNECT response headers. See the
 above section [Accessing the CONNECT response headers for proxy tunneling](#accessing-the-connect-response-headers-for-proxy-tunneling)
 for details.
-
-### `parseUrl(url)`
-
-An utility function for parsing URLs.
-It parses the URL using Node.js' `new URL(url)` and adds the following features:
-
-- The result is a vanilla JavaScript object
-- `port` field is casted to number / null from string
-- `path` field is added (pathname + search)
-- both username and password is URI-decoded if possible
-  (if not, the function keeps the username and password as is)
-- `auth` field is added, and it contains username + ":" + password, or an empty string.
-
-Note that `port` is returned even if it is a default port for `http(s)` and few other protocols. This differs from `new URL(url)` where port is null when default.
-
-If the URL is invalid, the function throws an error.
-
-The username and password parsing should make it possible to parse proxy URLs containing
-special characters, such as `http://user:pass:wrd@proxy.example.com`
-or `http://us%35er:passwrd@proxy.example.com`. The parsing is done on a best-effort basis.
-The safest way is to always URI-encode username and password before constructing
-the URL, according to RFC 3986.
-
-Note that compared to the old implementation using `url.parse()`, the new function:
-
- - is unable to distinguish empty password and missing password
- - password and username are empty string if not present (or empty)
- - we are able to parse IPv6
 
 ### `redactUrl(url, passwordReplacement)`
 
