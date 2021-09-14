@@ -1,5 +1,5 @@
 const http = require('http');
-const { maybeAddProxyAuthorizationHeader } = require('./tools');
+const { decodeURIComponentSafe } = require('./tools');
 
 /**
  * Represents a connection from source client to an external proxy using HTTP CONNECT tunnel, allows TCP connection.
@@ -43,15 +43,23 @@ class TcpTunnel {
     run() {
         this.log('Connecting to upstream proxy...');
 
+        const proxy = this.upstreamProxyUrlParsed;
+
         const options = {
             method: 'CONNECT',
-            hostname: this.upstreamProxyUrlParsed.hostname,
-            port: this.upstreamProxyUrlParsed.port,
+            hostname: proxy.hostname,
+            port: proxy.port,
             path: `${this.trgParsed.hostname}:${this.trgParsed.port}`,
             headers: {},
         };
 
-        maybeAddProxyAuthorizationHeader(this.upstreamProxyUrlParsed, options.headers);
+        if (proxy.username || proxy.password) {
+            const username = decodeURIComponentSafe(proxy.username);
+            const password = decodeURIComponentSafe(proxy.password);
+
+            const auth = `${username}:${password}`;
+            options.headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
+        }
 
         this.trgRequest = http.request(options);
 

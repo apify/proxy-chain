@@ -75,25 +75,6 @@ const parseProxyAuthorizationHeader = (header) => {
 
 module.exports.parseProxyAuthorizationHeader = parseProxyAuthorizationHeader;
 
-const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
-    if (parsedUrl && (parsedUrl.username || parsedUrl.password)) {
-        const username = decodeURIComponentSafe(parsedUrl.username);
-        const password = decodeURIComponentSafe(parsedUrl.password);
-
-        // According to RFC 7617 (see https://tools.ietf.org/html/rfc7617#page-5):
-        //  "Furthermore, a user-id containing a colon character is invalid, as
-        //   the first colon in a user-pass string separates user-id and password
-        //   from one another; text after the first colon is part of the password.
-        //   User-ids containing colons cannot be encoded in user-pass strings."
-        // So to be correct and avoid strange errors later, we just throw an error
-        if (/:/.test(username)) throw new Error('The proxy username cannot contain the colon (:) character according to RFC 7617.');
-        const auth = `${username || ''}:${password || ''}`;
-        headers['Proxy-Authorization'] = `Basic ${Buffer.from(auth).toString('base64')}`;
-    }
-};
-
-module.exports.maybeAddProxyAuthorizationHeader = maybeAddProxyAuthorizationHeader;
-
 // Replacement for Bluebird's Promise.nodeify()
 const nodeify = (promise, callback) => {
     if (typeof callback !== 'function') return promise;

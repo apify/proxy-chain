@@ -4,7 +4,7 @@ const portastic = require('portastic');
 const {
     redactUrl, isHopByHopHeader,
     parseProxyAuthorizationHeader,
-    nodeify, maybeAddProxyAuthorizationHeader,
+    nodeify,
 } = require('../src/tools');
 
 /* global describe, it */
@@ -77,39 +77,6 @@ describe('tools.parseProxyAuthorizationHeader()', () => {
         expect(parse('bla bla bla')).to.eql(null);
         expect(parse(authStr('Basic', ''))).to.eql(null);
         expect(parse('123124')).to.eql(null);
-    });
-});
-
-describe('tools.maybeAddProxyAuthorizationHeader()', () => {
-    it('works', () => {
-        const parsedUrl1 = new URL('http://example.com');
-        const headers1 = { AAA: 123 };
-        maybeAddProxyAuthorizationHeader(parsedUrl1, headers1);
-        expect(headers1).to.eql({
-            AAA: 123,
-        });
-
-        const parsedUrl2 = new URL('http://aladdin:opensesame@userexample.com');
-        const headers2 = { BBB: 123 };
-        maybeAddProxyAuthorizationHeader(parsedUrl2, headers2);
-        expect(headers2).to.eql({
-            BBB: 123,
-            'Proxy-Authorization': 'Basic YWxhZGRpbjpvcGVuc2VzYW1l',
-        });
-
-        const parsedUrl3 = new URL('http://ala%35ddin:opensesame@userexample.com');
-        const headers3 = { BBB: 123 };
-        maybeAddProxyAuthorizationHeader(parsedUrl3, headers3);
-        expect(headers3).to.eql({
-            BBB: 123,
-            'Proxy-Authorization': 'Basic YWxhNWRkaW46b3BlbnNlc2FtZQ==',
-        });
-
-        const parsedUrl4 = new URL('http://ala%3Addin:opensesame@userexample.com');
-        const headers4 = { BBB: 123 };
-        expect(() => {
-            maybeAddProxyAuthorizationHeader(parsedUrl4, headers4);
-        }).to.throw(/The proxy username cannot contain the colon/);
     });
 });
 
