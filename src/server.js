@@ -2,7 +2,7 @@ const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
 const {
-    parseHostHeader, parseProxyAuthorizationHeader, redactUrl, nodeify,
+    parseProxyAuthorizationHeader, redactUrl, nodeify,
 } = require('./tools');
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const { chain } = require('./chain');
@@ -216,7 +216,7 @@ class Server extends EventEmitter {
                     // The request should look like:
                     //   CONNECT server.example.com:80 HTTP/1.1
                     // Note that request.url contains the "server.example.com:80" part
-                    handlerOpts.trgParsed = parseHostHeader(request.url);
+                    handlerOpts.trgParsed = new URL(`connect://${request.url}`);
 
                     // If srcRequest.url does not match the regexp tools.HOST_HEADER_REGEX
                     // or the url is too long it will not be parsed so we throw error here.

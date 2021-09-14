@@ -1,33 +1,5 @@
 const http = require('http');
 
-const HOST_HEADER_REGEX = /^((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]))(:([0-9]+))?$/;
-
-/**
- * Parsed the 'Host' HTTP header and returns an object with { host: String, port: Number }.
- * For example, for 'www.example.com:80' it returns { host: 'www.example.com', port: 80 }.
- * If port is not present, the function
- * If the header is invalid, returns null.
- * @param hostHeader
- * @return {*}
- */
-const parseHostHeader = (hostHeader) => {
-    const matches = HOST_HEADER_REGEX.exec(hostHeader || '');
-    if (!matches) return null;
-
-    const hostname = matches[1];
-    if (hostname.length > 255) return null;
-
-    let port = null;
-    if (matches[5]) {
-        port = parseInt(matches[6], 10);
-        if (!(port > 0 && port <= 65535)) return null;
-    }
-
-    return { hostname, port: port === null ? '' : String(port) };
-};
-
-module.exports.parseHostHeader = parseHostHeader;
-
 // As per HTTP specification, hop-by-hop headers should be consumed but the proxy, and not forwarded
 const HOP_BY_HOP_HEADERS = [
     'connection',
@@ -38,7 +10,7 @@ const HOP_BY_HOP_HEADERS = [
     'trailer',
     'transfer-encoding',
     'upgrade',
-];;
+];
 
 const isHopByHopHeader = (header) => HOP_BY_HOP_HEADERS.includes(header.toLowerCase());
 

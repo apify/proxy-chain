@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const net = require('net');
 const portastic = require('portastic');
 const {
-    redactUrl, parseHostHeader, isHopByHopHeader, isInvalidHeader,
+    redactUrl, isHopByHopHeader, isInvalidHeader,
     parseProxyAuthorizationHeader, addHeader,
     nodeify, maybeAddProxyAuthorizationHeader,
 } = require('../src/tools');
@@ -58,36 +58,6 @@ describe('tools.redactUrl()', () => {
 
         expect(redactUrl('http://username:p@%%w0rd@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/'))
             .to.eql('http://username:<redacted>@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:12345/');
-    });
-});
-
-describe('tools.parseHostHeader()', () => {
-    it('works with valid input', () => {
-        expect(parseHostHeader('www.example.com:80')).to.eql({ hostname: 'www.example.com', port: '80' });
-        expect(parseHostHeader('something:1')).to.eql({ hostname: 'something', port: '1' });
-        expect(parseHostHeader('something:65535')).to.eql({ hostname: 'something', port: '65535' });
-        expect(parseHostHeader('example.com')).to.eql({ hostname: 'example.com', port: '' });
-        expect(parseHostHeader('1.2.3.4')).to.eql({ hostname: '1.2.3.4', port: '' });
-        expect(parseHostHeader('1.2.3.4:5555')).to.eql({ hostname: '1.2.3.4', port: '5555' });
-        expect(parseHostHeader('a.b.c.d.e.f.g:1')).to.eql({ hostname: 'a.b.c.d.e.f.g', port: '1' });
-    });
-
-    it('works with invalid input', () => {
-        expect(parseHostHeader(null)).to.eql(null);
-        expect(parseHostHeader('')).to.eql(null);
-        expect(parseHostHeader('bla bla')).to.eql(null);
-        expect(parseHostHeader('     ')).to.eql(null);
-        expect(parseHostHeader('   :  ')).to.eql(null);
-        expect(parseHostHeader('12 34')).to.eql(null);
-        expect(parseHostHeader('example.com:')).to.eql(null);
-        expect(parseHostHeader('example.com:0')).to.eql(null);
-        expect(parseHostHeader('example.com:65536')).to.eql(null);
-        expect(parseHostHeader('example.com:999999')).to.eql(null);
-
-        let LONG_HOSTNAME = '';
-        for (let i = 0; i <= 256; i++) { LONG_HOSTNAME += 'a'; }
-        expect(parseHostHeader(LONG_HOSTNAME)).to.eql(null);
-        expect(parseHostHeader(`${LONG_HOSTNAME}:123`)).to.eql(null);
     });
 });
 
