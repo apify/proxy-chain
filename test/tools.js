@@ -9,12 +9,6 @@ const {
 
 /* global describe, it */
 
-const PORT_SELECTION_CONFIG = {
-    FROM: 20000,
-    TO: 60000,
-    RETRY_COUNT: 10,
-};
-
 describe('tools.redactUrl()', () => {
     it('works', () => {
         // Test that the function lower-cases the schema and path
@@ -168,7 +162,3 @@ describe('tools.nodeify()', () => {
         }
     });
 });
-
-module.exports = {
-    PORT_SELECTION_CONFIG,
-};

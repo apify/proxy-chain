@@ -75,14 +75,6 @@ const parseProxyAuthorizationHeader = (header) => {
 
 module.exports.parseProxyAuthorizationHeader = parseProxyAuthorizationHeader;
 
-const PORT_SELECTION_CONFIG = {
-    FROM: 20000,
-    TO: 60000,
-    RETRY_COUNT: 10,
-};
-
-module.exports.PORT_SELECTION_CONFIG = PORT_SELECTION_CONFIG;
-
 const maybeAddProxyAuthorizationHeader = (parsedUrl, headers) => {
     if (parsedUrl && (parsedUrl.username || parsedUrl.password)) {
         const username = decodeURIComponentSafe(parsedUrl.username);

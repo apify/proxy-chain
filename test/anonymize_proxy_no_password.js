@@ -9,7 +9,6 @@ const request = require('request');
 const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy } = require('../src/index');
-const { PORT_SELECTION_CONFIG } = require('./tools');
 
 let proxyServer;
 let proxyPort;
@@ -197,9 +196,5 @@ describe('utils.anonymizeProxyNoPassword', function () {
             .then((closed) => {
                 expect(closed).to.eql(false);
             });
-    });
-
-    after(() => {
-        Object.assign(PORT_SELECTION_CONFIG, PORT_SELECTION_CONFIG);
     });
 });
