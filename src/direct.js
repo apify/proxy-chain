@@ -4,8 +4,10 @@ const net = require('net');
  * @param {http.ClientRequest} request
  * @param {net.Socket} source
  * @param {buffer.Buffer} head
+ * @param {*} handlerOpts
+ * @param {*} server
  */
-const direct = (request, source, head) => {
+const direct = (request, source, head, handlerOpts, server) => {
     const url = new URL(`connect://${request.url}`);
 
     if (!url.port) {
@@ -21,17 +23,25 @@ const direct = (request, source, head) => {
     }
 
     const socket = net.createConnection(url.port, url.hostname, () => {
-        source.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
+        try {
+            source.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
+        } catch (error) {
+            source.destroy(error);
+        }
     });
 
     source.pipe(socket);
     socket.pipe(source);
 
-    socket.on('error', () => {
+    socket.on('error', (error) => {
+        server.log(null, `Direct Destination Socket Error: ${error.stack}`);
+
         source.destroy();
     });
 
-    source.on('error', () => {
+    source.on('error', (error) => {
+        server.log(null, `Direct Source Socket Error: ${error.stack}`);
+
         socket.destroy();
     });
 };
