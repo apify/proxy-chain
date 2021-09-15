@@ -299,14 +299,6 @@ class Server extends EventEmitter {
                         // eslint-disable-next-line max-len
                         throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
                     }
-                    if (!handlerOpts.upstreamProxyUrlParsed.hostname) {
-                        // eslint-disable-next-line max-len
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname (was "${funcResult.upstreamProxyUrl}")`);
-                    }
-                    if (/:/.test(handlerOpts.upstreamProxyUrlParsed.username)) {
-                        // eslint-disable-next-line max-len
-                        throw new Error('Invalid "upstreamProxyUrl" provided: The username cannot contain the colon (:) character according to RFC 7617.');
-                    }
                 }
 
                 if (funcResult && funcResult.customResponseFunction) {
