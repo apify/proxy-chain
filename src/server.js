@@ -141,12 +141,16 @@ class Server extends EventEmitter {
             })
             .catch((err) => {
                 if (err.message === 'Username contains an invalid colon') {
+                    this.log(null, 'Invalid colon in username of upstream credentials');
+
                     response.statusCode = 500;
                     response.setHeader('content-type', 'text/plain; charset=utf-8');
-                    response.end(err.message);
+                    response.end();
                 }
 
                 if (err.message === '407 Proxy Authentication Required') {
+                    this.log(null, 'Invalid upstream proxy credentials');
+
                     response.setHeader('content-type', 'text/plain; charset=utf-8');
                     response.statusCode = 502;
                     response.end();
@@ -155,6 +159,8 @@ class Server extends EventEmitter {
 
                 if (err.code === 'ENOTFOUND') {
                     if (err.proxy) {
+                        this.log(null, 'Failed to connect to proxy');
+
                         response.statusCode = 502;
                     } else {
                         response.statusCode = 404;
@@ -191,6 +197,10 @@ class Server extends EventEmitter {
                 return direct(request, socket, head, handlerOpts, this);
             })
             .catch((err) => {
+                if (err.message === 'Username contains an invalid colon') {
+                    this.log(null, 'Invalid colon in username of upstream credentials');
+                }
+
                 this.failRequest(request, err, handlerOpts);
             });
     }

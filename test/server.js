@@ -976,13 +976,9 @@ const createTestSuite = ({
                     return testForErrorResponse(opts, 500);
                 });
 
-                it('fails gracefully on invalid upstream proxy username', async () => {
+                it('fails gracefully on invalid upstream proxy username', () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-username`);
-                    const response = await testForErrorResponse(opts, 500);
-
-                    if (response) {
-                        expect(response.body).to.be.eql('Username contains an invalid colon');
-                    }
+                    return testForErrorResponse(opts, 500);
                 });
 
                 it('fails gracefully on non-existent upstream proxy host', () => {
