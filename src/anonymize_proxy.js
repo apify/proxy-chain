@@ -14,9 +14,6 @@ const anonymizedProxyUrlToServer = {};
  */
 const anonymizeProxy = (proxyUrl, callback) => {
     const parsedProxyUrl = new URL(proxyUrl);
-    if (!parsedProxyUrl.hostname || !parsedProxyUrl.port) {
-        throw new Error('Invalid "proxyUrl" option: the URL must contain both hostname and port.');
-    }
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error('Invalid "proxyUrl" option: only HTTP proxies are currently supported.');
     }

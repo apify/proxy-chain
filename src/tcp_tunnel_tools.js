@@ -6,14 +6,8 @@ const runningServers = {};
 
 function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
     const parsedProxyUrl = new URL(proxyUrl);
-    if (!parsedProxyUrl.hostname || !parsedProxyUrl.port) {
-        throw new Error(`The proxy URL must contain hostname and port (was "${proxyUrl}")`);
-    }
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
-    }
-    if (/:/.test(parsedProxyUrl.username)) {
-        throw new Error('The proxy URL username cannot contain the colon (:) character according to RFC 7617.');
     }
 
     // TODO: More and better validations - yeah, make sure targetHost is really a hostname
