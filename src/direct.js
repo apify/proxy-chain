@@ -24,12 +24,11 @@ const direct = (request, source, head, handlerOpts, server) => {
 
     const options = {
         port: url.port,
-        hostname: url.hostname,
+        host: url.hostname,
     };
 
-    if (net.isIPv6(options.hostname)) {
-        options.family = 6;
-        options.hostname = options.hostname.slice(1, -1);
+    if (options.host[0] === '[') {
+        options.host = options.host.slice(1, -1);
     }
 
     const socket = net.createConnection(options, () => {
