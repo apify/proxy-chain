@@ -1,5 +1,5 @@
 const http = require('http');
-const { decodeURIComponentSafe } = require('./utils/decode_uri_component_safe');
+const { getBasic } = require('./utils/get_basic');
 
 /**
  * @param {http.ClientRequest} request
@@ -25,11 +25,7 @@ const chain = (request, source, head, handlerOpts, server) => {
     };
 
     if (proxy.username || proxy.password) {
-        const username = decodeURIComponentSafe(proxy.username);
-        const password = decodeURIComponentSafe(proxy.password);
-        const auth = `${username}:${password}`;
-
-        options.headers.push('proxy-authorization', `Basic ${Buffer.from(auth).toString('base64')}`);
+        options.headers.push('proxy-authorization', getBasic(proxy));
     }
 
     const client = http.request(proxy.origin, options);

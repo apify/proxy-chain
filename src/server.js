@@ -140,6 +140,12 @@ class Server extends EventEmitter {
                 return forward(request, response, handlerOpts);
             })
             .catch((err) => {
+                if (err.message === 'Username contains an invalid colon') {
+                    response.statusCode = 500;
+                    response.setHeader('content-type', 'text/plain; charset=utf-8');
+                    response.end(err.message);
+                }
+
                 if (err.message === '407 Proxy Authentication Required') {
                     response.setHeader('content-type', 'text/plain; charset=utf-8');
                     response.statusCode = 502;
