@@ -154,14 +154,11 @@ describe('utils.anonymizeProxy', function () {
                             if (err) return reject(err);
                             resolve(result);
                         });
-                    })
+                    }),
                 ]);
             })
             .then((results) => {
-                // eslint-disable-next-line prefer-destructuring
-                proxyUrl1 = results[0];
-                // eslint-disable-next-line prefer-destructuring
-                proxyUrl2 = results[1];
+                [proxyUrl1, proxyUrl2] = results;
                 expect(proxyUrl1).to.not.contain(`${proxyPort}`);
                 expect(proxyUrl2).to.not.contain(`${proxyPort}`);
                 expect(proxyUrl1).to.not.equal(proxyUrl2);
