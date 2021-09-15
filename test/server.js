@@ -11,6 +11,7 @@ const http = require('http');
 const portastic = require('portastic');
 const request = require('request');
 const WebSocket = require('faye-websocket');
+const { gotScraping } = require('got-scraping');
 
 const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
 const { Server, RequestError } = require('../src/index');
@@ -497,17 +498,27 @@ const createTestSuite = ({
                     upstreamProxyHostname = '127.0.0.1';
                 }
             });
-            // See https://github.com/nodejs/node/issues/40123
-        } else if (false) {
+        } else if (useMainProxy) {
             _it('direct ipv6', async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.url = opts.url.replace('127.0.0.1', '[::1]');
 
-                await requestPromised(opts)
-                    .then((response) => {
-                        expect(response.body).to.eql('Hello world!');
-                        expect(response.statusCode).to.eql(200);
-                    });
+                // `request` proxy implementation fails to normalize IPv6.
+                // `got-scraping` normalizes IPv6 properly.
+                const response = await gotScraping({
+                    url: opts.url,
+                    headers: opts.headers,
+                    timeout: {
+                        request: opts.timeout,
+                    },
+                    proxyUrl: opts.proxy,
+                    https: {
+                        key: opts.key,
+                    },
+                });
+
+                expect(response.body).to.eql('Hello world!');
+                expect(response.statusCode).to.eql(200);
             });
         }
 
