@@ -17,8 +17,6 @@ const chain = (request, source, head, handlerOpts, server) => {
 
     const options = {
         method: 'CONNECT',
-        hostname: proxy.hostname,
-        port: proxy.port,
         path: request.url,
         headers: [
             'host',
@@ -34,7 +32,7 @@ const chain = (request, source, head, handlerOpts, server) => {
         options.headers.push('proxy-authorization', `Basic ${Buffer.from(auth).toString('base64')}`);
     }
 
-    const client = http.request(options);
+    const client = http.request(proxy.origin, options);
 
     client.on('connect', (response, socket, clientHead) => {
         if (source.readyState !== 'open') {

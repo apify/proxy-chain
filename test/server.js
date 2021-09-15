@@ -148,6 +148,8 @@ const createTestSuite = ({
         const mainProxyServerConnectionsClosed = [];
         const mainProxyServerConnectionId2Stats = {};
 
+        let upstreamProxyHostname = '127.0.0.1';
+
         let baseUrl;
         let mainProxyUrl;
         const getRequestOpts = (pathOrUrl) => {
@@ -362,7 +364,8 @@ const createTestSuite = ({
                                     if (upstreamProxyAuth) {
                                         auth = `${encodeURIComponent(upstreamProxyAuth.username)}:${encodeURIComponent(upstreamProxyAuth.password)}@`;
                                     }
-                                    upstreamProxyUrl = `http://${auth}127.0.0.1:${upstreamProxyPort}`;
+
+                                    upstreamProxyUrl = `http://${auth}${upstreamProxyHostname}:${upstreamProxyPort}`;
                                 }
 
                                 result.upstreamProxyUrl = upstreamProxyUrl;
@@ -479,6 +482,34 @@ const createTestSuite = ({
                     });
             });
         };
+
+        if (useUpstreamProxy) {
+            _it('upstream ipv6', async () => {
+                upstreamProxyHostname = '[::1]';
+                const opts = getRequestOpts('/hello-world');
+
+                try {
+                    const response = await requestPromised(opts);
+
+                    expect(response.body).to.eql('Hello world!');
+                    expect(response.statusCode).to.eql(200);
+                } finally {
+                    upstreamProxyHostname = '127.0.0.1';
+                }
+            });
+            // See https://github.com/nodejs/node/issues/40123
+        } else if (false) {
+            _it('direct ipv6', async () => {
+                const opts = getRequestOpts('/hello-world');
+                opts.url = opts.url.replace('127.0.0.1', '[::1]');
+
+                await requestPromised(opts)
+                    .then((response) => {
+                        expect(response.body).to.eql('Hello world!');
+                        expect(response.statusCode).to.eql(200);
+                    });
+            });
+        }
 
         ['GET', 'POST', 'PUT', 'DELETE'].forEach((method) => {
             _it(`handles simple ${method} request`, () => {

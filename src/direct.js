@@ -22,7 +22,17 @@ const direct = (request, source, head, handlerOpts, server) => {
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
     }
 
-    const socket = net.createConnection(url.port, url.hostname, () => {
+    const options = {
+        port: url.port,
+        hostname: url.hostname,
+    };
+
+    if (net.isIPv6(options.hostname)) {
+        options.family = 6;
+        options.hostname = options.hostname.slice(1, -1);
+    }
+
+    const socket = net.createConnection(options, () => {
         try {
             source.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
         } catch (error) {
