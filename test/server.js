@@ -498,7 +498,10 @@ const createTestSuite = ({
                     upstreamProxyHostname = '127.0.0.1';
                 }
             });
-        } else if (useMainProxy) {
+        } else if (useMainProxy && process.versions.node.split('.')[0] >= 15) {
+            // Version check is required because HTTP/2 negotiation
+            // is not supported on Node.js < 15.
+
             _it('direct ipv6', async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.url = opts.url.replace('127.0.0.1', '[::1]');
@@ -520,7 +523,10 @@ const createTestSuite = ({
                 expect(response.body).to.eql('Hello world!');
                 expect(response.statusCode).to.eql(200);
             });
-        } else if (!useSsl) {
+        } else if (!useSsl && process.versions.node.split('.')[0] >= 15) {
+            // Version check is required because HTTP/2 negotiation
+            // is not supported on Node.js < 15.
+
             _it('forward ipv6', async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.url = opts.url.replace('127.0.0.1', '[::1]');
