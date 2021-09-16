@@ -1,4 +1,5 @@
 const http = require('http');
+const { getBasic } = require('./utils/get_basic');
 
 /**
  * @param {http.ClientRequest} request
@@ -16,8 +17,6 @@ const chain = (request, source, head, handlerOpts, server) => {
 
     const options = {
         method: 'CONNECT',
-        hostname: proxy.hostname,
-        port: proxy.port,
         path: request.url,
         headers: [
             'host',
@@ -26,12 +25,10 @@ const chain = (request, source, head, handlerOpts, server) => {
     };
 
     if (proxy.username || proxy.password) {
-        const auth = `${proxy.username}:${proxy.password}`;
-
-        options.headers.push('proxy-authorization', `Basic ${Buffer.from(auth).toString('base64')}`);
+        options.headers.push('proxy-authorization', getBasic(proxy));
     }
 
-    const client = http.request(options);
+    const client = http.request(proxy.origin, options);
 
     client.on('connect', (response, socket, clientHead) => {
         if (source.readyState !== 'open') {

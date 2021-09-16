@@ -1,9 +1,9 @@
 const http = require('http');
 const util = require('util');
 const EventEmitter = require('events');
-const {
-    parseHostHeader, parseProxyAuthorizationHeader, parseUrl, redactParsedUrl, nodeify,
-} = require('./tools');
+const { parseAuthorizationHeader } = require('./utils/parse_authorization_header');
+const { redactUrl } = require('./utils/redact_url');
+const { nodeify } = require('./utils/nodeify');
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const { chain } = require('./chain');
 const { forward } = require('./forward');
@@ -28,7 +28,6 @@ const { handleCustomResponse } = require('./custom_response');
 
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
-const DEFAULT_TARGET_PORT = 80;
 
 /**
  * Represents the proxy server.
@@ -141,23 +140,16 @@ class Server extends EventEmitter {
                 return forward(request, response, handlerOpts);
             })
             .catch((err) => {
-                if (err.message === '407 Proxy Authentication Required') {
-                    response.setHeader('content-type', 'text/plain; charset=utf-8');
-                    response.statusCode = 502;
-                    response.end();
-                    return;
-                }
-
-                if (err.code === 'ENOTFOUND') {
+                if (err.message === 'Username contains an invalid colon') {
+                    err = new RequestError('Invalid colon in username of upstream proxy credentials', 502);
+                } else if (err.message === '407 Proxy Authentication Required') {
+                    err = new RequestError('Invalid upstream proxy credentials', 502);
+                } else if (err.code === 'ENOTFOUND') {
                     if (err.proxy) {
-                        response.statusCode = 502;
+                        err = new RequestError('Failed to connect to upstream proxy', 502);
                     } else {
-                        response.statusCode = 404;
+                        err = new RequestError('Target website does not exist', 404);
                     }
-
-                    response.setHeader('content-type', 'text/plain; charset=utf-8');
-                    response.end();
-                    return;
                 }
 
                 this.failRequest(request, err, handlerOpts);
@@ -186,6 +178,18 @@ class Server extends EventEmitter {
                 return direct(request, socket, head, handlerOpts, this);
             })
             .catch((err) => {
+                if (err.message === 'Username contains an invalid colon') {
+                    err = new RequestError('Invalid colon in username of upstream proxy credentials', 502);
+                } else if (err.message === '407 Proxy Authentication Required') {
+                    err = new RequestError('Invalid upstream proxy credentials', 502);
+                } else if (err.code === 'ENOTFOUND') {
+                    if (err.proxy) {
+                        err = new RequestError('Failed to connect to upstream proxy', 502);
+                    } else {
+                        err = new RequestError('Target website does not exist', 404);
+                    }
+                }
+
                 this.failRequest(request, err, handlerOpts);
             });
     }
@@ -217,7 +221,7 @@ class Server extends EventEmitter {
                     // The request should look like:
                     //   CONNECT server.example.com:80 HTTP/1.1
                     // Note that request.url contains the "server.example.com:80" part
-                    handlerOpts.trgParsed = parseHostHeader(request.url);
+                    handlerOpts.trgParsed = new URL(`connect://${request.url}`);
 
                     // If srcRequest.url does not match the regexp tools.HOST_HEADER_REGEX
                     // or the url is too long it will not be parsed so we throw error here.
@@ -236,14 +240,10 @@ class Server extends EventEmitter {
 
                     let parsed;
                     try {
-                        parsed = parseUrl(request.url);
+                        parsed = new URL(request.url);
                     } catch (e) {
                         // If URL is invalid, throw HTTP 400 error
                         throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
-                    }
-                    // If srcRequest.url is something like '/some-path', this is most likely a normal HTTP request
-                    if (!parsed.protocol) {
-                        throw new RequestError('Hey, good try, but I\'m a HTTP proxy, not your ordinary web server :)', 400);
                     }
                     // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
                     if (parsed.protocol !== 'http:') {
@@ -255,8 +255,6 @@ class Server extends EventEmitter {
 
                     this.stats.httpRequestCount++;
                 }
-
-                handlerOpts.trgParsed.port = handlerOpts.trgParsed.port || DEFAULT_TARGET_PORT;
 
                 // Authenticate the request using a user function (if provided)
                 if (!this.prepareRequestFunction) return { requestAuthentication: false, upstreamProxyUrlParsed: null };
@@ -276,7 +274,7 @@ class Server extends EventEmitter {
 
                 const proxyAuth = request.headers['proxy-authorization'];
                 if (proxyAuth) {
-                    const auth = parseProxyAuthorizationHeader(proxyAuth);
+                    const auth = parseAuthorizationHeader(proxyAuth);
                     if (!auth) {
                         throw new RequestError('Invalid "Proxy-Authorization" header', 400);
                     }
@@ -298,22 +296,13 @@ class Server extends EventEmitter {
 
                 if (funcResult && funcResult.upstreamProxyUrl) {
                     try {
-                        handlerOpts.upstreamProxyUrlParsed = parseUrl(funcResult.upstreamProxyUrl);
+                        handlerOpts.upstreamProxyUrlParsed = new URL(funcResult.upstreamProxyUrl);
                     } catch (e) {
                         throw new Error(`Invalid "upstreamProxyUrl" provided: ${e} (was "${funcResult.upstreamProxyUrl}"`);
-                    }
-
-                    if (!handlerOpts.upstreamProxyUrlParsed.hostname || !handlerOpts.upstreamProxyUrlParsed.port) {
-                        // eslint-disable-next-line max-len
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have hostname and port (was "${funcResult.upstreamProxyUrl}")`);
                     }
                     if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
                         // eslint-disable-next-line max-len
                         throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
-                    }
-                    if (/:/.test(handlerOpts.upstreamProxyUrlParsed.username)) {
-                        // eslint-disable-next-line max-len
-                        throw new Error('Invalid "upstreamProxyUrl" provided: The username cannot contain the colon (:) character according to RFC 7617.');
                     }
                 }
 
@@ -329,7 +318,7 @@ class Server extends EventEmitter {
                 }
 
                 if (handlerOpts.upstreamProxyUrlParsed) {
-                    this.log(handlerOpts.id, `Using upstream proxy ${redactParsedUrl(handlerOpts.upstreamProxyUrlParsed)}`);
+                    this.log(handlerOpts.id, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
                 }
 
                 return handlerOpts;

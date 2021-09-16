@@ -1,7 +1,5 @@
 const { Server } = require('./server');
-const {
-    parseUrl, nodeify,
-} = require('./tools');
+const { nodeify } = require('./utils/nodeify');
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer = {};
@@ -15,10 +13,7 @@ const anonymizedProxyUrlToServer = {};
  * anonymous proxy URL or the original URL if it was already anonymous.
  */
 const anonymizeProxy = (proxyUrl, callback) => {
-    const parsedProxyUrl = parseUrl(proxyUrl);
-    if (!parsedProxyUrl.host || !parsedProxyUrl.port) {
-        throw new Error('Invalid "proxyUrl" option: the URL must contain both hostname and port.');
-    }
+    const parsedProxyUrl = new URL(proxyUrl);
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error('Invalid "proxyUrl" option: only HTTP proxies are currently supported.');
     }

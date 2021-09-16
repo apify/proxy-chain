@@ -54,6 +54,7 @@
     "eslint-plugin-react": "^7.0.1",
     "express": "^4.16.2",
     "faye-websocket": "^0.11.3",
+    "got-scraping": "^3.2.4-beta.0",
     "isparta": "^4.0.0",
     "mocha": "^9.0.3",
     "phantomjs-prebuilt": "^2.1.16",

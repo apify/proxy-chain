@@ -11,7 +11,7 @@
 
 const http = require('http');
 const proxy = require('proxy'); // eslint-disable-line import/no-extraneous-dependencies
-const { Server } = require('./server');
+const { Server } = require('../../src/server');
 
 // Set up upstream proxy with no auth
 const upstreamProxyHttpServer = http.createServer();

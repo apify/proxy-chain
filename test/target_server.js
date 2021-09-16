@@ -7,7 +7,6 @@ const WebSocket = require('ws');
 const basicAuth = require('basic-auth');
 const _ = require('underscore');
 
-
 /**
  * A HTTP server used for testing. It supports HTTPS and web sockets.
  */

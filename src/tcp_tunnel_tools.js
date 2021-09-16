@@ -1,19 +1,13 @@
 const net = require('net');
 const TcpTunnel = require('./tcp_tunnel');
-const { parseUrl, nodeify } = require('./tools');
+const { nodeify } = require('./utils/nodeify');
 
 const runningServers = {};
 
 function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
-    const parsedProxyUrl = parseUrl(proxyUrl);
-    if (!parsedProxyUrl.hostname || !parsedProxyUrl.port) {
-        throw new Error(`The proxy URL must contain hostname and port (was "${proxyUrl}")`);
-    }
+    const parsedProxyUrl = new URL(proxyUrl);
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
-    }
-    if (/:/.test(parsedProxyUrl.username)) {
-        throw new Error('The proxy URL username cannot contain the colon (:) character according to RFC 7617.');
     }
 
     // TODO: More and better validations - yeah, make sure targetHost is really a hostname

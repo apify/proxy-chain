@@ -1,6 +1,6 @@
 const { RequestError } = require('./request_error');
 const { Server } = require('./server');
-const { parseUrl, redactUrl, redactParsedUrl } = require('./tools');
+const { redactUrl } = require('./utils/redact_url');
 const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('./anonymize_proxy');
 const { createTunnel, closeTunnel } = require('./tcp_tunnel_tools');
 
@@ -8,9 +8,7 @@ const { createTunnel, closeTunnel } = require('./tcp_tunnel_tools');
 const ProxyChain = {
     Server,
     RequestError,
-    parseUrl,
     redactUrl,
-    redactParsedUrl,
     anonymizeProxy,
     closeAnonymizedProxy,
     listenConnectAnonymizedProxy,
