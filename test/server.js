@@ -976,9 +976,22 @@ const createTestSuite = ({
                     return testForErrorResponse(opts, 500);
                 });
 
-                it('fails gracefully on invalid upstream proxy username', () => {
+                it('fails gracefully on invalid upstream proxy username', async () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-username`);
-                    return testForErrorResponse(opts, 500);
+
+                    if (useSsl) {
+                        try {
+                            await requestPromised(opts);
+                            expect(false).to.be.eql(true);
+                        } catch (error) {
+                            expect(error.message).to.be.eql('tunneling socket could not be established, statusCode=502');
+                        }
+                    } else {
+                        const response = await requestPromised(opts);
+
+                        expect(response.statusCode).to.be.eql(502);
+                        expect(response.body).to.be.eql('Invalid colon in username of upstream proxy credentials');
+                    }
                 });
 
                 it('fails gracefully on non-existent upstream proxy host', () => {

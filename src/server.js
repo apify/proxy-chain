@@ -141,34 +141,15 @@ class Server extends EventEmitter {
             })
             .catch((err) => {
                 if (err.message === 'Username contains an invalid colon') {
-                    this.log(null, 'Invalid colon in username of upstream credentials');
-
-                    response.statusCode = 500;
-                    response.setHeader('content-type', 'text/plain; charset=utf-8');
-                    response.end();
-                }
-
-                if (err.message === '407 Proxy Authentication Required') {
-                    this.log(null, 'Invalid upstream proxy credentials');
-
-                    response.setHeader('content-type', 'text/plain; charset=utf-8');
-                    response.statusCode = 502;
-                    response.end();
-                    return;
-                }
-
-                if (err.code === 'ENOTFOUND') {
+                    err = new RequestError('Invalid colon in username of upstream proxy credentials', 502);
+                } else if (err.message === '407 Proxy Authentication Required') {
+                    err = new RequestError('Invalid upstream proxy credentials', 502);
+                } else if (err.code === 'ENOTFOUND') {
                     if (err.proxy) {
-                        this.log(null, 'Failed to connect to proxy');
-
-                        response.statusCode = 502;
+                        err = new RequestError('Failed to connect to upstream proxy', 502);
                     } else {
-                        response.statusCode = 404;
+                        err = new RequestError('Target website does not exist', 404);
                     }
-
-                    response.setHeader('content-type', 'text/plain; charset=utf-8');
-                    response.end();
-                    return;
                 }
 
                 this.failRequest(request, err, handlerOpts);
@@ -198,7 +179,15 @@ class Server extends EventEmitter {
             })
             .catch((err) => {
                 if (err.message === 'Username contains an invalid colon') {
-                    this.log(null, 'Invalid colon in username of upstream credentials');
+                    err = new RequestError('Invalid colon in username of upstream proxy credentials', 502);
+                } else if (err.message === '407 Proxy Authentication Required') {
+                    err = new RequestError('Invalid upstream proxy credentials', 502);
+                } else if (err.code === 'ENOTFOUND') {
+                    if (err.proxy) {
+                        err = new RequestError('Failed to connect to upstream proxy', 502);
+                    } else {
+                        err = new RequestError('Target website does not exist', 404);
+                    }
                 }
 
                 this.failRequest(request, err, handlerOpts);
