@@ -1,21 +1,28 @@
 const net = require('net');
 
 /**
- * @param {http.ClientRequest} request
- * @param {net.Socket} source
- * @param {buffer.Buffer} head
- * @param {*} handlerOpts
- * @param {*} server
+ * @typedef Options
+ *
+ * @property {ClientRequest} request
+ * @property {net.Socket} source - a stream where to pipe from
+ * @property {Buffer} head - optional, the response buffer attached to CONNECT request
+ * @property {*} handlerOpts - handler options that contain upstreamProxyUrlParsed
+ * @property {http.Server} server - the server that we will use for logging
+ * @property {boolean} isPlain - whether to send HTTP CONNECT response
  */
-const direct = (request, source, head, handlerOpts, server) => {
-    const url = new URL(`connect://${request.url}`);
 
-    if (!url.port) {
-        throw new Error('Missing CONNECT port');
-    }
+/**
+ * @param {Options} options
+ */
+const direct = ({ request, source, head, server }) => {
+    const url = new URL(`connect://${request.url}`);
 
     if (!url.hostname) {
         throw new Error('Missing CONNECT hostname');
+    }
+
+    if (!url.port) {
+        throw new Error('Missing CONNECT port');
     }
 
     if (head.length > 0) {

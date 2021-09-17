@@ -311,16 +311,13 @@ describe('utils.anonymizeProxy', function () {
             .then(() => {
                 return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`);
             })
-            .then((proxyUrl) => {
-                return requestPromised({
-                    uri: `https://${host}`,
-                    proxy: proxyUrl,
-                })
-                    .catch(() => {
-                        return Promise.resolve();
-                    });
-            })
+            .then((proxyUrl) => requestPromised({
+                uri: `https://${host}`,
+                proxy: proxyUrl,
+            }))
             .then(() => {
+                expect(false).to.equal(true);
+            }, () => {
                 expect(onconnectArgs.headers.host).to.equal(host);
                 expect(onconnectArgs.url).to.equal(host);
             });

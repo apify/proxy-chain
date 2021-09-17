@@ -1,78 +1,78 @@
 const net = require('net');
-const TcpTunnel = require('./tcp_tunnel');
+const { chain } = require('./chain');
 const { nodeify } = require('./utils/nodeify');
 
 const runningServers = {};
 
-function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
+const getAddress = (server) => {
+    const { address: host, port, family } = server.address();
+
+    if (family === 'IPv6') {
+        return `[${host}]:${port}`;
+    }
+
+    return `${host}:${port}`;
+};
+
+function createTunnel(proxyUrl, targetHost, options, callback) {
     const parsedProxyUrl = new URL(proxyUrl);
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
     }
 
-    // TODO: More and better validations - yeah, make sure targetHost is really a hostname
-    const [trgHostname, trgPort] = (targetHost || '').split(':');
-    if (!trgHostname || !trgPort) throw new Error('The target host needs to include both hostname and port.');
+    const url = new URL(`connect://${targetHost || ''}`);
 
-    const options = {
-        verbose: false,
-        hostname: 'localhost',
-        port: null,
-        ...providedOptions,
-    };
+    if (!url.hostname) {
+        throw new Error('Missing target hostname');
+    }
+
+    if (!url.port) {
+        throw new Error('Missing target port');
+    }
+
+    const verbose = options && options.verbose;
 
     const server = net.createServer();
 
     const log = (...args) => {
-        if (options.verbose) console.log(...args);
+        if (verbose) console.log(...args);
     };
 
+    server.log = log;
+
     server.on('connection', (srcSocket) => {
-        const { port } = server.address();
-
-        runningServers[port].connections.push(srcSocket);
         const remoteAddress = `${srcSocket.remoteAddress}:${srcSocket.remotePort}`;
-        log('new client connection from %s', remoteAddress);
 
-        srcSocket.pause();
+        log(`new client connection from ${remoteAddress}`);
 
-        const tunnel = new TcpTunnel({
-            srcSocket,
-            upstreamProxyUrlParsed: parsedProxyUrl,
-            trgParsed: {
-                hostname: trgHostname,
-                port: trgPort,
-            },
-            log,
+        srcSocket.on('close', (hadError) => {
+            log(`connection from ${remoteAddress} closed, hadError=${hadError}`);
         });
 
-        tunnel.run();
+        runningServers[getAddress(server)].connections.push(srcSocket);
 
-        srcSocket.on('data', onConnData);
-        srcSocket.on('close', onConnClose);
-        srcSocket.on('error', onConnError);
-
-        function onConnData(d) {
-            log('connection data from %s: %j', remoteAddress, d);
-        }
-
-        function onConnClose() {
-            log('connection from %s closed', remoteAddress);
-        }
-
-        function onConnError(err) {
-            log('Connection %s error: %s', remoteAddress, err.message);
-        }
+        chain({
+            request: { url: targetHost },
+            source: srcSocket,
+            handlerOpts: { upstreamProxyUrlParsed: parsedProxyUrl },
+            server,
+            isPlain: true,
+        });
     });
 
     const promise = new Promise((resolve, reject) => {
+        server.once('error', reject);
+
         // Let the system pick a random listening port
-        server.listen(0, (err) => {
-            if (err) return reject(err);
-            const address = server.address();
+        server.listen(0, () => {
+            const address = getAddress(server);
+
+            server.off('error', reject);
+            runningServers[address] = { server, connections: [] };
+
             log('server listening to ', address);
-            runningServers[address.port] = { server, connections: [] };
-            resolve(`${options.hostname}:${address.port}`);
+
+            resolve(address);
         });
     });
 
@@ -82,20 +82,20 @@ function createTunnel(proxyUrl, targetHost, providedOptions = {}, callback) {
 module.exports.createTunnel = createTunnel;
 
 function closeTunnel(serverPath, closeConnections, callback) {
-    const [hostname, port] = serverPath.split(':');
+    const { hostname, port } = new URL(`tcp://${serverPath}`);
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
 
     const promise = new Promise((resolve) => {
-        if (!runningServers[port]) return resolve(false);
+        if (!runningServers[serverPath]) return resolve(false);
         if (!closeConnections) return resolve(true);
-        runningServers[port].connections.forEach((connection) => connection.destroy());
+        runningServers[serverPath].connections.forEach((connection) => connection.destroy());
         resolve(true);
     })
         .then((serverExists) => new Promise((resolve) => {
             if (!serverExists) return resolve(false);
-            runningServers[port].server.close(() => {
-                delete runningServers[port];
+            runningServers[serverPath].server.close(() => {
+                delete runningServers[serverPath];
                 resolve(true);
             });
         }));

@@ -169,13 +169,15 @@ class Server extends EventEmitter {
                 handlerOpts = result;
                 handlerOpts.srcHead = head;
 
+                const data = { request, source: socket, head, handlerOpts, server: this };
+
                 if (handlerOpts.upstreamProxyUrlParsed) {
                     this.log(handlerOpts.id, 'Using HandlerTunnelChain');
-                    return chain(request, socket, head, handlerOpts, this);
+                    return chain(data);
                 }
 
                 this.log(handlerOpts.id, 'Using HandlerTunnelDirect');
-                return direct(request, socket, head, handlerOpts, this);
+                return direct(data);
             })
             .catch((err) => {
                 if (err.message === 'Username contains an invalid colon') {

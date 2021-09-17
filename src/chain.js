@@ -2,14 +2,21 @@ const http = require('http');
 const { getBasic } = require('./utils/get_basic');
 
 /**
- * @param {http.ClientRequest} request
- * @param {net.Socket} source
- * @param {buffer.Buffer} head
- * @param {*} handlerOpts
- * @param {*} server
+ * @typedef Options
+ *
+ * @property {ClientRequest} request
+ * @property {net.Socket} source - a stream where to pipe from
+ * @property {Buffer} head - optional, the response buffer attached to CONNECT request
+ * @property {*} handlerOpts - handler options that contain upstreamProxyUrlParsed
+ * @property {http.Server} server - the server that we will use for logging
+ * @property {boolean} isPlain - whether to send HTTP CONNECT response
  */
-const chain = (request, source, head, handlerOpts, server) => {
-    if (head.length > 0) {
+
+/**
+ * @param {Options} options
+ */
+const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
+    if (head && head.length > 0) {
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
     }
 
@@ -52,7 +59,7 @@ const chain = (request, source, head, handlerOpts, server) => {
         if (response.statusCode !== 200) {
             server.log(null, `Failed to authenticate upstream proxy: ${response.statusCode}`);
 
-            source.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+            source.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
             return;
         }
 
@@ -67,7 +74,7 @@ const chain = (request, source, head, handlerOpts, server) => {
             head: clientHead,
         });
 
-        source.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
+        source.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
 
         source.pipe(socket);
         socket.pipe(source);
@@ -78,7 +85,7 @@ const chain = (request, source, head, handlerOpts, server) => {
 
         // The end socket may get connected after the client to proxy one gets disconnected.
         if (source.readyState === 'open') {
-            source.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+            source.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
         }
     });
 
