@@ -56,12 +56,12 @@ describe('tcp_tunnel.createTunnel', () => {
         assert.throws(() => { createTunnel('socks5://user:password@whatever.com', 'localhost:9000'); }, /must have the "http" protocol/);
     });
     it('throws error if target is not in correct format', () => {
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12'); }, /target host needs to include both/);
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', null); }, /target host needs to include both/);
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ''); }, /target host needs to include both/);
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', 'whatever'); }, /target host needs to include both/);
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', 'whatever:'); }, /target host needs to include both/);
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /target host needs to include both/);
+        assert.throws(() => { createTunnel('http://user:password@whatever.com:12'); }, 'Missing target hostname');
+        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', null); }, 'Missing target hostname');
+        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ''); }, 'Missing target hostname');
+        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', 'whatever'); }, 'Missing target port');
+        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', 'whatever:'); }, 'Missing target port');
+        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /Invalid URL/);
     });
     it('correctly tunnels to tcp service and then is able to close the connection', () => {
         proxyServer = proxy(http.createServer());
@@ -99,13 +99,10 @@ describe('tcp_tunnel.createTunnel', () => {
                     if (err) return reject(err);
                     return resolve(tunnel);
                 });
-            })
-                .then((tunnel) => new Promise((resolve, reject) => {
-                    closeTunnel(tunnel, true, (err, closed) => {
-                        if (err) return reject(err);
-                        return resolve(closed);
-                    });
-                })));
+            }).then((tunnel) => closeTunnel(tunnel, true))
+                .then((result) => {
+                    assert.equal(result, true);
+                }));
     });
     it('creates tunnel that is able to transfer data', () => {
         let tunnel;
@@ -133,7 +130,9 @@ describe('tcp_tunnel.createTunnel', () => {
             .then(() => createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetService.address().port}`))
             .then((newTunnel) => {
                 tunnel = newTunnel;
-                const [hostname, port] = tunnel.split(':'); // eslint-disable-line
+
+                const { port } = new URL(`connect://${newTunnel}`);
+
                 return connect(port);
             })
             .then((connection) => {
