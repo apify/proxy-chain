@@ -116,10 +116,10 @@ class Server extends EventEmitter {
      * Handles incoming sockets, useful for error handling
      */
     onConnection(socket) {
-        const id = Math.random().toString(36).slice(2);
-        const unique = Symbol(id);
+        const weakId = Math.random().toString(36).slice(2);
+        const unique = Symbol(weakId);
 
-        socket.proxyChainId = id;
+        socket.proxyChainId = unique;
         this.connections.set(unique, socket);
 
         socket.on('close', () => {
@@ -485,9 +485,9 @@ class Server extends EventEmitter {
 
         const result = {
             srcTxBytes: socket.bytesWritten,
-            srcRxBytes: socket.bytesReceived,
+            srcRxBytes: socket.bytesRead,
             trgTxBytes: targetStats.bytesWritten,
-            trgRxBytes: targetStats.bytesReceived,
+            trgRxBytes: targetStats.bytesRead,
         };
 
         return result;

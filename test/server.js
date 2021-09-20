@@ -740,8 +740,7 @@ const createTestSuite = ({
 
                     // this condition is here because some tests do not use prepareRequestFunction
                     // and therefore are not trackable
-                    // TODO: unskip this
-                    if (mainProxyServerConnections && Object.keys(mainProxyServerConnections).length && false) {
+                    if (mainProxyServerConnections && Object.keys(mainProxyServerConnections).length) {
                         const sortedIds = Object.keys(mainProxyServerConnections).sort((a, b) => {
                             if (Number(a) < Number(b)) return -1;
                             if (Number(a) > Number(b)) return 1;
@@ -1064,50 +1063,47 @@ const createTestSuite = ({
             }
         }
 
-        // TODO: unskip this
-        if (false) {
-            after(function () {
-                this.timeout(3 * 1000);
-                return wait(1000)
-                    .then(() => {
-                        // Ensure all handlers are removed
-                        if (mainProxyServer) {
-                            expect(mainProxyServer.getConnectionIds()).to.be.deep.eql([]);
-                        }
-                        expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
+        after(function () {
+            this.timeout(3 * 1000);
+            return wait(1000)
+                .then(() => {
+                    // Ensure all handlers are removed
+                    if (mainProxyServer) {
+                        expect(mainProxyServer.getConnectionIds()).to.be.deep.eql([]);
+                    }
+                    expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
 
-                        const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
-                            .reduce((duplicateConnections, id, index) => {
-                                if (index > 0 && mainProxyServerConnectionsClosed[index - 1] === id) {
-                                    duplicateConnections.push(id);
-                                }
-                                return duplicateConnections;
-                            }, []);
+                    const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
+                        .reduce((duplicateConnections, id, index) => {
+                            if (index > 0 && mainProxyServerConnectionsClosed[index - 1] === id) {
+                                duplicateConnections.push(id);
+                            }
+                            return duplicateConnections;
+                        }, []);
 
-                        expect(closedSomeConnectionsTwice).to.be.deep.eql([]);
-                        if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
-                        if (mainProxyServer) {
-                            // NOTE: we need to forcibly close pending connections,
-                            // because e.g. on 502 errors in HTTPS mode, the request library
-                            // doesn't close the connection and this would timeout
-                            return mainProxyServer.close(true);
-                        }
-                    })
-                    .then(() => {
-                        if (upstreamProxyServer) {
-                            // NOTE: We used to wait for upstream proxy connections to close,
-                            // but for HTTPS, in Node 10+, they linger for some reason...
-                            // return util.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
-                            upstreamProxyServer.close();
-                        }
-                    })
-                    .then(() => {
-                        if (targetServer) {
-                            return targetServer.close();
-                        }
-                    });
-            });
-        }
+                    expect(closedSomeConnectionsTwice).to.be.deep.eql([]);
+                    if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
+                    if (mainProxyServer) {
+                        // NOTE: we need to forcibly close pending connections,
+                        // because e.g. on 502 errors in HTTPS mode, the request library
+                        // doesn't close the connection and this would timeout
+                        return mainProxyServer.close(true);
+                    }
+                })
+                .then(() => {
+                    if (upstreamProxyServer) {
+                        // NOTE: We used to wait for upstream proxy connections to close,
+                        // but for HTTPS, in Node 10+, they linger for some reason...
+                        // return util.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
+                        upstreamProxyServer.close();
+                    }
+                })
+                .then(() => {
+                    if (targetServer) {
+                        return targetServer.close();
+                    }
+                });
+        });
     };
 };
 
