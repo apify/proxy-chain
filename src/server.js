@@ -370,10 +370,6 @@ class Server extends EventEmitter {
         // Emit 'connectionClosed' event if request failed and connection was already reported
         if (handlerOpts) {
             this.log(handlerId, 'Closed because request failed with error');
-            this.emit('connectionClosed', {
-                connectionId: request.socket.proxyChainId,
-                stats: { srcTxBytes: 0, srcRxBytes: 0 },
-            });
         }
     }
 
