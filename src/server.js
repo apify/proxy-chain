@@ -4,6 +4,7 @@ const EventEmitter = require('events');
 const { parseAuthorizationHeader } = require('./utils/parse_authorization_header');
 const { redactUrl } = require('./utils/redact_url');
 const { nodeify } = require('./utils/nodeify');
+const { getTargetStats } = require('./utils/count_target_bytes');
 const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
 const { chain } = require('./chain');
 const { forward } = require('./forward');
@@ -79,10 +80,6 @@ class Server extends EventEmitter {
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
 
-        // Key is handler ID, value is HandlerXxx instance
-        this.handlers = {};
-        this.lastHandlerId = 0;
-
         this.server = http.createServer();
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
@@ -93,17 +90,25 @@ class Server extends EventEmitter {
             httpRequestCount: 0,
             connectRequestCount: 0,
         };
+
+        this.connections = new Map();
     }
 
-    log(handlerId, str) {
+    log(connectionId, str) {
         if (this.verbose) {
-            const logPrefix = handlerId ? `${handlerId} | ` : '';
+            const logPrefix = connectionId ? `${connectionId} | ` : '';
             console.log(`ProxyServer[${this.port}]: ${logPrefix}${str}`);
         }
     }
 
     onClientError(err, socket) {
-        this.log(null, `onClientError: ${err}`);
+        this.log(socket.proxyChainId, `onClientError: ${err}`);
+
+        // https://nodejs.org/api/http.html#http_event_clienterror
+        if (err.code === 'ECONNRESET' || !socket.writable) {
+            return;
+        }
+
         this.sendResponse(socket, 400, null, 'Invalid request');
     }
 
@@ -111,6 +116,21 @@ class Server extends EventEmitter {
      * Handles incoming sockets, useful for error handling
      */
     onConnection(socket) {
+        const id = Math.random().toString(36).slice(2);
+        const unique = Symbol(id);
+
+        socket.proxyChainId = id;
+        this.connections.set(unique, socket);
+
+        socket.on('close', () => {
+            this.emit('connectionClosed', {
+                connectionId: unique,
+                stats: this.getConnectionStats(unique),
+            });
+
+            this.connections.delete(unique);
+        });
+
         // We need to consume socket errors, otherwise they could crash the entire process.
         // See https://github.com/apify/proxy-chain/issues/53
         socket.on('error', (err) => {
@@ -132,11 +152,11 @@ class Server extends EventEmitter {
                 handlerOpts.srcResponse = response;
 
                 if (handlerOpts.customResponseFunction) {
-                    this.log(handlerOpts.id, 'Using HandlerCustomResponse');
+                    this.log(request.socket.proxyChainId, 'Using HandlerCustomResponse');
                     return handleCustomResponse(request, response, handlerOpts);
                 }
 
-                this.log(handlerOpts.id, 'Using forward');
+                this.log(request.socket.proxyChainId, 'Using forward');
                 return forward(request, response, handlerOpts);
             })
             .catch((err) => {
@@ -172,11 +192,11 @@ class Server extends EventEmitter {
                 const data = { request, source: socket, head, handlerOpts, server: this };
 
                 if (handlerOpts.upstreamProxyUrlParsed) {
-                    this.log(handlerOpts.id, 'Using HandlerTunnelChain');
+                    this.log(socket.proxyChainId, 'Using HandlerTunnelChain');
                     return chain(data);
                 }
 
-                this.log(handlerOpts.id, 'Using HandlerTunnelDirect');
+                this.log(socket.proxyChainId, 'Using HandlerTunnelDirect');
                 return direct(data);
             })
             .catch((err) => {
@@ -211,7 +231,7 @@ class Server extends EventEmitter {
             upstreamProxyUrlParsed: null,
         };
 
-        this.log(handlerOpts.id, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
+        this.log(request.socket.proxyChainId, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
         const { socket } = request;
         let isHttp = false;
@@ -265,7 +285,7 @@ class Server extends EventEmitter {
                 socket.pause();
 
                 const funcOpts = {
-                    connectionId: handlerOpts.id,
+                    connectionId: request.socket.proxyChainId,
                     request,
                     username: null,
                     password: null,
@@ -309,7 +329,7 @@ class Server extends EventEmitter {
                 }
 
                 if (funcResult && funcResult.customResponseFunction) {
-                    this.log(handlerOpts.id, 'Using custom response function');
+                    this.log(request.socket.proxyChainId, 'Using custom response function');
                     handlerOpts.customResponseFunction = funcResult.customResponseFunction;
                     if (!isHttp) {
                         throw new Error('The "customResponseFunction" option can only be used for HTTP requests.');
@@ -320,7 +340,7 @@ class Server extends EventEmitter {
                 }
 
                 if (handlerOpts.upstreamProxyUrlParsed) {
-                    this.log(handlerOpts.id, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
+                    this.log(request.socket.proxyChainId, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
                 }
 
                 return handlerOpts;
@@ -330,37 +350,13 @@ class Server extends EventEmitter {
             });
     }
 
-    handlerRun(handler) {
-        this.handlers[handler.id] = handler;
-
-        handler.once('close', ({ stats }) => {
-            this.emit('connectionClosed', {
-                connectionId: handler.id,
-                stats,
-            });
-            delete this.handlers[handler.id];
-            this.log(handler.id, '!!! Closed and removed from server');
-        });
-
-        handler.once('tunnelConnectResponded', ({ response, socket, head }) => {
-            this.emit('tunnelConnectResponded', {
-                connectionId: handler.id,
-                response,
-                socket,
-                head,
-            });
-        });
-
-        handler.run();
-    }
-
     /**
      * Sends a HTTP error response to the client.
      * @param request
      * @param err
      */
     failRequest(request, err, handlerOpts) {
-        const handlerId = handlerOpts ? handlerOpts.id : null;
+        const handlerId = handlerOpts ? request.socket.proxyChainId : null;
 
         if (err.name === REQUEST_ERROR_NAME) {
             this.log(handlerId, `Request failed (status ${err.statusCode}): ${err.message}`);
@@ -375,7 +371,7 @@ class Server extends EventEmitter {
         if (handlerOpts) {
             this.log(handlerId, 'Closed because request failed with error');
             this.emit('connectionClosed', {
-                connectionId: handlerOpts.id,
+                connectionId: request.socket.proxyChainId,
                 stats: { srcTxBytes: 0, srcRxBytes: 0 },
             });
         }
@@ -429,7 +425,7 @@ class Server extends EventEmitter {
                 }, 1000);
             });
         } catch (err) {
-            this.log(null, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
+            this.log(socket.proxyChainId, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
         }
     }
 
@@ -471,21 +467,30 @@ class Server extends EventEmitter {
      * @returns {*}
      */
     getConnectionIds() {
-        return Object.keys(this.handlers);
+        return [...this.connections.keys()];
     }
 
     /**
      * Gets data transfer statistics of a specific proxy connection.
-     * @param {Number} connectionId ID of the connection handler.
+     * @param {Number} connectionId ID of the connection.
      * It is passed to `prepareRequestFunction` function.
      * @return {Object} An object with statistics { srcTxBytes, srcRxBytes, trgTxBytes, trgRxBytes },
      * or null if connection does not exist or has been closed.
      */
     getConnectionStats(connectionId) {
-        const handler = this.handlers && this.handlers[connectionId];
-        if (!handler) return undefined;
+        const socket = this.connections.get(connectionId);
+        if (!socket) return undefined;
 
-        return handler.getStats();
+        const targetStats = getTargetStats(socket);
+
+        const result = {
+            srcTxBytes: socket.bytesWritten,
+            srcRxBytes: socket.bytesReceived,
+            trgTxBytes: targetStats.bytesWritten,
+            trgRxBytes: targetStats.bytesReceived,
+        };
+
+        return result;
     }
 
     /**
@@ -495,19 +500,21 @@ class Server extends EventEmitter {
      * @param callback
      */
     close(closeConnections, callback) {
-        if (typeof (closeConnections) === 'function') {
+        if (typeof closeConnections === 'function') {
             callback = closeConnections;
             closeConnections = false;
         }
 
         if (closeConnections) {
-            this.log(null, 'Closing pending handlers');
-            let count = 0;
-            for (const handler of Object.values(this.handlers)) {
-                count++;
-                handler.close();
+            this.log(null, 'Closing pending sockets');
+
+            for (const socket of this.connections.values()) {
+                socket.destroy();
             }
-            this.log(null, `Destroyed ${count} pending handlers`);
+
+            this.connections.clear();
+
+            this.log(null, `Destroyed ${this.connections.size} pending sockets`);
         }
 
         if (this.server) {

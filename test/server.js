@@ -392,7 +392,7 @@ const createTestSuite = ({
                     mainProxyServer = new Server(opts);
 
                     mainProxyServer.on('connectionClosed', ({ connectionId, stats }) => {
-                        assert.include(mainProxyServer.getConnectionIds(), connectionId.toString());
+                        assert.include(mainProxyServer.getConnectionIds(), connectionId);
                         mainProxyServerConnectionsClosed.push(connectionId);
                         const index = mainProxyServerConnectionIds.indexOf(connectionId);
                         mainProxyServerConnectionIds.splice(index, 1);

@@ -1,4 +1,5 @@
 const http = require('http');
+const { countTargetBytes } = require('./utils/count_target_bytes');
 const { getBasic } = require('./utils/get_basic');
 
 /**
@@ -20,6 +21,8 @@ const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
     }
 
+    const { proxyChainId } = source;
+
     const { upstreamProxyUrlParsed: proxy } = handlerOpts;
 
     const options = {
@@ -38,6 +41,8 @@ const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
     const client = http.request(proxy.origin, options);
 
     client.on('connect', (response, socket, clientHead) => {
+        countTargetBytes(source, socket);
+
         if (source.readyState !== 'open') {
             // Sanity check, should never reach.
             socket.destroy();
@@ -45,19 +50,19 @@ const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
         }
 
         socket.on('error', (error) => {
-            server.log(null, `Chain Destination Socket Error: ${error.stack}`);
+            server.log(proxyChainId, `Chain Destination Socket Error: ${error.stack}`);
 
             source.destroy();
         });
 
         source.on('error', (error) => {
-            server.log(null, `Chain Source Socket Error: ${error.stack}`);
+            server.log(proxyChainId, `Chain Source Socket Error: ${error.stack}`);
 
             socket.destroy();
         });
 
         if (response.statusCode !== 200) {
-            server.log(null, `Failed to authenticate upstream proxy: ${response.statusCode}`);
+            server.log(proxyChainId, `Failed to authenticate upstream proxy: ${response.statusCode}`);
 
             source.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
             return;
@@ -81,7 +86,7 @@ const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
     });
 
     client.on('error', (error) => {
-        server.log(null, `Failed to connect to upstream proxy: ${error.stack}`);
+        server.log(proxyChainId, `Failed to connect to upstream proxy: ${error.stack}`);
 
         // The end socket may get connected after the client to proxy one gets disconnected.
         if (source.readyState === 'open') {

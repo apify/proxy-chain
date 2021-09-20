@@ -1,4 +1,5 @@
 const net = require('net');
+const { countTargetBytes } = require('./utils/count_target_bytes');
 
 /**
  * @typedef Options
@@ -46,17 +47,21 @@ const direct = ({ request, source, head, server }) => {
         }
     });
 
+    countTargetBytes(source, socket);
+
     source.pipe(socket);
     socket.pipe(source);
 
+    const { proxyChainId } = source;
+
     socket.on('error', (error) => {
-        server.log(null, `Direct Destination Socket Error: ${error.stack}`);
+        server.log(proxyChainId, `Direct Destination Socket Error: ${error.stack}`);
 
         source.destroy();
     });
 
     source.on('error', (error) => {
-        server.log(null, `Direct Source Socket Error: ${error.stack}`);
+        server.log(proxyChainId, `Direct Source Socket Error: ${error.stack}`);
 
         socket.destroy();
     });

@@ -4,6 +4,7 @@ const stream = require('stream');
 const util = require('util');
 const { validHeadersOnly } = require('./utils/valid_headers_only');
 const { getBasic } = require('./utils/get_basic');
+const { countTargetBytes } = require('./utils/count_target_bytes');
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -69,6 +70,10 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
         } catch (error) {
             reject(error);
         }
+    });
+
+    client.once('socket', (socket) => {
+        countTargetBytes(request.socket, socket);
     });
 
     try {
