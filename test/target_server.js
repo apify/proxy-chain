@@ -81,7 +81,7 @@ class TargetServer {
     get1MACharsStreamed(request, response) {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         for (let i = 0; i < 10000; i++) {
-            response.write('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n');
+            response.write(`${''.padStart(99, 'a')}\n`);
         }
         response.end();
     }
