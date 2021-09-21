@@ -357,6 +357,9 @@ class Server extends EventEmitter {
 
     /**
      * Sends a simple HTTP response to the client and forcibly closes the connection.
+     * This invalidates the ServerResponse instance (if present).
+     * We don't know the state of the response anyway.
+     * Writing directly to the socket seems to be the easiest solution.
      * @param socket
      * @param statusCode
      * @param headers
