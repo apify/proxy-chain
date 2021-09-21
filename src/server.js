@@ -109,7 +109,7 @@ class Server extends EventEmitter {
             return;
         }
 
-        this.sendResponse(socket, 400, null, 'Invalid request');
+        this.sendSocketResponse(socket, 400, null, 'Invalid request');
     }
 
     /**
@@ -344,10 +344,10 @@ class Server extends EventEmitter {
 
         if (error.name === 'RequestError') {
             this.log(connectionId, `Request failed (status ${error.statusCode}): ${error.message}`);
-            this.sendResponse(request.socket, error.statusCode, error.headers, error.message);
+            this.sendSocketResponse(request.socket, error.statusCode, error.headers, error.message);
         } else {
             this.log(connectionId, `Request failed with error: ${error.stack || error}`);
-            this.sendResponse(request.socket, 500, null, 'Internal error in proxy server');
+            this.sendSocketResponse(request.socket, 500, {}, 'Internal error in proxy server');
             this.emit('requestFailed', { error, request });
         }
 
@@ -362,29 +362,26 @@ class Server extends EventEmitter {
      * @param headers
      * @param message
      */
-    sendResponse(socket, statusCode, headers, message) {
+    sendSocketResponse(socket, statusCode = 500, caseSensitiveHeaders = {}, message = '') {
         try {
-            headers = headers || {};
-            headers.Connection = 'close';
+            const headers = Object.fromEntries(
+                Object.entries(caseSensitiveHeaders).map(
+                    ([name, value]) => [name.toLowerCase(), value],
+                ),
+            );
 
-            // TODO: We should use fully case-insensitive lookup here!
-            if (!headers['Content-Type'] && !headers['content-type']) {
-                headers['Content-Type'] = 'text/plain; charset=utf-8';
+            headers.connection = 'close';
+            headers['content-length'] = String(Buffer.byteLength(message));
+
+            // TODO: we should use ??= here
+            headers.server = headers.server || this.authRealm;
+            headers['content-type'] = headers['content-type'] || 'text/plain; charset=utf-8';
+
+            if (statusCode === 407 && !headers['proxy-authenticate']) {
+                headers['proxy-authenticate'] = `Basic realm="${this.authRealm}"`;
             }
 
-            if (statusCode === 407 && !headers['Proxy-Authenticate'] && !headers['proxy-authenticate']) {
-                headers['Proxy-Authenticate'] = `Basic realm="${this.authRealm}"`;
-            }
-
-            if (!headers.Server) {
-                headers.Server = this.authRealm;
-            }
-
-            if (!headers['Content-Length'] && !headers['content-length']) {
-                headers['Content-Length'] = Buffer.byteLength(message);
-            }
-
-            let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
+            let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode] || 'Unknown Status Code'}\r\n`;
             for (const [key, value] of Object.entries(headers)) {
                 msg += `${key}: ${value}\r\n`;
             }
