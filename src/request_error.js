@@ -1,5 +1,3 @@
-const REQUEST_ERROR_NAME = 'RequestError';
-
 /**
  * Represents custom request error. The message is emitted as HTTP response
  * with a specific HTTP code and headers.
@@ -11,7 +9,7 @@ const REQUEST_ERROR_NAME = 'RequestError';
 class RequestError extends Error {
     constructor(message, statusCode, headers) {
         super(message);
-        this.name = REQUEST_ERROR_NAME;
+        this.name = 'RequestError';
         this.statusCode = statusCode;
         this.headers = headers;
 
@@ -21,5 +19,4 @@ class RequestError extends Error {
 
 module.exports = {
     RequestError,
-    REQUEST_ERROR_NAME,
 };

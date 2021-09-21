@@ -989,7 +989,7 @@ const createTestSuite = ({
                         const response = await requestPromised(opts);
 
                         expect(response.statusCode).to.be.eql(502);
-                        expect(response.body).to.be.eql('Invalid colon in username of upstream proxy credentials');
+                        expect(response.body).to.be.eql('Invalid colon in username in upstream proxy credentials');
                     }
                 });
 
