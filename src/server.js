@@ -274,15 +274,11 @@ class Server extends EventEmitter {
     }
 
     /**
-     * Authenticates a new request and determines upstream proxy URL using the user function.
-     * Returns a promise resolving to an object that can be passed to construcot of one of the HandlerXxx classes.
+     * Calls `this.prepareRequestFunction` with normalized options.
      * @param request
+     * @param handlerOpts
      */
-    async prepareRequestHandling(request) {
-        const handlerOpts = this.getHandlerOpts(request);
-
-        let funcResult = { requestAuthentication: false, upstreamProxyUrlParsed: null };
-
+    async callPrepareRequestFunction(request, handlerOpts) {
         // Authenticate the request using a user function (if provided)
         if (this.prepareRequestFunction) {
             const funcOpts = {
@@ -312,8 +308,20 @@ class Server extends EventEmitter {
             }
 
             // User function returns a result directly or a promise
-            funcResult = await this.prepareRequestFunction(funcOpts);
+            return this.prepareRequestFunction(funcOpts);
         }
+
+        return { requestAuthentication: false, upstreamProxyUrlParsed: null };
+    }
+
+    /**
+     * Authenticates a new request and determines upstream proxy URL using the user function.
+     * Returns a promise resolving to an object that can be used to run a handler.
+     * @param request
+     */
+    async prepareRequestHandling(request) {
+        const handlerOpts = this.getHandlerOpts(request);
+        const funcResult = await this.callPrepareRequestFunction(request, handlerOpts);
 
         // If not authenticated, request client to authenticate
         if (funcResult && funcResult.requestAuthentication) {
