@@ -145,7 +145,7 @@ class Server extends EventEmitter {
         socket.on('error', (err) => {
             // Handle errors only if there's no other handler
             if (this.listenerCount('error') === 1) {
-                this.log(unique, `Source socket emitted error: ${err.stack || err}`);
+                this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });
     }
@@ -216,13 +216,11 @@ class Server extends EventEmitter {
     }
 
     /**
-     * Authenticates a new request and determines upstream proxy URL using the user function.
-     * Returns a promise resolving to an object that can be passed to construcot of one of the HandlerXxx classes.
+     * Prepares handler options from a request.
      * @param request
+     * @see {prepareRequestHandling}
      */
-    async prepareRequestHandling(request) {
-        let isHttp = false;
-
+    getHandlerOpts(request) {
         const handlerOpts = {
             server: this,
             id: ++this.lastHandlerId,
@@ -235,6 +233,8 @@ class Server extends EventEmitter {
         this.log(request.socket.proxyChainId, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
         if (request.method === 'CONNECT') {
+            handlerOpts.isHttp = false;
+
             // CONNECT server.example.com:80 HTTP/1.1
             handlerOpts.trgParsed = new URL(`connect://${request.url}`);
 
@@ -265,10 +265,19 @@ class Server extends EventEmitter {
             }
 
             handlerOpts.trgParsed = parsed;
-            isHttp = true;
+            handlerOpts.isHttp = true;
 
             this.stats.httpRequestCount++;
         }
+    }
+
+    /**
+     * Authenticates a new request and determines upstream proxy URL using the user function.
+     * Returns a promise resolving to an object that can be passed to construcot of one of the HandlerXxx classes.
+     * @param request
+     */
+    async prepareRequestHandling(request) {
+        const handlerOpts = this.getHandlerOpts(request);
 
         let funcResult = { requestAuthentication: false, upstreamProxyUrlParsed: null };
 
@@ -281,7 +290,7 @@ class Server extends EventEmitter {
                 password: null,
                 hostname: handlerOpts.trgParsed.hostname,
                 port: handlerOpts.trgParsed.port,
-                isHttp,
+                isHttp: handlerOpts.isHttp,
             };
 
             const proxyAuth = request.headers['proxy-authorization'];
@@ -327,7 +336,7 @@ class Server extends EventEmitter {
 
             handlerOpts.customResponseFunction = funcResult.customResponseFunction;
 
-            if (!isHttp) {
+            if (!handlerOpts.isHttp) {
                 throw new Error('The "customResponseFunction" option can only be used for HTTP requests.');
             }
 
