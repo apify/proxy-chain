@@ -113,9 +113,11 @@ class Server extends EventEmitter {
     }
 
     /**
-     * Handles incoming sockets, useful for error handling
+     * Assigns a unique ID to the socket and keeps the register up to date.
+     * Needed for abrupt close of the server.
+     * @param {net.Socket} socket
      */
-    onConnection(socket) {
+    registerConnection(socket) {
         const weakId = Math.random().toString(36).slice(2);
         const unique = Symbol(weakId);
 
@@ -130,6 +132,13 @@ class Server extends EventEmitter {
 
             this.connections.delete(unique);
         });
+    }
+
+    /**
+     * Handles incoming sockets, useful for error handling
+     */
+    onConnection(socket) {
+        this.registerConnection(socket);
 
         // We need to consume socket errors, because the handlers are attached asynchronously.
         // See https://github.com/apify/proxy-chain/issues/53
