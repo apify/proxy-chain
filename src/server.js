@@ -131,7 +131,7 @@ class Server extends EventEmitter {
             this.connections.delete(unique);
         });
 
-        // We need to consume socket errors, because the handlers are attached asynchronusly.
+        // We need to consume socket errors, because the handlers are attached asynchronously.
         // See https://github.com/apify/proxy-chain/issues/53
         socket.on('error', (err) => {
             // Handle errors only if there's no other handler
