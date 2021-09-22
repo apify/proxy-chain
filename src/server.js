@@ -269,6 +269,8 @@ class Server extends EventEmitter {
 
             this.stats.httpRequestCount++;
         }
+
+        return handlerOpts;
     }
 
     /**
