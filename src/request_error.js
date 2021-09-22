@@ -9,7 +9,7 @@
 class RequestError extends Error {
     constructor(message, statusCode, headers) {
         super(message);
-        this.name = 'RequestError';
+        this.name = RequestError.name;
         this.statusCode = statusCode;
         this.headers = headers;
 
