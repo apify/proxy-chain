@@ -109,7 +109,7 @@ class Server extends EventEmitter {
             return;
         }
 
-        this.sendSocketResponse(socket, 400, null, 'Invalid request');
+        this.sendSocketResponse(socket, 400, {}, 'Invalid request');
     }
 
     /**
