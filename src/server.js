@@ -4,7 +4,8 @@ const EventEmitter = require('events');
 const { parseAuthorizationHeader } = require('./utils/parse_authorization_header');
 const { redactUrl } = require('./utils/redact_url');
 const { nodeify } = require('./utils/nodeify');
-const { RequestError, REQUEST_ERROR_NAME } = require('./request_error');
+const { getTargetStats } = require('./utils/count_target_bytes');
+const { RequestError } = require('./request_error');
 const { chain } = require('./chain');
 const { forward } = require('./forward');
 const { direct } = require('./direct');
@@ -65,23 +66,18 @@ class Server extends EventEmitter {
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server logs
      */
-    constructor(options) {
+    constructor(options = {}) {
         super();
-
-        options = options || {};
 
         if (options.port === undefined || options.port === null) {
             this.port = DEFAULT_PROXY_SERVER_PORT;
         } else {
             this.port = options.port;
         }
+
         this.prepareRequestFunction = options.prepareRequestFunction;
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
-
-        // Key is handler ID, value is HandlerXxx instance
-        this.handlers = {};
-        this.lastHandlerId = 0;
 
         this.server = http.createServer();
         this.server.on('clientError', this.onClientError.bind(this));
@@ -89,71 +85,109 @@ class Server extends EventEmitter {
         this.server.on('connect', this.onConnect.bind(this));
         this.server.on('connection', this.onConnection.bind(this));
 
+        this.lastHandlerId = 0;
         this.stats = {
             httpRequestCount: 0,
             connectRequestCount: 0,
         };
+
+        this.connections = new Map();
     }
 
-    log(handlerId, str) {
+    log(connectionId, str) {
         if (this.verbose) {
-            const logPrefix = handlerId ? `${handlerId} | ` : '';
+            const logPrefix = connectionId ? `${connectionId} | ` : '';
             console.log(`ProxyServer[${this.port}]: ${logPrefix}${str}`);
         }
     }
 
     onClientError(err, socket) {
-        this.log(null, `onClientError: ${err}`);
-        this.sendResponse(socket, 400, null, 'Invalid request');
+        this.log(socket.proxyChainId, `onClientError: ${err}`);
+
+        // https://nodejs.org/api/http.html#http_event_clienterror
+        if (err.code === 'ECONNRESET' || !socket.writable) {
+            return;
+        }
+
+        this.sendSocketResponse(socket, 400, {}, 'Invalid request');
+    }
+
+    /**
+     * Assigns a unique ID to the socket and keeps the register up to date.
+     * Needed for abrupt close of the server.
+     * @param {net.Socket} socket
+     */
+    registerConnection(socket) {
+        const weakId = Math.random().toString(36).slice(2);
+        const unique = Symbol(weakId);
+
+        socket.proxyChainId = unique;
+        this.connections.set(unique, socket);
+
+        socket.on('close', () => {
+            this.emit('connectionClosed', {
+                connectionId: unique,
+                stats: this.getConnectionStats(unique),
+            });
+
+            this.connections.delete(unique);
+        });
     }
 
     /**
      * Handles incoming sockets, useful for error handling
      */
     onConnection(socket) {
-        // We need to consume socket errors, otherwise they could crash the entire process.
+        this.registerConnection(socket);
+
+        // We need to consume socket errors, because the handlers are attached asynchronously.
         // See https://github.com/apify/proxy-chain/issues/53
         socket.on('error', (err) => {
             // Handle errors only if there's no other handler
             if (this.listenerCount('error') === 1) {
-                this.log(null, `Source socket emitted error: ${err.stack || err}`);
+                this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });
+    }
+
+    normalizeHandlerError(error) {
+        if (error.message === 'Username contains an invalid colon') {
+            return new RequestError('Invalid colon in username in upstream proxy credentials', 502);
+        }
+
+        if (error.message === '407 Proxy Authentication Required') {
+            return new RequestError('Invalid upstream proxy credentials', 502);
+        }
+
+        if (error.code === 'ENOTFOUND') {
+            if (error.proxy) {
+                return new RequestError('Failed to connect to upstream proxy', 502);
+            }
+
+            return new RequestError('Target website does not exist', 404);
+        }
+
+        return error;
     }
 
     /**
      * Handles normal HTTP request by forwarding it to target host or the upstream proxy.
      */
-    onRequest(request, response) {
-        let handlerOpts;
-        this.prepareRequestHandling(request)
-            .then((result) => {
-                handlerOpts = result;
-                handlerOpts.srcResponse = response;
+    async onRequest(request, response) {
+        try {
+            const handlerOpts = await this.prepareRequestHandling(request);
+            handlerOpts.srcResponse = response;
 
-                if (handlerOpts.customResponseFunction) {
-                    this.log(handlerOpts.id, 'Using HandlerCustomResponse');
-                    return handleCustomResponse(request, response, handlerOpts);
-                }
+            if (handlerOpts.customResponseFunction) {
+                this.log(request.socket.proxyChainId, 'Using HandlerCustomResponse');
+                return await handleCustomResponse(request, response, handlerOpts);
+            }
 
-                this.log(handlerOpts.id, 'Using forward');
-                return forward(request, response, handlerOpts);
-            })
-            .catch((err) => {
-                if (err.message === 'Username contains an invalid colon') {
-                    err = new RequestError('Invalid colon in username of upstream proxy credentials', 502);
-                } else if (err.message === '407 Proxy Authentication Required') {
-                    err = new RequestError('Invalid upstream proxy credentials', 502);
-                } else if (err.code === 'ENOTFOUND') {
-                    if (err.proxy) {
-                        err = new RequestError('Failed to connect to upstream proxy', 502);
-                    } else {
-                        err = new RequestError('Target website does not exist', 404);
-                    }
-                }
-
-                this.failRequest(request, err, handlerOpts);
-            });
+            this.log(request.socket.proxyChainId, 'Using forward');
+            return await forward(request, response, handlerOpts);
+        } catch (error) {
+            this.failRequest(request, this.normalizeHandlerError(error));
+        }
     }
 
     /**
@@ -162,46 +196,31 @@ class Server extends EventEmitter {
      * @param socket
      * @param head The first packet of the tunneling stream (may be empty)
      */
-    onConnect(request, socket, head) {
-        let handlerOpts;
-        this.prepareRequestHandling(request)
-            .then((result) => {
-                handlerOpts = result;
-                handlerOpts.srcHead = head;
+    async onConnect(request, socket, head) {
+        try {
+            const handlerOpts = await this.prepareRequestHandling(request);
+            handlerOpts.srcHead = head;
 
-                const data = { request, source: socket, head, handlerOpts, server: this };
+            const data = { request, sourceSocket: socket, head, handlerOpts, server: this };
 
-                if (handlerOpts.upstreamProxyUrlParsed) {
-                    this.log(handlerOpts.id, 'Using HandlerTunnelChain');
-                    return chain(data);
-                }
+            if (handlerOpts.upstreamProxyUrlParsed) {
+                this.log(socket.proxyChainId, 'Using HandlerTunnelChain');
+                return await chain(data);
+            }
 
-                this.log(handlerOpts.id, 'Using HandlerTunnelDirect');
-                return direct(data);
-            })
-            .catch((err) => {
-                if (err.message === 'Username contains an invalid colon') {
-                    err = new RequestError('Invalid colon in username of upstream proxy credentials', 502);
-                } else if (err.message === '407 Proxy Authentication Required') {
-                    err = new RequestError('Invalid upstream proxy credentials', 502);
-                } else if (err.code === 'ENOTFOUND') {
-                    if (err.proxy) {
-                        err = new RequestError('Failed to connect to upstream proxy', 502);
-                    } else {
-                        err = new RequestError('Target website does not exist', 404);
-                    }
-                }
-
-                this.failRequest(request, err, handlerOpts);
-            });
+            this.log(socket.proxyChainId, 'Using HandlerTunnelDirect');
+            return await direct(data);
+        } catch (error) {
+            this.failRequest(request, this.normalizeHandlerError(error));
+        }
     }
 
     /**
-     * Authenticates a new request and determines upstream proxy URL using the user function.
-     * Returns a promise resolving to an object that can be passed to construcot of one of the HandlerXxx classes.
+     * Prepares handler options from a request.
      * @param request
+     * @see {prepareRequestHandling}
      */
-    prepareRequestHandling(request) {
+    getHandlerOpts(request) {
         const handlerOpts = {
             server: this,
             id: ++this.lastHandlerId,
@@ -211,225 +230,204 @@ class Server extends EventEmitter {
             upstreamProxyUrlParsed: null,
         };
 
-        this.log(handlerOpts.id, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
+        this.log(request.socket.proxyChainId, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
-        const { socket } = request;
-        let isHttp = false;
+        if (request.method === 'CONNECT') {
+            handlerOpts.isHttp = false;
 
-        return Promise.resolve()
-            .then(() => {
-                // Determine target hostname and port
-                if (request.method === 'CONNECT') {
-                    // The request should look like:
-                    //   CONNECT server.example.com:80 HTTP/1.1
-                    // Note that request.url contains the "server.example.com:80" part
-                    handlerOpts.trgParsed = new URL(`connect://${request.url}`);
+            // CONNECT server.example.com:80 HTTP/1.1
+            handlerOpts.trgParsed = new URL(`connect://${request.url}`);
 
-                    // If srcRequest.url does not match the regexp tools.HOST_HEADER_REGEX
-                    // or the url is too long it will not be parsed so we throw error here.
-                    if (!handlerOpts.trgParsed) {
-                        throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
-                    }
+            if (!handlerOpts.trgParsed.hostname || !handlerOpts.trgParsed.port) {
+                throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
+            }
 
-                    this.stats.connectRequestCount++;
-                } else {
-                    // The request should look like:
-                    //   GET http://server.example.com:80/some-path HTTP/1.1
-                    // Note that RFC 7230 says:
-                    // "When making a request to a proxy, other than a CONNECT or server-wide
-                    //  OPTIONS request (as detailed below), a client MUST send the target
-                    //  URI in absolute-form as the request-target"
+            this.stats.connectRequestCount++;
+        } else {
+            // The request should look like:
+            //   GET http://server.example.com:80/some-path HTTP/1.1
+            // Note that RFC 7230 says:
+            // "When making a request to a proxy, other than a CONNECT or server-wide
+            //  OPTIONS request (as detailed below), a client MUST send the target
+            //  URI in absolute-form as the request-target"
 
-                    let parsed;
-                    try {
-                        parsed = new URL(request.url);
-                    } catch (e) {
-                        // If URL is invalid, throw HTTP 400 error
-                        throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
-                    }
-                    // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
-                    if (parsed.protocol !== 'http:') {
-                        throw new RequestError(`Only HTTP protocol is supported (was ${parsed.protocol})`, 400);
-                    }
+            let parsed;
+            try {
+                parsed = new URL(request.url);
+            } catch (error) {
+                // If URL is invalid, throw HTTP 400 error
+                throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
+            }
 
-                    handlerOpts.trgParsed = parsed;
-                    isHttp = true;
+            // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
+            if (parsed.protocol !== 'http:') {
+                throw new RequestError(`Only HTTP protocol is supported (was ${parsed.protocol})`, 400);
+            }
 
-                    this.stats.httpRequestCount++;
-                }
+            handlerOpts.trgParsed = parsed;
+            handlerOpts.isHttp = true;
 
-                // Authenticate the request using a user function (if provided)
-                if (!this.prepareRequestFunction) return { requestAuthentication: false, upstreamProxyUrlParsed: null };
+            this.stats.httpRequestCount++;
+        }
 
-                // Pause the socket so that no data is lost
-                socket.pause();
-
-                const funcOpts = {
-                    connectionId: handlerOpts.id,
-                    request,
-                    username: null,
-                    password: null,
-                    hostname: handlerOpts.trgParsed.hostname,
-                    port: handlerOpts.trgParsed.port,
-                    isHttp,
-                };
-
-                const proxyAuth = request.headers['proxy-authorization'];
-                if (proxyAuth) {
-                    const auth = parseAuthorizationHeader(proxyAuth);
-                    if (!auth) {
-                        throw new RequestError('Invalid "Proxy-Authorization" header', 400);
-                    }
-                    if (auth.type !== 'Basic') {
-                        throw new RequestError('The "Proxy-Authorization" header must have the "Basic" type.', 400);
-                    }
-                    funcOpts.username = auth.username;
-                    funcOpts.password = auth.password;
-                }
-
-                // User function returns a result directly or a promise
-                return this.prepareRequestFunction(funcOpts);
-            })
-            .then((funcResult) => {
-                // If not authenticated, request client to authenticate
-                if (funcResult && funcResult.requestAuthentication) {
-                    throw new RequestError(funcResult.failMsg || 'Proxy credentials required.', 407);
-                }
-
-                if (funcResult && funcResult.upstreamProxyUrl) {
-                    try {
-                        handlerOpts.upstreamProxyUrlParsed = new URL(funcResult.upstreamProxyUrl);
-                    } catch (e) {
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: ${e} (was "${funcResult.upstreamProxyUrl}"`);
-                    }
-                    if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
-                        // eslint-disable-next-line max-len
-                        throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
-                    }
-                }
-
-                if (funcResult && funcResult.customResponseFunction) {
-                    this.log(handlerOpts.id, 'Using custom response function');
-                    handlerOpts.customResponseFunction = funcResult.customResponseFunction;
-                    if (!isHttp) {
-                        throw new Error('The "customResponseFunction" option can only be used for HTTP requests.');
-                    }
-                    if (typeof (handlerOpts.customResponseFunction) !== 'function') {
-                        throw new Error('The "customResponseFunction" option must be a function.');
-                    }
-                }
-
-                if (handlerOpts.upstreamProxyUrlParsed) {
-                    this.log(handlerOpts.id, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
-                }
-
-                return handlerOpts;
-            })
-            .finally(() => {
-                if (this.prepareRequestFunction) socket.resume();
-            });
+        return handlerOpts;
     }
 
-    handlerRun(handler) {
-        this.handlers[handler.id] = handler;
+    /**
+     * Calls `this.prepareRequestFunction` with normalized options.
+     * @param request
+     * @param handlerOpts
+     */
+    async callPrepareRequestFunction(request, handlerOpts) {
+        // Authenticate the request using a user function (if provided)
+        if (this.prepareRequestFunction) {
+            const funcOpts = {
+                connectionId: request.socket.proxyChainId,
+                request,
+                username: null,
+                password: null,
+                hostname: handlerOpts.trgParsed.hostname,
+                port: handlerOpts.trgParsed.port,
+                isHttp: handlerOpts.isHttp,
+            };
 
-        handler.once('close', ({ stats }) => {
-            this.emit('connectionClosed', {
-                connectionId: handler.id,
-                stats,
-            });
-            delete this.handlers[handler.id];
-            this.log(handler.id, '!!! Closed and removed from server');
-        });
+            const proxyAuth = request.headers['proxy-authorization'];
+            if (proxyAuth) {
+                const auth = parseAuthorizationHeader(proxyAuth);
 
-        handler.once('tunnelConnectResponded', ({ response, socket, head }) => {
-            this.emit('tunnelConnectResponded', {
-                connectionId: handler.id,
-                response,
-                socket,
-                head,
-            });
-        });
+                if (!auth) {
+                    throw new RequestError('Invalid "Proxy-Authorization" header', 400);
+                }
 
-        handler.run();
+                if (auth.type !== 'Basic') {
+                    throw new RequestError('The "Proxy-Authorization" header must have the "Basic" type.', 400);
+                }
+
+                funcOpts.username = auth.username;
+                funcOpts.password = auth.password;
+            }
+
+            // User function returns a result directly or a promise
+            return this.prepareRequestFunction(funcOpts);
+        }
+
+        return { requestAuthentication: false, upstreamProxyUrlParsed: null };
+    }
+
+    /**
+     * Authenticates a new request and determines upstream proxy URL using the user function.
+     * Returns a promise resolving to an object that can be used to run a handler.
+     * @param request
+     */
+    async prepareRequestHandling(request) {
+        const handlerOpts = this.getHandlerOpts(request);
+        const funcResult = await this.callPrepareRequestFunction(request, handlerOpts);
+
+        // If not authenticated, request client to authenticate
+        if (funcResult && funcResult.requestAuthentication) {
+            throw new RequestError(funcResult.failMsg || 'Proxy credentials required.', 407);
+        }
+
+        if (funcResult && funcResult.upstreamProxyUrl) {
+            try {
+                handlerOpts.upstreamProxyUrlParsed = new URL(funcResult.upstreamProxyUrl);
+            } catch (error) {
+                throw new Error(`Invalid "upstreamProxyUrl" provided: ${error} (was "${funcResult.upstreamProxyUrl}"`);
+            }
+
+            if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
+                // eslint-disable-next-line max-len
+                throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
+            }
+        }
+
+        if (funcResult && funcResult.customResponseFunction) {
+            this.log(request.socket.proxyChainId, 'Using custom response function');
+
+            handlerOpts.customResponseFunction = funcResult.customResponseFunction;
+
+            if (!handlerOpts.isHttp) {
+                throw new Error('The "customResponseFunction" option can only be used for HTTP requests.');
+            }
+
+            if (typeof (handlerOpts.customResponseFunction) !== 'function') {
+                throw new Error('The "customResponseFunction" option must be a function.');
+            }
+        }
+
+        if (handlerOpts.upstreamProxyUrlParsed) {
+            this.log(request.socket.proxyChainId, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
+        }
+
+        return handlerOpts;
     }
 
     /**
      * Sends a HTTP error response to the client.
      * @param request
-     * @param err
+     * @param error
      */
-    failRequest(request, err, handlerOpts) {
-        const handlerId = handlerOpts ? handlerOpts.id : null;
+    failRequest(request, error) {
+        const connectionId = request.socket.proxyChainId;
 
-        if (err.name === REQUEST_ERROR_NAME) {
-            this.log(handlerId, `Request failed (status ${err.statusCode}): ${err.message}`);
-            this.sendResponse(request.socket, err.statusCode, err.headers, err.message);
+        if (error.name === 'RequestError') {
+            this.log(connectionId, `Request failed (status ${error.statusCode}): ${error.message}`);
+            this.sendSocketResponse(request.socket, error.statusCode, error.headers, error.message);
         } else {
-            this.log(handlerId, `Request failed with unknown error: ${err.stack || err}`);
-            this.sendResponse(request.socket, 500, null, 'Internal error in proxy server');
-            this.emit('requestFailed', { error: err, request });
+            this.log(connectionId, `Request failed with error: ${error.stack || error}`);
+            this.sendSocketResponse(request.socket, 500, {}, 'Internal error in proxy server');
+            this.emit('requestFailed', { error, request });
         }
 
         // Emit 'connectionClosed' event if request failed and connection was already reported
-        if (handlerOpts) {
-            this.log(handlerId, 'Closed because request failed with error');
-            this.emit('connectionClosed', {
-                connectionId: handlerOpts.id,
-                stats: { srcTxBytes: 0, srcRxBytes: 0 },
-            });
-        }
+        this.log(connectionId, 'Closed because request failed with error');
     }
 
     /**
      * Sends a simple HTTP response to the client and forcibly closes the connection.
+     * This invalidates the ServerResponse instance (if present).
+     * We don't know the state of the response anyway.
+     * Writing directly to the socket seems to be the easiest solution.
      * @param socket
      * @param statusCode
      * @param headers
      * @param message
      */
-    sendResponse(socket, statusCode, headers, message) {
+    sendSocketResponse(socket, statusCode = 500, caseSensitiveHeaders = {}, message = '') {
         try {
-            headers = headers || {};
+            const headers = Object.fromEntries(
+                Object.entries(caseSensitiveHeaders).map(
+                    ([name, value]) => [name.toLowerCase(), value],
+                ),
+            );
 
-            // TODO: We should use fully case-insensitive lookup here!
-            if (!headers['Content-Type'] && !headers['content-type']) {
-                headers['Content-Type'] = 'text/plain; charset=utf-8';
-            }
-            if (statusCode === 407 && !headers['Proxy-Authenticate'] && !headers['proxy-authenticate']) {
-                headers['Proxy-Authenticate'] = `Basic realm="${this.authRealm}"`;
-            }
-            if (!headers.Server) {
-                headers.Server = this.authRealm;
-            }
-            // These headers are required by e.g. PhantomJS, otherwise the connection would time out!
-            if (!headers.Connection) {
-                headers.Connection = 'close';
-            }
-            if (!headers['Content-Length'] && !headers['content-length']) {
-                headers['Content-Length'] = Buffer.byteLength(message);
+            headers.connection = 'close';
+            headers['content-length'] = String(Buffer.byteLength(message));
+
+            // TODO: we should use ??= here
+            headers.server = headers.server || this.authRealm;
+            headers['content-type'] = headers['content-type'] || 'text/plain; charset=utf-8';
+
+            if (statusCode === 407 && !headers['proxy-authenticate']) {
+                headers['proxy-authenticate'] = `Basic realm="${this.authRealm}"`;
             }
 
-            let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode]}\r\n`;
+            let msg = `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode] || 'Unknown Status Code'}\r\n`;
             for (const [key, value] of Object.entries(headers)) {
                 msg += `${key}: ${value}\r\n`;
             }
             msg += `\r\n${message}`;
 
-            // console.log("RESPONSE:\n" + msg);
-
-            socket.write(msg, () => {
-                socket.end();
-
+            socket.setTimeout(1000, () => {
                 // Unfortunately calling end() will not close the socket if client refuses to close it.
                 // Hence calling destroy after a short while. One second should be more than enough
                 // to send out this small amount data.
-                setTimeout(() => {
-                    socket.destroy();
-                }, 1000);
+                socket.destroy();
             });
+
+            socket.end(msg);
         } catch (err) {
-            this.log(null, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
+            this.log(socket.proxyChainId, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
         }
     }
 
@@ -471,21 +469,30 @@ class Server extends EventEmitter {
      * @returns {*}
      */
     getConnectionIds() {
-        return Object.keys(this.handlers);
+        return [...this.connections.keys()];
     }
 
     /**
      * Gets data transfer statistics of a specific proxy connection.
-     * @param {Number} connectionId ID of the connection handler.
+     * @param {Number} connectionId ID of the connection.
      * It is passed to `prepareRequestFunction` function.
      * @return {Object} An object with statistics { srcTxBytes, srcRxBytes, trgTxBytes, trgRxBytes },
      * or null if connection does not exist or has been closed.
      */
     getConnectionStats(connectionId) {
-        const handler = this.handlers && this.handlers[connectionId];
-        if (!handler) return undefined;
+        const socket = this.connections.get(connectionId);
+        if (!socket) return undefined;
 
-        return handler.getStats();
+        const targetStats = getTargetStats(socket);
+
+        const result = {
+            srcTxBytes: socket.bytesWritten,
+            srcRxBytes: socket.bytesRead,
+            trgTxBytes: targetStats.bytesWritten,
+            trgRxBytes: targetStats.bytesRead,
+        };
+
+        return result;
     }
 
     /**
@@ -495,19 +502,21 @@ class Server extends EventEmitter {
      * @param callback
      */
     close(closeConnections, callback) {
-        if (typeof (closeConnections) === 'function') {
+        if (typeof closeConnections === 'function') {
             callback = closeConnections;
             closeConnections = false;
         }
 
         if (closeConnections) {
-            this.log(null, 'Closing pending handlers');
-            let count = 0;
-            for (const handler of Object.values(this.handlers)) {
-                count++;
-                handler.close();
+            this.log(null, 'Closing pending sockets');
+
+            for (const socket of this.connections.values()) {
+                socket.destroy();
             }
-            this.log(null, `Destroyed ${count} pending handlers`);
+
+            this.connections.clear();
+
+            this.log(null, `Destroyed ${this.connections.size} pending sockets`);
         }
 
         if (this.server) {

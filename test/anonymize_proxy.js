@@ -79,7 +79,6 @@ after(function () {
     if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
 });
 
-
 const requestPromised = (opts) => {
     // console.log('requestPromised');
     // console.dir(opts);
@@ -94,7 +93,6 @@ const requestPromised = (opts) => {
         });
     });
 };
-
 
 describe('utils.anonymizeProxy', function () {
     // Need larger timeout for Travis CI
