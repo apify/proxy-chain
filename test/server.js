@@ -15,7 +15,7 @@ const { gotScraping } = require('got-scraping');
 
 const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
 const { Server, RequestError } = require('../src/index');
-const { TargetServer } = require('./target_server');
+const { TargetServer } = require('./utils/target_server');
 const ProxyChain = require('../src/index');
 
 /*
