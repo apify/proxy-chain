@@ -55,13 +55,21 @@ const direct = ({ request, sourceSocket, head, server }) => {
     // Once target socket closes forcibly, the source socket gets paused.
     // We need to enable flowing, otherwise the socket would remain open indefinitely.
     // Nothing would consume the data, we just want to close the socket.
-    sourceSocket.on('close', () => {
-        targetSocket.resume();
+    targetSocket.on('close', () => {
+        sourceSocket.resume();
+
+        if (sourceSocket.writable && !sourceSocket.writableEnded) {
+            sourceSocket.end();
+        }
     });
 
     // Same here.
-    targetSocket.on('close', () => {
-        sourceSocket.resume();
+    sourceSocket.on('close', () => {
+        targetSocket.resume();
+
+        if (targetSocket.writable && !sourceSocket.writableEnded) {
+            targetSocket.end();
+        }
     });
 
     const { proxyChainId } = sourceSocket;
