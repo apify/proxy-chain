@@ -10,6 +10,7 @@ const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../src/index');
 
+let expressServer;
 let proxyServer;
 let proxyPort;
 let testServerPort;
@@ -17,9 +18,12 @@ const proxyAuth = { scheme: 'Basic', username: 'username', password: 'password' 
 let wasProxyCalled = false;
 
 const serverListen = (server, port) => new Promise((resolve, reject) => {
-    server.listen(port, (err) => {
-        if (err) return reject(err);
-        return resolve(port);
+    server.once('error', reject);
+
+    server.listen(port, () => {
+        server.off('error', reject);
+
+        resolve(server.address().port);
     });
 });
 
@@ -64,10 +68,10 @@ before(() => {
 
             app.get('/', (req, res) => res.send('Hello World!'));
 
+            // eslint-disable-next-line prefer-destructuring
             testServerPort = freePorts[1];
             return new Promise((resolve, reject) => {
-                app.listen(testServerPort, (err) => {
-                    if (err) reject(err);
+                expressServer = app.listen(testServerPort, () => {
                     resolve();
                 });
             });
@@ -76,6 +80,9 @@ before(() => {
 
 after(function () {
     this.timeout(5 * 1000);
+
+    expressServer.close();
+
     if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
 });
 
@@ -196,9 +203,7 @@ describe('utils.anonymizeProxy', function () {
             .then(() => {
                 expect(wasProxyCalled).to.equal(true);
             })
-            .then(() => {
-                return closeAnonymizedProxy(proxyUrl1, true);
-            })
+            .then(() => closeAnonymizedProxy(proxyUrl1, true))
             .then((closed) => {
                 expect(closed).to.eql(true);
 
@@ -233,9 +238,9 @@ describe('utils.anonymizeProxy', function () {
 
                 // Test callback-style
                 return new Promise((resolve, reject) => {
-                    closeAnonymizedProxy(proxyUrl2, false, (err, closed) => {
+                    closeAnonymizedProxy(proxyUrl2, false, (err, closed2) => {
                         if (err) return reject(err);
-                        resolve(closed);
+                        resolve(closed2);
                     });
                 });
             })
@@ -260,7 +265,7 @@ describe('utils.anonymizeProxy', function () {
             .then((results) => {
                 const promises = [];
                 proxyUrls = results;
-                for (let i=0; i<N; i++) {
+                for (let i = 0; i < N; i++) {
                     expect(proxyUrls[i]).to.not.contain(`${proxyPort}`);
 
                     // Test call through proxy
@@ -305,20 +310,26 @@ describe('utils.anonymizeProxy', function () {
         const localProxy = http.createServer();
         localProxy.on('connect', onconnect);
 
+        let proxyUrl;
+
         return serverListen(localProxy, 0)
-            .then(() => {
-                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`);
+            .then(() => anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`))
+            .then((url) => {
+                proxyUrl = url;
+
+                return requestPromised({
+                    uri: `https://${host}`,
+                    proxy: proxyUrl,
+                });
             })
-            .then((proxyUrl) => requestPromised({
-                uri: `https://${host}`,
-                proxy: proxyUrl,
-            }))
             .then(() => {
                 expect(false).to.equal(true);
             }, () => {
                 expect(onconnectArgs.headers.host).to.equal(host);
                 expect(onconnectArgs.url).to.equal(host);
-            });
+            })
+            .finally(() => closeAnonymizedProxy(proxyUrl, true))
+            .finally(() => localProxy.close());
     });
 
     it('handles HTTP CONNECT callback properly', function () {
@@ -332,14 +343,16 @@ describe('utils.anonymizeProxy', function () {
             socket.destroy();
         }
 
+        let proxyUrl;
+
         const localProxy = http.createServer();
         localProxy.on('connect', onconnect);
 
         return serverListen(localProxy, 0)
-            .then(() => {
-                return anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`);
-            })
-            .then((proxyUrl) => {
+            .then(() => anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`))
+            .then((url) => {
+                proxyUrl = url;
+
                 listenConnectAnonymizedProxy(proxyUrl, ({ response, socket, head }) => {
                     rawHeadersRetrieved = response.rawHeaders;
                 });
@@ -347,13 +360,13 @@ describe('utils.anonymizeProxy', function () {
                     uri: `https://${host}`,
                     proxy: proxyUrl,
                 })
-                    .catch(() => {
-                        return Promise.resolve();
-                    });
+                    .catch(() => {});
             })
             .then(() => {
                 expect(rawHeadersRetrieved).to.eql(['foo', 'bar']);
-            });
+            })
+            .finally(() => closeAnonymizedProxy(proxyUrl, true))
+            .finally(() => localProxy.close());
     });
 
     it('fails with invalid upstream proxy credentials', () => {
@@ -378,9 +391,7 @@ describe('utils.anonymizeProxy', function () {
                 expect(err.message).to.contains('Received invalid response code: 502'); // Gateway error
                 expect(wasProxyCalled).to.equal(false);
             })
-            .then(() => {
-                return closeAnonymizedProxy(anonymousProxyUrl, true);
-            })
+            .then(() => closeAnonymizedProxy(anonymousProxyUrl, true))
             .then((closed) => {
                 expect(closed).to.eql(true);
             });

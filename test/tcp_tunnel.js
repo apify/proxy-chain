@@ -14,9 +14,12 @@ const destroySocket = (socket) => new Promise((resolve, reject) => {
 });
 
 const serverListen = (server, port) => new Promise((resolve, reject) => {
-    server.listen(port, (err) => {
-        if (err) return reject(err);
-        return resolve(port);
+    server.once('error', reject);
+
+    server.listen(port, () => {
+        server.off('error', reject);
+
+        resolve(server.address().port);
     });
 });
 
@@ -37,19 +40,6 @@ const closeServer = (server, connections) => new Promise((resolve, reject) => {
     });
 });
 
-let targetService;
-const targetServiceConnections = [];
-let proxyServer;
-const proxyServerConnections = [];
-let localConnection;
-
-after(function () {
-    this.timeout(10 * 1000);
-    return closeServer(proxyServer, proxyServerConnections)
-        .then(() => closeServer(targetService, targetServiceConnections))
-        .then(() => destroySocket(localConnection));
-});
-
 describe('tcp_tunnel.createTunnel', () => {
     it('throws error if proxyUrl is not in correct format', () => {
         assert.throws(() => { createTunnel('socks://user:password@whatever.com:123', 'localhost:9000'); }, /must have the "http" protocol/);
@@ -64,45 +54,57 @@ describe('tcp_tunnel.createTunnel', () => {
         assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /Invalid URL/);
     });
     it('correctly tunnels to tcp service and then is able to close the connection', () => {
-        proxyServer = proxy(http.createServer());
+        const proxyServerConnections = [];
+
+        const proxyServer = proxy(http.createServer());
+        proxyServer.on('connection', (conn) => proxyServerConnections.push(conn));
+
+        const targetServiceConnections = [];
+        const targetService = net.createServer();
+        targetService.on('connection', (conn) => {
+            targetServiceConnections.push(conn);
+            conn.setEncoding('utf8');
+            conn.on('data', conn.write);
+            conn.on('error', (err) => { throw err; });
+        });
 
         return serverListen(proxyServer, 0)
-            .then(() => {
-                targetService = net.createServer();
-                targetService.on('connection', (conn) => {
-                    conn.setEncoding('utf8');
-                    conn.on('data', conn.write);
-                    conn.on('error', (err) => { throw err; });
-                });
-                return serverListen(targetService, 0);
+            .then(() => serverListen(targetService, 0))
+            .then((targetServicePort) => {
+                return createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`);
             })
-            .then(() => {
-                return createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetService.address().port}`);
-            })
-            .then(closeTunnel);
+            .then(closeTunnel)
+            .finally(() => closeServer(proxyServer, proxyServerConnections))
+            .finally(() => closeServer(targetService, targetServiceConnections));
     });
     it('correctly tunnels to tcp service and then is able to close the connection when used with callbacks', () => {
-        proxyServer = proxy(http.createServer());
+        const proxyServerConnections = [];
+
+        const proxyServer = proxy(http.createServer());
+        proxyServer.on('connection', (conn) => proxyServerConnections.push(conn));
+
+        const targetServiceConnections = [];
+        const targetService = net.createServer();
+        targetService.on('connection', (conn) => {
+            targetServiceConnections.push(conn);
+            conn.setEncoding('utf8');
+            conn.on('data', conn.write);
+            conn.on('error', (err) => { throw err; });
+        });
 
         return serverListen(proxyServer, 0)
-            .then(() => {
-                targetService = net.createServer();
-                targetService.on('connection', (conn) => {
-                    conn.setEncoding('utf8');
-                    conn.on('data', conn.write);
-                    conn.on('error', (err) => { throw err; });
-                });
-                return serverListen(targetService, 0);
-            })
-            .then(() => new Promise((resolve, reject) => {
-                createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetService.address().port}`, {}, (err, tunnel) => {
+            .then(() => serverListen(targetService, 0))
+            .then((targetServicePort) => new Promise((resolve, reject) => {
+                createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`, {}, (err, tunnel) => {
                     if (err) return reject(err);
                     return resolve(tunnel);
                 });
             }).then((tunnel) => closeTunnel(tunnel, true))
                 .then((result) => {
                     assert.equal(result, true);
-                }));
+                }))
+            .finally(() => closeServer(proxyServer, proxyServerConnections))
+            .finally(() => closeServer(targetService, targetServiceConnections));
     });
     it('creates tunnel that is able to transfer data', () => {
         let tunnel;
@@ -113,21 +115,23 @@ describe('tcp_tunnel.createTunnel', () => {
             'testC',
         ];
 
-        proxyServer = proxy(http.createServer());
+        const proxyServerConnections = [];
+
+        const proxyServer = proxy(http.createServer());
         proxyServer.on('connection', (conn) => proxyServerConnections.push(conn));
 
+        const targetServiceConnections = [];
+        const targetService = net.createServer();
+        targetService.on('connection', (conn) => {
+            targetServiceConnections.push(conn);
+            conn.setEncoding('utf8');
+            conn.on('data', conn.write);
+            conn.on('error', (err) => conn.write(JSON.stringify(err)));
+        });
+
         return serverListen(proxyServer, 0)
-            .then(() => {
-                targetService = net.createServer();
-                targetService.on('connection', (conn) => {
-                    targetServiceConnections.push(conn);
-                    conn.setEncoding('utf8');
-                    conn.on('data', conn.write);
-                    conn.on('error', (err) => conn.write(JSON.stringify(err)));
-                });
-                return serverListen(targetService, 0);
-            })
-            .then(() => createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetService.address().port}`))
+            .then(() => serverListen(targetService, 0))
+            .then((targetServicePort) => createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`))
             .then((newTunnel) => {
                 tunnel = newTunnel;
 
@@ -136,7 +140,6 @@ describe('tcp_tunnel.createTunnel', () => {
                 return connect(port);
             })
             .then((connection) => {
-                localConnection = connection;
                 connection.setEncoding('utf8');
                 connection.on('data', (d) => { response += d; });
                 expected.forEach((text) => connection.write(`${text}\r\n`));
@@ -148,6 +151,8 @@ describe('tcp_tunnel.createTunnel', () => {
             .then(() => {
                 expect(response.trim().split('\r\n')).to.be.deep.eql(expected);
                 return closeTunnel(tunnel);
-            });
+            })
+            .finally(() => closeServer(proxyServer, proxyServerConnections))
+            .finally(() => closeServer(targetService, targetServiceConnections));
     });
 });

@@ -176,6 +176,7 @@ describe('tools.nodeify()', () => {
             const promise = asyncFunction(true);
             await new Promise((resolve) => {
                 nodeify(promise, (error, result) => {
+                    expect(result, undefined);
                     expect(error.message).to.eql('Test error');
                     resolve();
                 });

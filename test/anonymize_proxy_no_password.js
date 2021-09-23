@@ -10,6 +10,7 @@ const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy } = require('../src/index');
 
+let expressServer;
 let proxyServer;
 let proxyPort;
 let testServerPort;
@@ -59,8 +60,7 @@ before(() => {
 
             testServerPort = freePorts[1];
             return new Promise((resolve, reject) => {
-                app.listen(testServerPort, (err) => {
-                    if (err) reject(err);
+                expressServer = app.listen(testServerPort, () => {
                     resolve();
                 });
             });
@@ -69,9 +69,10 @@ before(() => {
 
 after(function () {
     this.timeout(5 * 1000);
+    expressServer.close();
+
     if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
 });
-
 
 const requestPromised = (opts) => {
     // console.log('requestPromised');

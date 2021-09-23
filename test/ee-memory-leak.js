@@ -4,10 +4,13 @@ const { assert } = require('chai');
 const ProxyChain = require('..');
 
 describe('ProxyChain server', () => {
+    let proxyServer;
     let server;
     let port;
 
     before(() => {
+        proxyServer = new ProxyChain.Server();
+
         server = http.createServer((_request, response) => {
             response.end('Hello, world!');
         }).listen(0);
@@ -16,12 +19,11 @@ describe('ProxyChain server', () => {
     });
 
     after(() => {
+        proxyServer.close();
         server.close();
     });
 
     it('does not leak events', (done) => {
-        const proxyServer = new ProxyChain.Server();
-
         let socket;
         let registeredCount;
         proxyServer.server.prependOnceListener('request', (request) => {
