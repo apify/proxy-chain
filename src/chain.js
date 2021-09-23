@@ -6,7 +6,7 @@ const { getBasic } = require('./utils/get_basic');
  * @typedef Options
  *
  * @property {ClientRequest} request
- * @property {net.Socket} source - a stream where to pipe from
+ * @property {net.Socket} sourceSocket - a stream where to pipe from
  * @property {Buffer} head - optional, the response buffer attached to CONNECT request
  * @property {*} handlerOpts - handler options that contain upstreamProxyUrlParsed
  * @property {http.Server} server - the server that we will use for logging
@@ -16,12 +16,12 @@ const { getBasic } = require('./utils/get_basic');
 /**
  * @param {Options} options
  */
-const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
+const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) => {
     if (head && head.length > 0) {
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
     }
 
-    const { proxyChainId } = source;
+    const { proxyChainId } = sourceSocket;
 
     const { upstreamProxyUrlParsed: proxy } = handlerOpts;
 
@@ -40,60 +40,60 @@ const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
 
     const client = http.request(proxy.origin, options);
 
-    client.on('connect', (response, socket, clientHead) => {
-        countTargetBytes(source, socket);
+    client.on('connect', (response, targetSocket, clientHead) => {
+        countTargetBytes(sourceSocket, targetSocket);
 
-        if (source.readyState !== 'open') {
+        if (sourceSocket.readyState !== 'open') {
             // Sanity check, should never reach.
-            socket.destroy();
+            targetSocket.destroy();
             return;
         }
 
-        socket.on('error', (error) => {
+        targetSocket.on('error', (error) => {
             server.log(proxyChainId, `Chain Destination Socket Error: ${error.stack}`);
 
-            source.destroy();
+            sourceSocket.destroy();
         });
 
-        source.on('error', (error) => {
+        sourceSocket.on('error', (error) => {
             server.log(proxyChainId, `Chain Source Socket Error: ${error.stack}`);
 
-            socket.destroy();
+            targetSocket.destroy();
         });
 
         if (response.statusCode !== 200) {
             server.log(proxyChainId, `Failed to authenticate upstream proxy: ${response.statusCode}`);
 
-            source.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
+            sourceSocket.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
             return;
         }
 
         if (clientHead.length > 0) {
-            socket.destroy(new Error(`Unexpected data on CONNECT: ${clientHead.length} bytes`));
+            targetSocket.destroy(new Error(`Unexpected data on CONNECT: ${clientHead.length} bytes`));
             return;
         }
 
         server.emit('tunnelConnectResponded', {
             response,
-            socket,
+            socket: targetSocket,
             head: clientHead,
         });
 
-        source.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
+        sourceSocket.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
 
-        source.pipe(socket);
-        socket.pipe(source);
+        sourceSocket.pipe(targetSocket);
+        targetSocket.pipe(sourceSocket);
 
         // Once target socket closes forcibly, the source socket gets paused.
         // We need to enable flowing, otherwise the socket would remain open indefinitely.
         // Nothing would consume the data, we just want to close the socket.
-        source.on('close', () => {
-            socket.resume();
+        sourceSocket.on('close', () => {
+            targetSocket.resume();
         });
 
         // Same here.
-        socket.on('close', () => {
-            source.resume();
+        targetSocket.on('close', () => {
+            sourceSocket.resume();
         });
     });
 
@@ -101,17 +101,17 @@ const chain = ({ request, source, head, handlerOpts, server, isPlain }) => {
         server.log(proxyChainId, `Failed to connect to upstream proxy: ${error.stack}`);
 
         // The end socket may get connected after the client to proxy one gets disconnected.
-        if (source.readyState === 'open') {
-            source.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
+        if (sourceSocket.readyState === 'open') {
+            sourceSocket.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
         }
     });
 
-    source.on('error', () => {
+    sourceSocket.on('error', () => {
         client.destroy();
     });
 
     // In case the client ends the socket too early
-    source.on('close', () => {
+    sourceSocket.on('close', () => {
         client.destroy();
     });
 

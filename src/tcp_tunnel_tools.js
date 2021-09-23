@@ -40,20 +40,20 @@ function createTunnel(proxyUrl, targetHost, options, callback) {
 
     server.log = log;
 
-    server.on('connection', (srcSocket) => {
-        const remoteAddress = `${srcSocket.remoteAddress}:${srcSocket.remotePort}`;
+    server.on('connection', (sourceSocket) => {
+        const remoteAddress = `${sourceSocket.remoteAddress}:${sourceSocket.remotePort}`;
 
         log(`new client connection from ${remoteAddress}`);
 
-        srcSocket.on('close', (hadError) => {
+        sourceSocket.on('close', (hadError) => {
             log(`connection from ${remoteAddress} closed, hadError=${hadError}`);
         });
 
-        runningServers[getAddress(server)].connections.push(srcSocket);
+        runningServers[getAddress(server)].connections.push(sourceSocket);
 
         chain({
             request: { url: targetHost },
-            source: srcSocket,
+            sourceSocket,
             handlerOpts: { upstreamProxyUrlParsed: parsedProxyUrl },
             server,
             isPlain: true,

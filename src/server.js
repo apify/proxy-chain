@@ -201,7 +201,7 @@ class Server extends EventEmitter {
             const handlerOpts = await this.prepareRequestHandling(request);
             handlerOpts.srcHead = head;
 
-            const data = { request, source: socket, head, handlerOpts, server: this };
+            const data = { request, sourceSocket: socket, head, handlerOpts, server: this };
 
             if (handlerOpts.upstreamProxyUrlParsed) {
                 this.log(socket.proxyChainId, 'Using HandlerTunnelChain');

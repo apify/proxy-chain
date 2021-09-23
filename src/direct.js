@@ -5,7 +5,7 @@ const { countTargetBytes } = require('./utils/count_target_bytes');
  * @typedef Options
  *
  * @property {ClientRequest} request
- * @property {net.Socket} source - a stream where to pipe from
+ * @property {net.Socket} sourceSocket - a stream where to pipe from
  * @property {Buffer} head - optional, the response buffer attached to CONNECT request
  * @property {*} handlerOpts - handler options that contain upstreamProxyUrlParsed
  * @property {http.Server} server - the server that we will use for logging
@@ -15,7 +15,7 @@ const { countTargetBytes } = require('./utils/count_target_bytes');
 /**
  * @param {Options} options
  */
-const direct = ({ request, source, head, server }) => {
+const direct = ({ request, sourceSocket, head, server }) => {
     const url = new URL(`connect://${request.url}`);
 
     if (!url.hostname) {
@@ -39,43 +39,43 @@ const direct = ({ request, source, head, server }) => {
         options.host = options.host.slice(1, -1);
     }
 
-    const socket = net.createConnection(options, () => {
+    const targetSocket = net.createConnection(options, () => {
         try {
-            source.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
+            sourceSocket.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
         } catch (error) {
-            source.destroy(error);
+            sourceSocket.destroy(error);
         }
     });
 
-    countTargetBytes(source, socket);
+    countTargetBytes(sourceSocket, targetSocket);
 
-    source.pipe(socket);
-    socket.pipe(source);
+    sourceSocket.pipe(targetSocket);
+    targetSocket.pipe(sourceSocket);
 
     // Once target socket closes forcibly, the source socket gets paused.
     // We need to enable flowing, otherwise the socket would remain open indefinitely.
     // Nothing would consume the data, we just want to close the socket.
-    source.on('close', () => {
-        socket.resume();
+    sourceSocket.on('close', () => {
+        targetSocket.resume();
     });
 
     // Same here.
-    socket.on('close', () => {
-        source.resume();
+    targetSocket.on('close', () => {
+        sourceSocket.resume();
     });
 
-    const { proxyChainId } = source;
+    const { proxyChainId } = sourceSocket;
 
-    socket.on('error', (error) => {
+    targetSocket.on('error', (error) => {
         server.log(proxyChainId, `Direct Destination Socket Error: ${error.stack}`);
 
-        source.destroy();
+        sourceSocket.destroy();
     });
 
-    source.on('error', (error) => {
+    sourceSocket.on('error', (error) => {
         server.log(proxyChainId, `Direct Source Socket Error: ${error.stack}`);
 
-        socket.destroy();
+        targetSocket.destroy();
     });
 };
 
