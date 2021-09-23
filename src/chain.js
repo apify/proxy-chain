@@ -90,7 +90,7 @@ const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) =>
         targetSocket.on('close', () => {
             sourceSocket.resume();
 
-            if (sourceSocket.writable && !sourceSocket.writableEnded) {
+            if (sourceSocket.writable) {
                 sourceSocket.end();
             }
         });
@@ -99,7 +99,7 @@ const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) =>
         sourceSocket.on('close', () => {
             targetSocket.resume();
 
-            if (targetSocket.writable && !sourceSocket.writableEnded) {
+            if (targetSocket.writable) {
                 targetSocket.end();
             }
         });

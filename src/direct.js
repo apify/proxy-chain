@@ -58,7 +58,7 @@ const direct = ({ request, sourceSocket, head, server }) => {
     targetSocket.on('close', () => {
         sourceSocket.resume();
 
-        if (sourceSocket.writable && !sourceSocket.writableEnded) {
+        if (sourceSocket.writable) {
             sourceSocket.end();
         }
     });
@@ -67,7 +67,7 @@ const direct = ({ request, sourceSocket, head, server }) => {
     sourceSocket.on('close', () => {
         targetSocket.resume();
 
-        if (targetSocket.writable && !sourceSocket.writableEnded) {
+        if (targetSocket.writable) {
             targetSocket.end();
         }
     });
