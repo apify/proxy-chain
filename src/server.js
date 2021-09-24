@@ -418,13 +418,13 @@ class Server extends EventEmitter {
             }
             msg += `\r\n${message}`;
 
+            // Unfortunately it's not possible to send RST in Node.js yet.
+            // See https://github.com/nodejs/node/issues/27428
             socket.setTimeout(1000, () => {
-                // Unfortunately calling end() will not close the socket if client refuses to close it.
-                // Hence calling destroy after a short while. One second should be more than enough
-                // to send out this small amount data.
                 socket.destroy();
             });
 
+            // This sends FIN, meaning we still can receive data.
             socket.end(msg);
         } catch (err) {
             this.log(socket.proxyChainId, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
