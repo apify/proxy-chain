@@ -43,13 +43,17 @@ function createTunnel(proxyUrl, targetHost, options, callback) {
     server.on('connection', (sourceSocket) => {
         const remoteAddress = `${sourceSocket.remoteAddress}:${sourceSocket.remotePort}`;
 
+        const { connections } = runningServers[getAddress(server)];
+
         log(`new client connection from ${remoteAddress}`);
 
         sourceSocket.on('close', (hadError) => {
+            connections.delete(sourceSocket);
+
             log(`connection from ${remoteAddress} closed, hadError=${hadError}`);
         });
 
-        runningServers[getAddress(server)].connections.push(sourceSocket);
+        connections.add(sourceSocket);
 
         chain({
             request: { url: targetHost },
@@ -68,7 +72,7 @@ function createTunnel(proxyUrl, targetHost, options, callback) {
             const address = getAddress(server);
 
             server.off('error', reject);
-            runningServers[address] = { server, connections: [] };
+            runningServers[address] = { server, connections: new Set() };
 
             log('server listening to ', address);
 
@@ -89,7 +93,9 @@ function closeTunnel(serverPath, closeConnections, callback) {
     const promise = new Promise((resolve) => {
         if (!runningServers[serverPath]) return resolve(false);
         if (!closeConnections) return resolve(true);
-        runningServers[serverPath].connections.forEach((connection) => connection.destroy());
+        for (const connection of runningServers[serverPath].connections) {
+            connection.destroy();
+        }
         resolve(true);
     })
         .then((serverExists) => new Promise((resolve) => {
