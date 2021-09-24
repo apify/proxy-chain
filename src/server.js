@@ -204,11 +204,11 @@ class Server extends EventEmitter {
             const data = { request, sourceSocket: socket, head, handlerOpts, server: this };
 
             if (handlerOpts.upstreamProxyUrlParsed) {
-                this.log(socket.proxyChainId, 'Using HandlerTunnelChain');
+                this.log(socket.proxyChainId, `Using HandlerTunnelChain with ${redactUrl(handlerOpts.upstreamProxyUrlParsed)} to ${request.url}`);
                 return await chain(data);
             }
 
-            this.log(socket.proxyChainId, 'Using HandlerTunnelDirect');
+            this.log(socket.proxyChainId, `Using HandlerTunnelDirect to ${request.url}`);
             return await direct(data);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error));
