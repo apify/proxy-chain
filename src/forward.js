@@ -22,6 +22,7 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
     const options = {
         method: request.method,
         headers: validHeadersOnly(request.rawHeaders),
+        insecureHTTPParser: true,
     };
 
     // In case of proxy the path needs to be an absolute URL
