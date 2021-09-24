@@ -1,6 +1,18 @@
 const http = require('http');
+const { Buffer } = require('buffer');
 const { countTargetBytes } = require('./utils/count_target_bytes');
 const { getBasic } = require('./utils/get_basic');
+
+const createHttpResponse = (statusCode, message) => {
+    return [
+        `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode] || 'Unknown Status Code'}`,
+        'Connection: close',
+        `Date: ${(new Date()).toUTCString()}`,
+        `Content-Length: ${Buffer.byteLength(message)}`,
+        ``,
+        message,
+    ].join('\r\n');
+};
 
 /**
  * @typedef Options
@@ -64,7 +76,12 @@ const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) =>
         if (response.statusCode !== 200) {
             server.log(proxyChainId, `Failed to authenticate upstream proxy: ${response.statusCode}`);
 
-            sourceSocket.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
+            if (isPlain) {
+                sourceSocket.end();
+            } else {
+                sourceSocket.end(createHttpResponse(502, ''));
+            }
+
             return;
         }
 
@@ -110,7 +127,11 @@ const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) =>
 
         // The end socket may get connected after the client to proxy one gets disconnected.
         if (sourceSocket.readyState === 'open') {
-            sourceSocket.end(isPlain ? '' : 'HTTP/1.1 502 Bad Gateway\r\n\r\n');
+            if (isPlain) {
+                sourceSocket.end();
+            } else {
+                sourceSocket.end(createHttpResponse(502, ''));
+            }
         }
     });
 

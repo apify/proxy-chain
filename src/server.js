@@ -1,6 +1,7 @@
 const http = require('http');
 const util = require('util');
-const EventEmitter = require('events');
+const { EventEmitter } = require('events');
+const { Buffer } = require('buffer');
 const { parseAuthorizationHeader } = require('./utils/parse_authorization_header');
 const { redactUrl } = require('./utils/redact_url');
 const { nodeify } = require('./utils/nodeify');
@@ -204,11 +205,11 @@ class Server extends EventEmitter {
             const data = { request, sourceSocket: socket, head, handlerOpts, server: this };
 
             if (handlerOpts.upstreamProxyUrlParsed) {
-                this.log(socket.proxyChainId, `Using HandlerTunnelChain with ${redactUrl(handlerOpts.upstreamProxyUrlParsed)} to ${request.url}`);
+                this.log(socket.proxyChainId, `Using HandlerTunnelChain => ${request.url}`);
                 return await chain(data);
             }
 
-            this.log(socket.proxyChainId, `Using HandlerTunnelDirect to ${request.url}`);
+            this.log(socket.proxyChainId, `Using HandlerTunnelDirect => ${request.url}`);
             return await direct(data);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error));
@@ -402,6 +403,7 @@ class Server extends EventEmitter {
             );
 
             headers.connection = 'close';
+            headers.date = (new Date()).toUTCString();
             headers['content-length'] = String(Buffer.byteLength(message));
 
             // TODO: we should use ??= here
