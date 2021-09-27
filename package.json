@@ -2,7 +2,7 @@
   "name": "proxy-chain",
   "version": "1.0.4",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
-  "main": "src/index.js",
+  "main": "build/index.js",
   "keywords": [
     "proxy",
     "squid",
@@ -28,46 +28,49 @@
   },
   "homepage": "https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212",
   "files": [
-    "src"
+    "dist"
   ],
   "scripts": {
-    "local-proxy": "node ./src/run_locally.js",
+    "build:watch": "tsc -w",
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build",
+    "local-proxy": "node ./dist/run_locally.js",
     "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=14"
   },
   "devDependencies": {
-    "@apify/eslint-config": "^0.1.4",
-    "basic-auth": "^2.0.0",
+    "@apify/eslint-config-ts": "^0.1.4",
+    "@apify/tsconfig": "^0.1.0",
+    "@types/jest": "^27.0.2",
+    "@types/node": "^16.10.1",
+    "@typescript-eslint/eslint-plugin": "^4.31.2",
+    "basic-auth": "^2.0.1",
     "basic-auth-parser": "^0.0.2",
-    "body-parser": "^1.18.2",
-    "chai": "^4.3.0",
+    "body-parser": "^1.19.0",
+    "chai": "^4.3.4",
     "cross-env": "^7.0.3",
-    "eslint": "^7.19.0",
-    "eslint-config-airbnb": "^18.0.1",
-    "eslint-config-airbnb-base": "^14.0.0",
-    "eslint-plugin-import": "^2.2.0",
-    "eslint-plugin-jsx-a11y": "^6.2.3",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-react": "^7.0.1",
-    "express": "^4.16.2",
-    "faye-websocket": "^0.11.3",
+    "eslint": "^7.32.0",
+    "express": "^4.17.1",
+    "faye-websocket": "^0.11.4",
     "got-scraping": "^3.2.4-beta.0",
-    "isparta": "^4.0.0",
-    "mocha": "^9.0.3",
+    "isparta": "^4.1.1",
+    "mocha": "^9.1.2",
     "nyc": "^15.1.0",
     "phantomjs-prebuilt": "^2.1.16",
     "portastic": "^1.0.1",
-    "proxy": "^1.0.1",
-    "request": "^2.83.0",
+    "proxy": "^1.0.2",
+    "request": "^2.88.2",
+    "rimraf": "^3.0.2",
     "sinon": "^11.1.2",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
     "underscore": "^1.13.1",
-    "ws": "^8.0.0"
+    "ws": "^8.2.2"
   },
   "nyc": {
     "reporter": [

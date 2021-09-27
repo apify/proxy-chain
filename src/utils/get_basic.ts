@@ -1,6 +1,7 @@
-const { decodeURIComponentSafe } = require('./decode_uri_component_safe');
+import { URL } from 'url';
+import { decodeURIComponentSafe } from './decode_uri_component_safe';
 
-const getBasic = (url) => {
+export const getBasic = (url: URL): string => {
     const username = decodeURIComponentSafe(url.username);
     const password = decodeURIComponentSafe(url.password);
     const auth = `${username}:${password}`;
@@ -11,5 +12,3 @@ const getBasic = (url) => {
 
     return `Basic ${Buffer.from(auth).toString('base64')}`;
 };
-
-module.exports.getBasic = getBasic;

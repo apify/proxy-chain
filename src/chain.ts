@@ -1,9 +1,11 @@
-const http = require('http');
-const { Buffer } = require('buffer');
-const { countTargetBytes } = require('./utils/count_target_bytes');
-const { getBasic } = require('./utils/get_basic');
+import net from 'net';
+import http from 'http';
+import { Buffer } from 'buffer';
+import { countTargetBytes } from './utils/count_target_bytes';
+import { getBasic } from './utils/get_basic';
+import type { Server } from './server';
 
-const createHttpResponse = (statusCode, message) => {
+const createHttpResponse = (statusCode: number, message: string) => {
     return [
         `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode] || 'Unknown Status Code'}`,
         'Connection: close',
@@ -14,35 +16,43 @@ const createHttpResponse = (statusCode, message) => {
     ].join('\r\n');
 };
 
-/**
- * @typedef Options
- *
- * @property {ClientRequest} request
- * @property {net.Socket} sourceSocket - a stream where to pipe from
- * @property {Buffer} head - optional, the response buffer attached to CONNECT request
- * @property {*} handlerOpts - handler options that contain upstreamProxyUrlParsed
- * @property {http.Server} server - the server that we will use for logging
- * @property {boolean} isPlain - whether to send HTTP CONNECT response
- */
+interface Options {
+    method: string;
+    headers: string[];
+    path?: string;
+}
 
-/**
- * @param {Options} options
- */
-const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) => {
+export const chain = (
+    {
+        request,
+        sourceSocket,
+        head,
+        handlerOpts,
+        server,
+        isPlain,
+    }: {
+        request: http.IncomingMessage,
+        sourceSocket: net.Socket,
+        head: Buffer,
+        handlerOpts: any,
+        server: Server,
+        isPlain: boolean,
+    },
+): void => {
     if (head && head.length > 0) {
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
     }
 
-    const { proxyChainId } = sourceSocket;
+    const { proxyChainId } = sourceSocket as unknown as { proxyChainId: unknown };
 
     const { upstreamProxyUrlParsed: proxy } = handlerOpts;
 
-    const options = {
+    const options: Options = {
         method: 'CONNECT',
         path: request.url,
         headers: [
             'host',
-            request.url,
+            request.url!,
         ],
     };
 
@@ -50,11 +60,12 @@ const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) =>
         options.headers.push('proxy-authorization', getBasic(proxy));
     }
 
-    const client = http.request(proxy.origin, options);
+    const client = http.request(proxy.origin, options as unknown as http.ClientRequestArgs);
 
     client.on('connect', (response, targetSocket, clientHead) => {
         countTargetBytes(sourceSocket, targetSocket);
 
+        // @ts-expect-error Missing types
         if (sourceSocket.readyState !== 'open') {
             // Sanity check, should never reach.
             targetSocket.destroy();
@@ -126,6 +137,7 @@ const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) =>
         server.log(proxyChainId, `Failed to connect to upstream proxy: ${error.stack}`);
 
         // The end socket may get connected after the client to proxy one gets disconnected.
+        // @ts-expect-error Missing types
         if (sourceSocket.readyState === 'open') {
             if (isPlain) {
                 sourceSocket.end();
@@ -146,5 +158,3 @@ const chain = ({ request, sourceSocket, head, handlerOpts, server, isPlain }) =>
 
     client.end();
 };
-
-module.exports.chain = chain;

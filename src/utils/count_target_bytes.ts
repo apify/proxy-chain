@@ -1,9 +1,25 @@
+import net from 'net';
+
 const targetBytesWritten = Symbol('targetBytesWritten');
 const targetBytesRead = Symbol('targetBytesRead');
 const targets = Symbol('targets');
 const calculateTargetStats = Symbol('calculateTargetStats');
 
-const countTargetBytes = (source, target) => {
+type Stats = { bytesWritten: number | null, bytesRead: number | null };
+
+interface Extras {
+    [targetBytesWritten]: number;
+    [targetBytesRead]: number;
+    [targets]: Set<net.Socket>;
+    [calculateTargetStats]: () => Stats;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+function typeSocket(source: unknown): asserts source is net.Socket & Extras {};
+
+export const countTargetBytes = (source: net.Socket, target: net.Socket): void => {
+    typeSocket(source);
+
     source[targetBytesWritten] = source[targetBytesWritten] || 0;
     source[targetBytesRead] = source[targetBytesRead] || 0;
     source[targets] = source[targets] || new Set();
@@ -33,7 +49,7 @@ const countTargetBytes = (source, target) => {
     }
 };
 
-const getTargetStats = (socket) => {
+export const getTargetStats = (socket: net.Socket & Extras): Stats => {
     if (socket[calculateTargetStats]) {
         return socket[calculateTargetStats]();
     }
@@ -43,6 +59,3 @@ const getTargetStats = (socket) => {
         bytesRead: null,
     };
 };
-
-module.exports.countTargetBytes = countTargetBytes;
-module.exports.getTargetStats = getTargetStats;

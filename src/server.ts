@@ -1,16 +1,16 @@
-const http = require('http');
-const util = require('util');
-const { EventEmitter } = require('events');
-const { Buffer } = require('buffer');
-const { parseAuthorizationHeader } = require('./utils/parse_authorization_header');
-const { redactUrl } = require('./utils/redact_url');
-const { nodeify } = require('./utils/nodeify');
-const { getTargetStats } = require('./utils/count_target_bytes');
-const { RequestError } = require('./request_error');
-const { chain } = require('./chain');
-const { forward } = require('./forward');
-const { direct } = require('./direct');
-const { handleCustomResponse } = require('./custom_response');
+import http from 'http';
+import util from 'util';
+import { EventEmitter } from 'events';
+import { Buffer } from 'buffer';
+import { parseAuthorizationHeader } from './utils/parse_authorization_header';
+import { redactUrl } from './utils/redact_url';
+import { nodeify } from './utils/nodeify';
+import { getTargetStats } from './utils/count_target_bytes';
+import { RequestError } from './request_error';
+import { chain } from './chain';
+import { forward } from './forward';
+import { direct } from './direct';
+import { handleCustomResponse } from './custom_response';
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -36,7 +36,7 @@ const DEFAULT_PROXY_SERVER_PORT = 8000;
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
  */
-class Server extends EventEmitter {
+export class Server extends EventEmitter {
     /**
      * Initializes a new instance of Server class.
      * @param options
@@ -438,7 +438,7 @@ class Server extends EventEmitter {
      * @param callback Optional callback
      * @return {(Promise|undefined)}
      */
-    listen(callback) {
+    listen(callback?) {
         const promise = new Promise((resolve, reject) => {
             // Unfortunately server.listen() is not a normal function that fails on error,
             // so we need this trickery
@@ -529,7 +529,3 @@ class Server extends EventEmitter {
         }
     }
 }
-
-module.exports = {
-    Server,
-};

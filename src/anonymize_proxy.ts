@@ -1,8 +1,9 @@
-const { Server } = require('./server');
-const { nodeify } = require('./utils/nodeify');
+import { URL } from 'url';
+import { Server } from './server';
+import { nodeify } from './utils/nodeify';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
-const anonymizedProxyUrlToServer = {};
+const anonymizedProxyUrlToServer: Record<string, Server> = {};
 
 /**
  * Parses and validates a HTTP proxy URL. If the proxy requires authentication, then the function
@@ -12,7 +13,7 @@ const anonymizedProxyUrlToServer = {};
  * @return If no callback was supplied, returns a promise that resolves to a String with
  * anonymous proxy URL or the original URL if it was already anonymous.
  */
-const anonymizeProxy = (proxyUrl, callback) => {
+export const anonymizeProxy = (proxyUrl: string, callback?: (error?: NodeJS.ErrnoException) => void): Promise<string> => {
     const parsedProxyUrl = new URL(proxyUrl);
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error('Invalid "proxyUrl" option: only HTTP proxies are currently supported.');
@@ -23,7 +24,7 @@ const anonymizeProxy = (proxyUrl, callback) => {
         return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
-    let server;
+    let server: Server;
 
     const startServer = () => {
         return Promise.resolve()
@@ -53,8 +54,6 @@ const anonymizeProxy = (proxyUrl, callback) => {
     return nodeify(promise, callback);
 };
 
-module.exports.anonymizeProxy = anonymizeProxy;
-
 /**
  * Closes anonymous proxy previously started by `anonymizeProxy()`.
  * If proxy was not found or was already closed, the function has no effect
@@ -65,7 +64,7 @@ module.exports.anonymizeProxy = anonymizeProxy;
  * @param callback Optional callback
  * @returns Returns a promise if no callback was supplied
  */
-const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) => {
+export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) => {
     if (typeof anonymizedProxyUrl !== 'string') {
         throw new Error('The "anonymizedProxyUrl" parameter must be a string');
     }
@@ -84,8 +83,6 @@ const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) =>
     return nodeify(promise, callback);
 };
 
-module.exports.closeAnonymizedProxy = closeAnonymizedProxy;
-
 /**
  * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy
  * Useful for some proxies that are using headers to send information like ProxyMesh
@@ -96,7 +93,7 @@ module.exports.closeAnonymizedProxy = closeAnonymizedProxy;
  * @returns `true` if the callback is successfully configured, otherwise `false` (e.g. when an
  * invalid proxy URL is given).
  */
-const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRespondedCallback) => {
+export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRespondedCallback) => {
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
         return false;
@@ -106,5 +103,3 @@ const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectResponded
     });
     return true;
 };
-
-module.exports.listenConnectAnonymizedProxy = listenConnectAnonymizedProxy;

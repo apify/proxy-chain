@@ -1,10 +1,19 @@
-/**
- * @param {http.IncomingMessage} request
- * @param {http.ServerResponse} response
- * @param {*} handlerOpts
- * @returns {Promise}
- */
-const handleCustomResponse = async (request, response, handlerOpts) => {
+import http from 'http';
+
+interface Result {
+    statusCode?: number;
+    headers?: Record<string, string>;
+    body?: string;
+    encoding?: BufferEncoding;
+}
+
+export const handleCustomResponse = async (
+    request: http.IncomingMessage,
+    response: http.ServerResponse,
+    handlerOpts: {
+        customResponseFunction: () => Result | Promise<Result>,
+    },
+): Promise<void> => {
     const { customResponseFunction } = handlerOpts;
     if (!customResponseFunction) {
         throw new Error('The "customResponseFunction" option is required');
@@ -20,11 +29,9 @@ const handleCustomResponse = async (request, response, handlerOpts) => {
 
     if (customResponse.headers) {
         for (const [key, value] of Object.entries(customResponse.headers)) {
-            response.setHeader(key, value);
+            response.setHeader(key, value as string);
         }
     }
 
-    response.end(customResponse.body, customResponse.encoding);
+    response.end(customResponse.body, customResponse.encoding!);
 };
-
-module.exports.handleCustomResponse = handleCustomResponse;

@@ -1,26 +1,31 @@
-const http = require('http');
-const https = require('https');
-const stream = require('stream');
-const util = require('util');
-const { validHeadersOnly } = require('./utils/valid_headers_only');
-const { getBasic } = require('./utils/get_basic');
-const { countTargetBytes } = require('./utils/count_target_bytes');
+import http from 'http';
+import https from 'https';
+import stream from 'stream';
+import util from 'util';
+import { validHeadersOnly } from './utils/valid_headers_only';
+import { getBasic } from './utils/get_basic';
+import { countTargetBytes } from './utils/count_target_bytes';
 
 const pipeline = util.promisify(stream.pipeline);
 
-/**
- * @param {http.IncomingMessage} request
- * @param {http.ServerResponse} response
- * @param {*} handlerOpts
- * @returns {Promise}
- */
-// eslint-disable-next-line no-async-promise-executor
-const forward = async (request, response, handlerOpts) => new Promise(async (resolve, reject) => {
+interface Options {
+    method: string;
+    headers: string[];
+    insecureHTTPParser: boolean;
+    path?: string;
+}
+
+export const forward = async (
+    request: http.IncomingMessage,
+    response: http.ServerResponse,
+    handlerOpts: any,
+    // eslint-disable-next-line no-async-promise-executor
+): Promise<void> => new Promise(async (resolve, reject) => {
     const proxy = handlerOpts.upstreamProxyUrlParsed;
     const origin = proxy ? proxy.origin : request.url;
 
-    const options = {
-        method: request.method,
+    const options: Options = {
+        method: request.method!,
         headers: validHeadersOnly(request.rawHeaders),
         insecureHTTPParser: true,
     };
@@ -41,11 +46,11 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
 
     const fn = origin.startsWith('https:') ? https.request : http.request;
 
-    const client = fn(origin, options, async (clientResponse) => {
+    const client = fn(origin, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
         try {
             // This is necessary to prevent Node.js throwing an error
             let { statusCode } = clientResponse;
-            if (statusCode < 100 || statusCode > 999) {
+            if (statusCode! < 100 || statusCode! > 999) {
                 statusCode = 502;
             }
 
@@ -56,7 +61,7 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
             }
 
             response.writeHead(
-                statusCode,
+                statusCode!,
                 clientResponse.statusMessage,
                 validHeadersOnly(clientResponse.rawHeaders),
             );
@@ -84,10 +89,8 @@ const forward = async (request, response, handlerOpts) => new Promise(async (res
             client,
         );
     } catch (error) {
-        error.proxy = proxy;
+        (error as any).proxy = proxy;
 
         reject(error);
     }
 });
-
-module.exports = { forward };

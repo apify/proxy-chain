@@ -1,21 +1,23 @@
-const net = require('net');
-const { countTargetBytes } = require('./utils/count_target_bytes');
+import { Buffer } from 'buffer';
+import { URL } from 'url';
+import net from 'net';
+import http from 'http';
+import { countTargetBytes } from './utils/count_target_bytes';
+import type { Server } from './server';
 
-/**
- * @typedef Options
- *
- * @property {ClientRequest} request
- * @property {net.Socket} sourceSocket - a stream where to pipe from
- * @property {Buffer} head - optional, the response buffer attached to CONNECT request
- * @property {*} handlerOpts - handler options that contain upstreamProxyUrlParsed
- * @property {http.Server} server - the server that we will use for logging
- * @property {boolean} isPlain - whether to send HTTP CONNECT response
- */
-
-/**
- * @param {Options} options
- */
-const direct = ({ request, sourceSocket, head, server }) => {
+export const direct = (
+    {
+        request,
+        sourceSocket,
+        head,
+        server,
+    }: {
+        request: http.IncomingMessage,
+        sourceSocket: net.Socket,
+        head: Buffer,
+        server: Server,
+    },
+): void => {
     const url = new URL(`connect://${request.url}`);
 
     if (!url.hostname) {
@@ -31,7 +33,7 @@ const direct = ({ request, sourceSocket, head, server }) => {
     }
 
     const options = {
-        port: url.port,
+        port: Number(url.port),
         host: url.hostname,
     };
 
@@ -43,7 +45,7 @@ const direct = ({ request, sourceSocket, head, server }) => {
         try {
             sourceSocket.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
         } catch (error) {
-            sourceSocket.destroy(error);
+            sourceSocket.destroy(error as Error);
         }
     });
 
@@ -72,7 +74,7 @@ const direct = ({ request, sourceSocket, head, server }) => {
         }
     });
 
-    const { proxyChainId } = sourceSocket;
+    const { proxyChainId } = sourceSocket as unknown as { proxyChainId: unknown };
 
     targetSocket.on('error', (error) => {
         server.log(proxyChainId, `Direct Destination Socket Error: ${error.stack}`);
@@ -86,5 +88,3 @@ const direct = ({ request, sourceSocket, head, server }) => {
         targetSocket.destroy();
     });
 };
-
-module.exports.direct = direct;

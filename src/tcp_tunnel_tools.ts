@@ -1,6 +1,6 @@
-const net = require('net');
-const { chain } = require('./chain');
-const { nodeify } = require('./utils/nodeify');
+import net from 'net';
+import { chain } from './chain';
+import { nodeify } from './utils/nodeify';
 
 const runningServers = {};
 
@@ -14,7 +14,7 @@ const getAddress = (server) => {
     return `${host}:${port}`;
 };
 
-function createTunnel(proxyUrl, targetHost, options, callback) {
+export function createTunnel(proxyUrl, targetHost, options, callback) {
     const parsedProxyUrl = new URL(proxyUrl);
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
@@ -83,9 +83,7 @@ function createTunnel(proxyUrl, targetHost, options, callback) {
     return nodeify(promise, callback);
 }
 
-module.exports.createTunnel = createTunnel;
-
-function closeTunnel(serverPath, closeConnections, callback) {
+export function closeTunnel(serverPath, closeConnections, callback) {
     const { hostname, port } = new URL(`tcp://${serverPath}`);
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
@@ -108,5 +106,3 @@ function closeTunnel(serverPath, closeConnections, callback) {
 
     return nodeify(promise, callback);
 }
-
-module.exports.closeTunnel = closeTunnel;

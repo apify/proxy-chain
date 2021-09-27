@@ -10,6 +10,4 @@ const hopByHopHeaders = [
     'upgrade',
 ];
 
-const isHopByHopHeader = (header) => hopByHopHeaders.includes(header.toLowerCase());
-
-module.exports.isHopByHopHeader = isHopByHopHeader;
+export const isHopByHopHeader = (header: string): boolean => hopByHopHeaders.includes(header.toLowerCase());
