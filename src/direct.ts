@@ -1,9 +1,8 @@
+import net from 'net';
 import { Buffer } from 'buffer';
 import { URL } from 'url';
-import net from 'net';
-import http from 'http';
+import { EventEmitter } from 'events';
 import { countTargetBytes } from './utils/count_target_bytes';
-import type { Server } from './server';
 
 export const direct = (
     {
@@ -12,10 +11,10 @@ export const direct = (
         head,
         server,
     }: {
-        request: http.IncomingMessage,
+        request: { url?: string },
         sourceSocket: net.Socket,
         head: Buffer,
-        server: Server,
+        server: EventEmitter & { log: (...args: any[]) => void; },
     },
 ): void => {
     const url = new URL(`connect://${request.url}`);

@@ -1,9 +1,10 @@
 import net from 'net';
 import http from 'http';
+import { URL } from 'url';
+import { EventEmitter } from 'events';
 import { Buffer } from 'buffer';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasic } from './utils/get_basic';
-import type { Server } from './server';
 
 const createHttpResponse = (statusCode: number, message: string) => {
     return [
@@ -31,11 +32,11 @@ export const chain = (
         server,
         isPlain,
     }: {
-        request: http.IncomingMessage,
+        request: { url?: string },
         sourceSocket: net.Socket,
-        head: Buffer,
-        handlerOpts: any,
-        server: Server,
+        head?: Buffer,
+        handlerOpts: { upstreamProxyUrlParsed: URL; },
+        server: EventEmitter & { log: (...args: any[]) => void; },
         isPlain: boolean,
     },
 ): void => {

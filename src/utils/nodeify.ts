@@ -1,5 +1,5 @@
 // Replacement for Bluebird's Promise.nodeify()
-export const nodeify = <T>(promise: Promise<T>, callback?: (error: Error | null, result: T) => T): Promise<T> => {
+export const nodeify = <T>(promise: Promise<T>, callback?: (error: Error | null, result?: T) => void): Promise<T> => {
     if (typeof callback !== 'function') return promise;
 
     promise.then(

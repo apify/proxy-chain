@@ -1,11 +1,12 @@
+import { URL } from 'url';
 import net from 'net';
 import { chain } from './chain';
 import { nodeify } from './utils/nodeify';
 
-const runningServers = {};
+const runningServers: Record<string, { server: net.Server, connections: Set<net.Socket> }> = {};
 
-const getAddress = (server) => {
-    const { address: host, port, family } = server.address();
+const getAddress = (server: net.Server) => {
+    const { address: host, port, family } = server.address() as net.AddressInfo;
 
     if (family === 'IPv6') {
         return `[${host}]:${port}`;
@@ -14,7 +15,14 @@ const getAddress = (server) => {
     return `${host}:${port}`;
 };
 
-export function createTunnel(proxyUrl, targetHost, options, callback) {
+export function createTunnel(
+    proxyUrl: string,
+    targetHost: string,
+    options: {
+        verbose?: boolean;
+    },
+    callback?: (error: Error | null, result?: string) => void,
+): Promise<string> {
     const parsedProxyUrl = new URL(proxyUrl);
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
@@ -34,11 +42,11 @@ export function createTunnel(proxyUrl, targetHost, options, callback) {
 
     const server = net.createServer();
 
-    const log = (...args) => {
+    const log = (...args: any[]): void => {
         if (verbose) console.log(...args);
     };
 
-    server.log = log;
+    (server as any).log = log;
 
     server.on('connection', (sourceSocket) => {
         const remoteAddress = `${sourceSocket.remoteAddress}:${sourceSocket.remotePort}`;
@@ -59,12 +67,12 @@ export function createTunnel(proxyUrl, targetHost, options, callback) {
             request: { url: targetHost },
             sourceSocket,
             handlerOpts: { upstreamProxyUrlParsed: parsedProxyUrl },
-            server,
+            server: server as net.Server & { log: typeof log },
             isPlain: true,
         });
     });
 
-    const promise = new Promise((resolve, reject) => {
+    const promise = new Promise<string>((resolve, reject) => {
         server.once('error', reject);
 
         // Let the system pick a random listening port
@@ -83,7 +91,11 @@ export function createTunnel(proxyUrl, targetHost, options, callback) {
     return nodeify(promise, callback);
 }
 
-export function closeTunnel(serverPath, closeConnections, callback) {
+export function closeTunnel(
+    serverPath: string,
+    closeConnections: boolean | undefined,
+    callback: (error: Error | null, result?: boolean) => void,
+): Promise<boolean> {
     const { hostname, port } = new URL(`tcp://${serverPath}`);
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
@@ -96,7 +108,7 @@ export function closeTunnel(serverPath, closeConnections, callback) {
         }
         resolve(true);
     })
-        .then((serverExists) => new Promise((resolve) => {
+        .then((serverExists) => new Promise<boolean>((resolve) => {
             if (!serverExists) return resolve(false);
             runningServers[serverPath].server.close(() => {
                 delete runningServers[serverPath];

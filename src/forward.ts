@@ -2,6 +2,7 @@ import http from 'http';
 import https from 'https';
 import stream from 'stream';
 import util from 'util';
+import { URL } from 'url';
 import { validHeadersOnly } from './utils/valid_headers_only';
 import { getBasic } from './utils/get_basic';
 import { countTargetBytes } from './utils/count_target_bytes';
@@ -18,7 +19,7 @@ interface Options {
 export const forward = async (
     request: http.IncomingMessage,
     response: http.ServerResponse,
-    handlerOpts: any,
+    handlerOpts: { upstreamProxyUrlParsed: URL; },
     // eslint-disable-next-line no-async-promise-executor
 ): Promise<void> => new Promise(async (resolve, reject) => {
     const proxy = handlerOpts.upstreamProxyUrlParsed;
@@ -44,9 +45,9 @@ export const forward = async (
         }
     }
 
-    const fn = origin.startsWith('https:') ? https.request : http.request;
+    const fn = origin!.startsWith('https:') ? https.request : http.request;
 
-    const client = fn(origin, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
+    const client = fn(origin!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
         try {
             // This is necessary to prevent Node.js throwing an error
             let { statusCode } = clientResponse;
