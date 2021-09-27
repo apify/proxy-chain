@@ -9,9 +9,9 @@
 export class RequestError extends Error {
     statusCode: number;
 
-    headers: Record<string, string>;
+    headers?: Record<string, string>;
 
-    constructor(message: string, statusCode: number, headers: Record<string, string>) {
+    constructor(message: string, statusCode: number, headers?: Record<string, string>) {
         super(message);
         this.name = RequestError.name;
         this.statusCode = statusCode;

@@ -49,7 +49,9 @@ export const countTargetBytes = (source: net.Socket, target: net.Socket): void =
     }
 };
 
-export const getTargetStats = (socket: net.Socket & Extras): Stats => {
+export const getTargetStats = (socket: net.Socket): Stats => {
+    typeSocket(socket);
+
     if (socket[calculateTargetStats]) {
         return socket[calculateTargetStats]();
     }
