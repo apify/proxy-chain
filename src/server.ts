@@ -503,7 +503,7 @@ export class Server extends EventEmitter {
      * to targets and upstream proxies will be forcibly aborted.
      * @param callback
      */
-    close(closeConnections, callback) {
+    close(closeConnections, callback?) {
         if (typeof closeConnections === 'function') {
             callback = closeConnections;
             closeConnections = false;
@@ -527,5 +527,7 @@ export class Server extends EventEmitter {
             const promise = util.promisify(server.close).bind(server)();
             return nodeify(promise, callback);
         }
+
+        return nodeify(Promise.resolve(), callback);
     }
 }
