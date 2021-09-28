@@ -13,10 +13,10 @@ const request = require('request');
 const WebSocket = require('faye-websocket');
 const { gotScraping } = require('got-scraping');
 
-const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
-const { Server, RequestError } = require('../src/index');
+const { parseAuthorizationHeader } = require('../dist/utils/parse_authorization_header');
+const { Server, RequestError } = require('../dist/index');
 const { TargetServer } = require('./utils/target_server');
-const ProxyChain = require('../src/index');
+const ProxyChain = require('../dist/index');
 
 /*
 TODO - add following tests:

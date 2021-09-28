@@ -3,7 +3,7 @@ const { expect, assert } = require('chai');
 const http = require('http');
 const proxy = require('proxy');
 
-const { createTunnel, closeTunnel } = require('../src/index');
+const { createTunnel, closeTunnel } = require('../dist/index');
 
 const destroySocket = (socket) => new Promise((resolve, reject) => {
     if (!socket || socket.destroyed) return resolve();

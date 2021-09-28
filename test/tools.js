@@ -1,8 +1,8 @@
 const { expect } = require('chai');
-const { redactUrl } = require('../src/utils/redact_url');
-const { isHopByHopHeader } = require('../src/utils/is_hop_by_hop_header');
-const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
-const { nodeify } = require('../src/utils/nodeify');
+const { redactUrl } = require('../dist/utils/redact_url');
+const { isHopByHopHeader } = require('../dist/utils/is_hop_by_hop_header');
+const { parseAuthorizationHeader } = require('../dist/utils/parse_authorization_header');
+const { nodeify } = require('../dist/utils/nodeify');
 
 describe('tools.redactUrl()', () => {
     it('works', () => {
