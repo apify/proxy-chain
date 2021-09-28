@@ -52,7 +52,25 @@ type HandlerOpts = {
     customResponseFunction: CustomResponseOpts['customResponseFunction'] | null;
 };
 
-type PrepareRequestFunction = any;
+type PrepareRequestFunctionOpts = {
+    connectionId: unknown;
+    request: http.IncomingMessage;
+    username: string;
+    password: string;
+    hostname: string;
+    port: string;
+    isHttp: boolean;
+};
+
+type PrepareRequestFunctionResult = {
+    customResponseFunction?: CustomResponseOpts['customResponseFunction'];
+    requestAuthentication?: boolean;
+    failMsg?: string;
+    upstreamProxyUrl?: string | null;
+};
+
+type Promisable<T> = T | Promise<T>;
+type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promisable<undefined | PrepareRequestFunctionResult>;
 
 /**
  * Represents the proxy server.
@@ -62,7 +80,7 @@ type PrepareRequestFunction = any;
 export class Server extends EventEmitter {
     port: number;
 
-    prepareRequestFunction: PrepareRequestFunction;
+    prepareRequestFunction?: PrepareRequestFunction;
 
     authRealm: unknown;
 
@@ -323,16 +341,16 @@ export class Server extends EventEmitter {
      * @param request
      * @param handlerOpts
      */
-    async callPrepareRequestFunction(request: http.IncomingMessage, handlerOpts: any): Promise<any> {
+    async callPrepareRequestFunction(request: http.IncomingMessage, handlerOpts: HandlerOpts): Promise<PrepareRequestFunctionResult | undefined> {
         // Authenticate the request using a user function (if provided)
         if (this.prepareRequestFunction) {
-            const funcOpts = {
+            const funcOpts: PrepareRequestFunctionOpts = {
                 connectionId: (request.socket as any).proxyChainId,
                 request,
                 username: '',
                 password: '',
-                hostname: handlerOpts.trgParsed.hostname,
-                port: handlerOpts.trgParsed.port,
+                hostname: handlerOpts.trgParsed!.hostname,
+                port: handlerOpts.trgParsed!.port,
                 isHttp: handlerOpts.isHttp,
             };
 
@@ -356,7 +374,7 @@ export class Server extends EventEmitter {
             return this.prepareRequestFunction(funcOpts);
         }
 
-        return { requestAuthentication: false, upstreamProxyUrlParsed: null };
+        return { requestAuthentication: false, upstreamProxyUrl: null };
     }
 
     /**
