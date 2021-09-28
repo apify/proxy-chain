@@ -12,7 +12,7 @@ export interface HandlerOpts {
 }
 
 export const handleCustomResponse = async (
-    request: http.IncomingMessage,
+    _request: http.IncomingMessage,
     response: http.ServerResponse,
     handlerOpts: HandlerOpts,
 ): Promise<void> => {

@@ -9,8 +9,8 @@ import { redactUrl } from './utils/redact_url';
 import { nodeify } from './utils/nodeify';
 import { getTargetStats } from './utils/count_target_bytes';
 import { RequestError } from './request_error';
-import { chain } from './chain';
-import { forward } from './forward';
+import { chain, HandlerOpts as ChainOpts } from './chain';
+import { forward, HandlerOpts as ForwardOpts } from './forward';
 import { direct } from './direct';
 import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
 
@@ -225,11 +225,11 @@ export class Server extends EventEmitter {
 
             if (handlerOpts.customResponseFunction) {
                 this.log((request.socket as any).proxyChainId, 'Using HandlerCustomResponse');
-                return await handleCustomResponse(request, response, handlerOpts);
+                return await handleCustomResponse(request, response, handlerOpts as CustomResponseOpts);
             }
 
             this.log((request.socket as any).proxyChainId, 'Using forward');
-            return await forward(request, response, handlerOpts);
+            return await forward(request, response, handlerOpts as ForwardOpts);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error as NodeJS.ErrnoException));
         }
@@ -246,7 +246,7 @@ export class Server extends EventEmitter {
             const handlerOpts = await this.prepareRequestHandling(request);
             handlerOpts.srcHead = head;
 
-            const data = { request, sourceSocket: socket, head, handlerOpts, server: this, isPlain: false };
+            const data = { request, sourceSocket: socket, head, handlerOpts: handlerOpts as ChainOpts, server: this, isPlain: false };
 
             if (handlerOpts.upstreamProxyUrlParsed) {
                 this.log((socket as any).proxyChainId, `Using HandlerTunnelChain => ${request.url}`);
@@ -475,7 +475,7 @@ export class Server extends EventEmitter {
             // This sends FIN, meaning we still can receive data.
             socket.end(msg);
         } catch (err) {
-            this.log((socket as any).proxyChainId, `Unhandled error in sendResponse(), will be ignored: ${err.stack || err}`);
+            this.log((socket as any).proxyChainId, `Unhandled error in sendResponse(), will be ignored: ${(err as Error).stack || err}`);
         }
     }
 

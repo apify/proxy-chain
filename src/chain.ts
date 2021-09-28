@@ -23,6 +23,10 @@ interface Options {
     path?: string;
 }
 
+export interface HandlerOpts {
+    upstreamProxyUrlParsed: URL;
+}
+
 export const chain = (
     {
         request,
@@ -35,7 +39,7 @@ export const chain = (
         request: { url?: string },
         sourceSocket: net.Socket,
         head?: Buffer,
-        handlerOpts: { upstreamProxyUrlParsed: URL; },
+        handlerOpts: HandlerOpts,
         server: EventEmitter & { log: (...args: any[]) => void; },
         isPlain: boolean,
     },

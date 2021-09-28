@@ -16,10 +16,14 @@ interface Options {
     path?: string;
 }
 
+export interface HandlerOpts {
+    upstreamProxyUrlParsed: URL;
+}
+
 export const forward = async (
     request: http.IncomingMessage,
     response: http.ServerResponse,
-    handlerOpts: { upstreamProxyUrlParsed: URL; },
+    handlerOpts: HandlerOpts,
     // eslint-disable-next-line no-async-promise-executor
 ): Promise<void> => new Promise(async (resolve, reject) => {
     const proxy = handlerOpts.upstreamProxyUrlParsed;

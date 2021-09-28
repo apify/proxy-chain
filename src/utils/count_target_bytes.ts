@@ -14,6 +14,7 @@ interface Extras {
     [calculateTargetStats]: () => Stats;
 }
 
+// @ts-expect-error TS is not aware that `source` is used in the assertion.
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 function typeSocket(source: unknown): asserts source is net.Socket & Extras {};
 
