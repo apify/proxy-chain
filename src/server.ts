@@ -12,7 +12,7 @@ import { RequestError } from './request_error';
 import { chain } from './chain';
 import { forward } from './forward';
 import { direct } from './direct';
-import { handleCustomResponse } from './custom_response';
+import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -47,10 +47,12 @@ type HandlerOpts = {
     srcResponse: http.ServerResponse | null;
     srcHead: Buffer | null;
     trgParsed: URL | null;
-    upstreamProxyUrlParsed: null;
+    upstreamProxyUrlParsed: URL | null;
     isHttp: boolean;
-    customResponseFunction: unknown;
+    customResponseFunction: CustomResponseOpts['customResponseFunction'] | null;
 };
+
+type PrepareRequestFunction = any;
 
 /**
  * Represents the proxy server.
@@ -60,7 +62,7 @@ type HandlerOpts = {
 export class Server extends EventEmitter {
     port: number;
 
-    prepareRequestFunction: unknown;
+    prepareRequestFunction: PrepareRequestFunction;
 
     authRealm: unknown;
 
@@ -106,7 +108,7 @@ export class Server extends EventEmitter {
      */
     constructor(options: {
         port?: number,
-        prepareRequestFunction?: unknown,
+        prepareRequestFunction?: PrepareRequestFunction,
         verbose?: boolean,
         authRealm?: unknown,
     } = {}) {
@@ -144,7 +146,7 @@ export class Server extends EventEmitter {
         }
     }
 
-    onClientError(err: NodeJS.ErrnoException, socket: net.Socket) {
+    onClientError(err: NodeJS.ErrnoException, socket: net.Socket): void {
         this.log((socket as any).proxyChainId, `onClientError: ${err}`);
 
         // https://nodejs.org/api/http.html#http_event_clienterror
@@ -362,7 +364,7 @@ export class Server extends EventEmitter {
      * Returns a promise resolving to an object that can be used to run a handler.
      * @param request
      */
-    async prepareRequestHandling(request) {
+    async prepareRequestHandling(request: http.IncomingMessage): Promise<HandlerOpts> {
         const handlerOpts = this.getHandlerOpts(request);
         const funcResult = await this.callPrepareRequestFunction(request, handlerOpts);
 
@@ -385,7 +387,7 @@ export class Server extends EventEmitter {
         }
 
         if (funcResult && funcResult.customResponseFunction) {
-            this.log(request.socket.proxyChainId, 'Using custom response function');
+            this.log((request.socket as any).proxyChainId, 'Using custom response function');
 
             handlerOpts.customResponseFunction = funcResult.customResponseFunction;
 
@@ -399,7 +401,7 @@ export class Server extends EventEmitter {
         }
 
         if (handlerOpts.upstreamProxyUrlParsed) {
-            this.log(request.socket.proxyChainId, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
+            this.log((request.socket as any).proxyChainId, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
         }
 
         return handlerOpts;
@@ -411,11 +413,13 @@ export class Server extends EventEmitter {
      * @param error
      */
     failRequest(request: http.IncomingMessage, error: NodeJS.ErrnoException): void {
-        const connectionId = request.socket.proxyChainId;
+        const connectionId = (request.socket as any).proxyChainId;
 
         if (error.name === 'RequestError') {
-            this.log(connectionId, `Request failed (status ${error.statusCode}): ${error.message}`);
-            this.sendSocketResponse(request.socket, error.statusCode, error.headers, error.message);
+            const typedError = error as RequestError;
+
+            this.log(connectionId, `Request failed (status ${typedError.statusCode}): ${error.message}`);
+            this.sendSocketResponse(request.socket, typedError.statusCode, typedError.headers, error.message);
         } else {
             this.log(connectionId, `Request failed with error: ${error.stack || error}`);
             this.sendSocketResponse(request.socket, 500, {}, 'Internal error in proxy server');

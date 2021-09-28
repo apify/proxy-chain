@@ -1,18 +1,20 @@
 import http from 'http';
 
-interface Result {
+export interface Result {
     statusCode?: number;
     headers?: Record<string, string>;
     body?: string;
     encoding?: BufferEncoding;
 }
 
+export interface HandlerOpts {
+    customResponseFunction: () => Result | Promise<Result>,
+}
+
 export const handleCustomResponse = async (
     request: http.IncomingMessage,
     response: http.ServerResponse,
-    handlerOpts: {
-        customResponseFunction: () => Result | Promise<Result>,
-    },
+    handlerOpts: HandlerOpts,
 ): Promise<void> => {
     const { customResponseFunction } = handlerOpts;
     if (!customResponseFunction) {
