@@ -42,7 +42,7 @@ export function createTunnel(
 
     const server = net.createServer();
 
-    const log = (...args: any[]): void => {
+    const log = (...args: unknown[]): void => {
         if (verbose) console.log(...args);
     };
 
