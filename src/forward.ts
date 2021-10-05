@@ -54,8 +54,8 @@ export const forward = async (
     const client = fn(origin!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
         try {
             // This is necessary to prevent Node.js throwing an error
-            let { statusCode } = clientResponse;
-            if (statusCode! < 100 || statusCode! > 999) {
+            let statusCode = clientResponse.statusCode!;
+            if (statusCode < 100 || statusCode > 999) {
                 statusCode = 502;
             }
 
@@ -66,7 +66,7 @@ export const forward = async (
             }
 
             response.writeHead(
-                statusCode!,
+                statusCode,
                 clientResponse.statusMessage,
                 validHeadersOnly(clientResponse.rawHeaders),
             );
