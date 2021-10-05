@@ -27,6 +27,15 @@ export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
 }
 
+interface ChainOpts {
+    request: { url?: string },
+    sourceSocket: net.Socket,
+    head?: Buffer,
+    handlerOpts: HandlerOpts,
+    server: EventEmitter & { log: (...args: any[]) => void; },
+    isPlain: boolean,
+}
+
 export const chain = (
     {
         request,
@@ -35,14 +44,7 @@ export const chain = (
         handlerOpts,
         server,
         isPlain,
-    }: {
-        request: { url?: string },
-        sourceSocket: net.Socket,
-        head?: Buffer,
-        handlerOpts: HandlerOpts,
-        server: EventEmitter & { log: (...args: any[]) => void; },
-        isPlain: boolean,
-    },
+    }: ChainOpts,
 ): void => {
     if (head && head.length > 0) {
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);

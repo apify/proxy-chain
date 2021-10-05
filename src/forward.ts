@@ -51,6 +51,7 @@ export const forward = async (
 
     const fn = origin!.startsWith('https:') ? https.request : http.request;
 
+    // We have to force cast `options` because @types/node doesn't support an array.
     const client = fn(origin!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
         try {
             // This is necessary to prevent Node.js throwing an error

@@ -4,18 +4,20 @@ import { URL } from 'url';
 import { EventEmitter } from 'events';
 import { countTargetBytes } from './utils/count_target_bytes';
 
+interface DirectOpts {
+    request: { url?: string },
+    sourceSocket: net.Socket,
+    head: Buffer,
+    server: EventEmitter & { log: (...args: any[]) => void; },
+}
+
 export const direct = (
     {
         request,
         sourceSocket,
         head,
         server,
-    }: {
-        request: { url?: string },
-        sourceSocket: net.Socket,
-        head: Buffer,
-        server: EventEmitter & { log: (...args: any[]) => void; },
-    },
+    }: DirectOpts,
 ): void => {
     const url = new URL(`connect://${request.url}`);
 
