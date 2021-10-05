@@ -558,6 +558,7 @@ export class Server extends EventEmitter {
 
     /**
      * Closes the proxy server.
+     * @param closeConnections If true, pending proxy connections are forcibly closed.
      */
     close(closeConnections: boolean, callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
         if (typeof closeConnections === 'function') {

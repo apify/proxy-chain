@@ -57,6 +57,7 @@ export const anonymizeProxy = (proxyUrl: string, callback?: (error: Error | null
  * Closes anonymous proxy previously started by `anonymizeProxy()`.
  * If proxy was not found or was already closed, the function has no effect
  * and its result if `false`. Otherwise the result is `true`.
+ * @param closeConnections If true, pending proxy connections are forcibly closed.
  */
 export const closeAnonymizedProxy = (
     anonymizedProxyUrl: string,
