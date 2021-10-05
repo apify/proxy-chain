@@ -7,7 +7,7 @@ import { Socket } from './socket';
 
 interface DirectOpts {
     request: { url?: string },
-    sourceSocket: net.Socket,
+    sourceSocket: Socket,
     head: Buffer,
     server: EventEmitter & { log: (...args: any[]) => void; },
 }
@@ -76,7 +76,7 @@ export const direct = (
         }
     });
 
-    const { proxyChainId } = sourceSocket as Socket;
+    const { proxyChainId } = sourceSocket;
 
     targetSocket.on('error', (error) => {
         server.log(proxyChainId, `Direct Destination Socket Error: ${error.stack}`);

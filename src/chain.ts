@@ -30,7 +30,7 @@ export interface HandlerOpts {
 
 interface ChainOpts {
     request: { url?: string },
-    sourceSocket: net.Socket,
+    sourceSocket: Socket,
     head?: Buffer,
     handlerOpts: HandlerOpts,
     server: EventEmitter & { log: (...args: any[]) => void; },
@@ -51,7 +51,7 @@ export const chain = (
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
     }
 
-    const { proxyChainId } = sourceSocket as Socket;
+    const { proxyChainId } = sourceSocket;
 
     const { upstreamProxyUrlParsed: proxy } = handlerOpts;
 
