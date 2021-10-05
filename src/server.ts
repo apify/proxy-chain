@@ -86,7 +86,7 @@ export class Server extends EventEmitter {
 
     verbose: boolean;
 
-    server: http.Server | null;
+    server: http.Server;
 
     lastHandlerId: number;
 
@@ -512,19 +512,19 @@ export class Server extends EventEmitter {
                 reject(error);
             };
             const onListening = () => {
-                this.port = (this.server!.address() as net.AddressInfo).port;
+                this.port = (this.server.address() as net.AddressInfo).port;
                 this.log(null, 'Listening...');
                 removeListeners();
                 resolve();
             };
             const removeListeners = () => {
-                this.server!.removeListener('error', onError);
-                this.server!.removeListener('listening', onListening);
+                this.server.removeListener('error', onError);
+                this.server.removeListener('listening', onListening);
             };
 
-            this.server!.on('error', onError);
-            this.server!.on('listening', onListening);
-            this.server!.listen(this.port);
+            this.server.on('error', onError);
+            this.server.on('listening', onListening);
+            this.server.listen(this.port);
         });
 
         return nodeify(promise, callback);
@@ -580,6 +580,7 @@ export class Server extends EventEmitter {
 
         if (this.server) {
             const { server } = this;
+            // @ts-expect-error Let's make sure we can't access the server anymore.
             this.server = null;
             const promise = util.promisify(server.close).bind(server)();
             return nodeify(promise, callback);
