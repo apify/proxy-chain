@@ -93,8 +93,8 @@ export const forward = async (
             request,
             client,
         );
-    } catch (error) {
-        (error as any).proxy = proxy;
+    } catch (error: any) {
+        error.proxy = proxy;
 
         reject(error);
     }
