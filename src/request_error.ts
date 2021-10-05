@@ -7,14 +7,13 @@
  * and for the 407 status the Proxy-Authenticate header will be added.
  */
 export class RequestError extends Error {
-    statusCode: number;
-
-    headers?: Record<string, string>;
-
-    constructor(message: string, statusCode: number, headers?: Record<string, string>) {
+    constructor(
+        message: string,
+        public statusCode: number,
+        public headers?: Record<string, string>,
+    ) {
         super(message);
         this.name = RequestError.name;
-        this.statusCode = statusCode;
         this.headers = headers;
 
         Error.captureStackTrace(this, RequestError);
