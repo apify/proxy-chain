@@ -3,6 +3,7 @@ import { Buffer } from 'buffer';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
 import { countTargetBytes } from './utils/count_target_bytes';
+import { Socket } from './socket';
 
 interface DirectOpts {
     request: { url?: string },
@@ -75,7 +76,7 @@ export const direct = (
         }
     });
 
-    const { proxyChainId } = sourceSocket as unknown as { proxyChainId: unknown };
+    const { proxyChainId } = sourceSocket as Socket;
 
     targetSocket.on('error', (error) => {
         server.log(proxyChainId, `Direct Destination Socket Error: ${error.stack}`);

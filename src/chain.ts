@@ -5,6 +5,7 @@ import { EventEmitter } from 'events';
 import { Buffer } from 'buffer';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasic } from './utils/get_basic';
+import { Socket } from './socket';
 
 const createHttpResponse = (statusCode: number, message: string) => {
     return [
@@ -50,7 +51,7 @@ export const chain = (
         throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
     }
 
-    const { proxyChainId } = sourceSocket as unknown as { proxyChainId: unknown };
+    const { proxyChainId } = sourceSocket as Socket;
 
     const { upstreamProxyUrlParsed: proxy } = handlerOpts;
 

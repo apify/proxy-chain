@@ -13,6 +13,7 @@ import { chain, HandlerOpts as ChainOpts } from './chain';
 import { forward, HandlerOpts as ForwardOpts } from './forward';
 import { direct } from './direct';
 import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
+import { Socket } from './socket';
 
 // TODO:
 // - Fail gracefully if target proxy fails (invalid credentials or non-existent)
@@ -92,7 +93,7 @@ export class Server extends EventEmitter {
 
     stats: { httpRequestCount: number; connectRequestCount: number; };
 
-    connections: Map<unknown, net.Socket>;
+    connections: Map<unknown, Socket>;
 
     /**
      * Initializes a new instance of Server class.
@@ -164,8 +165,8 @@ export class Server extends EventEmitter {
         }
     }
 
-    onClientError(err: NodeJS.ErrnoException, socket: net.Socket): void {
-        this.log((socket as any).proxyChainId, `onClientError: ${err}`);
+    onClientError(err: NodeJS.ErrnoException, socket: Socket): void {
+        this.log(socket.proxyChainId, `onClientError: ${err}`);
 
         // https://nodejs.org/api/http.html#http_event_clienterror
         if (err.code === 'ECONNRESET' || !socket.writable) {
@@ -178,13 +179,12 @@ export class Server extends EventEmitter {
     /**
      * Assigns a unique ID to the socket and keeps the register up to date.
      * Needed for abrupt close of the server.
-     * @param {net.Socket} socket
      */
-    registerConnection(socket: net.Socket): void {
+    registerConnection(socket: Socket): void {
         const weakId = Math.random().toString(36).slice(2);
         const unique = Symbol(weakId);
 
-        (socket as any).proxyChainId = unique;
+        socket.proxyChainId = unique;
         this.connections.set(unique, socket);
 
         socket.on('close', () => {
@@ -200,7 +200,7 @@ export class Server extends EventEmitter {
     /**
      * Handles incoming sockets, useful for error handling
      */
-    onConnection(socket: net.Socket): void {
+    onConnection(socket: Socket): void {
         this.registerConnection(socket);
 
         // We need to consume socket errors, because the handlers are attached asynchronously.
@@ -208,7 +208,7 @@ export class Server extends EventEmitter {
         socket.on('error', (err) => {
             // Handle errors only if there's no other handler
             if (this.listenerCount('error') === 1) {
-                this.log((socket as any).proxyChainId, `Source socket emitted error: ${err.stack || err}`);
+                this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });
     }
@@ -241,12 +241,14 @@ export class Server extends EventEmitter {
             const handlerOpts = await this.prepareRequestHandling(request);
             handlerOpts.srcResponse = response;
 
+            const { proxyChainId } = request.socket as Socket;
+
             if (handlerOpts.customResponseFunction) {
-                this.log((request.socket as any).proxyChainId, 'Using HandlerCustomResponse');
+                this.log(proxyChainId, 'Using HandlerCustomResponse');
                 return await handleCustomResponse(request, response, handlerOpts as CustomResponseOpts);
             }
 
-            this.log((request.socket as any).proxyChainId, 'Using forward');
+            this.log(proxyChainId, 'Using forward');
             return await forward(request, response, handlerOpts as ForwardOpts);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error as NodeJS.ErrnoException));
@@ -259,7 +261,7 @@ export class Server extends EventEmitter {
      * @param socket
      * @param head The first packet of the tunneling stream (may be empty)
      */
-    async onConnect(request: http.IncomingMessage, socket: net.Socket, head: Buffer): Promise<void> {
+    async onConnect(request: http.IncomingMessage, socket: Socket, head: Buffer): Promise<void> {
         try {
             const handlerOpts = await this.prepareRequestHandling(request);
             handlerOpts.srcHead = head;
@@ -267,11 +269,11 @@ export class Server extends EventEmitter {
             const data = { request, sourceSocket: socket, head, handlerOpts: handlerOpts as ChainOpts, server: this, isPlain: false };
 
             if (handlerOpts.upstreamProxyUrlParsed) {
-                this.log((socket as any).proxyChainId, `Using HandlerTunnelChain => ${request.url}`);
+                this.log(socket.proxyChainId, `Using HandlerTunnelChain => ${request.url}`);
                 return await chain(data);
             }
 
-            this.log((socket as any).proxyChainId, `Using HandlerTunnelDirect => ${request.url}`);
+            this.log(socket.proxyChainId, `Using HandlerTunnelDirect => ${request.url}`);
             return await direct(data);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error as NodeJS.ErrnoException));
@@ -295,7 +297,7 @@ export class Server extends EventEmitter {
             customResponseFunction: null,
         };
 
-        this.log((request.socket as any).proxyChainId, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
+        this.log((request.socket as Socket).proxyChainId, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
 
         if (request.method === 'CONNECT') {
             // CONNECT server.example.com:80 HTTP/1.1
@@ -345,7 +347,7 @@ export class Server extends EventEmitter {
         // Authenticate the request using a user function (if provided)
         if (this.prepareRequestFunction) {
             const funcOpts: PrepareRequestFunctionOpts = {
-                connectionId: (request.socket as any).proxyChainId,
+                connectionId: (request.socket as Socket).proxyChainId,
                 request,
                 username: '',
                 password: '',
@@ -404,8 +406,10 @@ export class Server extends EventEmitter {
             }
         }
 
+        const { proxyChainId } = request.socket as Socket;
+
         if (funcResult && funcResult.customResponseFunction) {
-            this.log((request.socket as any).proxyChainId, 'Using custom response function');
+            this.log(proxyChainId, 'Using custom response function');
 
             handlerOpts.customResponseFunction = funcResult.customResponseFunction;
 
@@ -419,7 +423,7 @@ export class Server extends EventEmitter {
         }
 
         if (handlerOpts.upstreamProxyUrlParsed) {
-            this.log((request.socket as any).proxyChainId, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
+            this.log(proxyChainId, `Using upstream proxy ${redactUrl(handlerOpts.upstreamProxyUrlParsed)}`);
         }
 
         return handlerOpts;
@@ -431,21 +435,21 @@ export class Server extends EventEmitter {
      * @param error
      */
     failRequest(request: http.IncomingMessage, error: NodeJS.ErrnoException): void {
-        const connectionId = (request.socket as any).proxyChainId;
+        const { proxyChainId } = request.socket as Socket;
 
         if (error.name === 'RequestError') {
             const typedError = error as RequestError;
 
-            this.log(connectionId, `Request failed (status ${typedError.statusCode}): ${error.message}`);
+            this.log(proxyChainId, `Request failed (status ${typedError.statusCode}): ${error.message}`);
             this.sendSocketResponse(request.socket, typedError.statusCode, typedError.headers, error.message);
         } else {
-            this.log(connectionId, `Request failed with error: ${error.stack || error}`);
+            this.log(proxyChainId, `Request failed with error: ${error.stack || error}`);
             this.sendSocketResponse(request.socket, 500, {}, 'Internal error in proxy server');
             this.emit('requestFailed', { error, request });
         }
 
         // Emit 'connectionClosed' event if request failed and connection was already reported
-        this.log(connectionId, 'Closed because request failed with error');
+        this.log(proxyChainId, 'Closed because request failed with error');
     }
 
     /**
@@ -458,7 +462,7 @@ export class Server extends EventEmitter {
      * @param headers
      * @param message
      */
-    sendSocketResponse(socket: net.Socket, statusCode = 500, caseSensitiveHeaders = {}, message = ''): void {
+    sendSocketResponse(socket: Socket, statusCode = 500, caseSensitiveHeaders = {}, message = ''): void {
         try {
             const headers = Object.fromEntries(
                 Object.entries(caseSensitiveHeaders).map(
@@ -493,7 +497,7 @@ export class Server extends EventEmitter {
             // This sends FIN, meaning we still can receive data.
             socket.end(msg);
         } catch (err) {
-            this.log((socket as any).proxyChainId, `Unhandled error in sendResponse(), will be ignored: ${(err as Error).stack || err}`);
+            this.log(socket.proxyChainId, `Unhandled error in sendResponse(), will be ignored: ${(err as Error).stack || err}`);
         }
     }
 
