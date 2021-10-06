@@ -6,17 +6,15 @@
  * By default, the response will have Content-Type: text/plain
  * and for the 407 status the Proxy-Authenticate header will be added.
  */
-class RequestError extends Error {
-    constructor(message, statusCode, headers) {
+export class RequestError extends Error {
+    constructor(
+        message: string,
+        public statusCode: number,
+        public headers?: Record<string, string>,
+    ) {
         super(message);
         this.name = RequestError.name;
-        this.statusCode = statusCode;
-        this.headers = headers;
 
         Error.captureStackTrace(this, RequestError);
     }
 }
-
-module.exports = {
-    RequestError,
-};

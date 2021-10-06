@@ -1,3 +1,18 @@
 {
-    "extends": ["@apify"]
-}
+    "extends": [
+      "@apify/ts"
+    ],
+    "parserOptions": {
+      "project": "tsconfig.eslint.json"
+    },
+    "overrides": [
+      {
+        "files": [
+          "test/**/*.js"
+        ],
+        "env": {
+          "jest": true
+        }
+      }
+    ]
+  }

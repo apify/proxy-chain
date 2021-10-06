@@ -1,9 +1,7 @@
-const decodeURIComponentSafe = (encodedURIComponent) => {
+export const decodeURIComponentSafe = (encodedURIComponent: string): string => {
     try {
         return decodeURIComponent(encodedURIComponent);
     } catch (e) {
         return encodedURIComponent;
     }
 };
-
-module.exports.decodeURIComponentSafe = decodeURIComponentSafe;

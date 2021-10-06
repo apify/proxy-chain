@@ -1,7 +1,7 @@
 const net = require('net');
 const http = require('http');
 const { assert } = require('chai');
-const ProxyChain = require('..');
+const ProxyChain = require('../src/index');
 
 describe('ProxyChain server', () => {
     let proxyServer;

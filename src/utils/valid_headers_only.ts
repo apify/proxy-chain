@@ -1,12 +1,8 @@
-const { validateHeaderName, validateHeaderValue } = require('http');
-const { isHopByHopHeader } = require('./is_hop_by_hop_header');
+// @ts-expect-error Missing types
+import { validateHeaderName, validateHeaderValue } from 'http';
+import { isHopByHopHeader } from './is_hop_by_hop_header';
 
-/**
- * Filters out invalid headers.
- * @param {string[]} array
- * @returns Filtered headers.
- */
-const validHeadersOnly = (array) => {
+export const validHeadersOnly = (array: string[]): string[] => {
     const rawHeaders = [];
 
     let containsHost = false;
@@ -42,5 +38,3 @@ const validHeadersOnly = (array) => {
 
     return rawHeaders;
 };
-
-module.exports.validHeadersOnly = validHeadersOnly;
