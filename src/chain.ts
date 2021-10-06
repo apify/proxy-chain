@@ -1,4 +1,3 @@
-import net from 'net';
 import http from 'http';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
