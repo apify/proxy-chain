@@ -14,7 +14,6 @@ export class RequestError extends Error {
     ) {
         super(message);
         this.name = RequestError.name;
-        this.headers = headers;
 
         Error.captureStackTrace(this, RequestError);
     }
