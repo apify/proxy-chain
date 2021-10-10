@@ -1200,6 +1200,37 @@ describe('non-200 upstream connect response', () => {
     });
 });
 
+it('supports localAddress', async () => {
+    const target = http.createServer((serverRequest, serverResponse) => {
+        serverResponse.end(serverRequest.socket.remoteAddress);
+    });
+
+    await util.promisify(target.listen.bind(target))(0);
+
+    const server = new Server({
+        port: 0,
+        prepareRequestFunction: () => {
+            return {
+                localAddress: '127.0.0.2',
+            };
+        },
+    });
+
+    await server.listen();
+
+    const response = await requestPromised({
+        url: `http://127.0.0.1:${target.address().port}`,
+        proxy: `http://127.0.0.2:${server.port}`,
+    });
+
+    try {
+        expect(response.body).to.be.equal('::ffff:127.0.0.2');
+    } finally {
+        await server.close();
+        await util.promisify(target.close.bind(target))();
+    }
+});
+
 // Run all combinations of test parameters
 const useSslVariants = [
     false,
