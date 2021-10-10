@@ -14,10 +14,12 @@ interface Options {
     headers: string[];
     insecureHTTPParser: boolean;
     path?: string;
+    localAddress?: string;
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
+    localAddress?: string;
 }
 
 export const forward = async (
@@ -33,6 +35,7 @@ export const forward = async (
         method: request.method!,
         headers: validHeadersOnly(request.rawHeaders),
         insecureHTTPParser: true,
+        localAddress: handlerOpts.localAddress,
     };
 
     // In case of proxy the path needs to be an absolute URL

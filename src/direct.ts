@@ -6,10 +6,11 @@ import { countTargetBytes } from './utils/count_target_bytes';
 import { Socket } from './socket';
 
 interface DirectOpts {
-    request: { url?: string },
-    sourceSocket: Socket,
-    head: Buffer,
-    server: EventEmitter & { log: (...args: any[]) => void; },
+    request: { url?: string };
+    sourceSocket: Socket;
+    head: Buffer;
+    server: EventEmitter & { log: (...args: any[]) => void; };
+    localAddress?: string;
 }
 
 export const direct = (
@@ -18,6 +19,7 @@ export const direct = (
         sourceSocket,
         head,
         server,
+        localAddress,
     }: DirectOpts,
 ): void => {
     const url = new URL(`connect://${request.url}`);
@@ -37,6 +39,7 @@ export const direct = (
     const options = {
         port: Number(url.port),
         host: url.hostname,
+        localAddress,
     };
 
     if (options.host[0] === '[') {
