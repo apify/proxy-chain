@@ -21,19 +21,22 @@ interface Options {
     method: string;
     headers: string[];
     path?: string;
+    localAddress?: string;
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
+    localAddress?: string;
 }
 
 interface ChainOpts {
-    request: { url?: string },
-    sourceSocket: Socket,
-    head?: Buffer,
-    handlerOpts: HandlerOpts,
-    server: EventEmitter & { log: (...args: any[]) => void; },
-    isPlain: boolean,
+    request: { url?: string };
+    sourceSocket: Socket;
+    head?: Buffer;
+    handlerOpts: HandlerOpts;
+    server: EventEmitter & { log: (...args: any[]) => void; };
+    isPlain: boolean;
+    localAddress?: string;
 }
 
 export const chain = (
@@ -61,6 +64,7 @@ export const chain = (
             'host',
             request.url!,
         ],
+        localAddress: handlerOpts.localAddress,
     };
 
     if (proxy.username || proxy.password) {

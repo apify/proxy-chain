@@ -51,6 +51,7 @@ type HandlerOpts = {
     upstreamProxyUrlParsed: URL | null;
     isHttp: boolean;
     customResponseFunction: CustomResponseOpts['customResponseFunction'] | null;
+    localAddress?: string;
 };
 
 type PrepareRequestFunctionOpts = {
@@ -68,6 +69,7 @@ type PrepareRequestFunctionResult = {
     requestAuthentication?: boolean;
     failMsg?: string;
     upstreamProxyUrl?: string | null;
+    localAddress?: string;
 };
 
 type Promisable<T> = T | Promise<T>;
@@ -343,7 +345,7 @@ export class Server extends EventEmitter {
      * @param request
      * @param handlerOpts
      */
-    async callPrepareRequestFunction(request: http.IncomingMessage, handlerOpts: HandlerOpts): Promise<PrepareRequestFunctionResult | undefined> {
+    async callPrepareRequestFunction(request: http.IncomingMessage, handlerOpts: HandlerOpts): Promise<PrepareRequestFunctionResult> {
         // Authenticate the request using a user function (if provided)
         if (this.prepareRequestFunction) {
             const funcOpts: PrepareRequestFunctionOpts = {
@@ -372,11 +374,11 @@ export class Server extends EventEmitter {
                 funcOpts.password = auth.password!;
             }
 
-            // User function returns a result directly or a promise
-            return this.prepareRequestFunction(funcOpts);
+            const result = await this.prepareRequestFunction(funcOpts);
+            return result ?? {};
         }
 
-        return { requestAuthentication: false, upstreamProxyUrl: null };
+        return {};
     }
 
     /**
@@ -388,12 +390,14 @@ export class Server extends EventEmitter {
         const handlerOpts = this.getHandlerOpts(request);
         const funcResult = await this.callPrepareRequestFunction(request, handlerOpts);
 
+        handlerOpts.localAddress = funcResult.localAddress;
+
         // If not authenticated, request client to authenticate
-        if (funcResult && funcResult.requestAuthentication) {
+        if (funcResult.requestAuthentication) {
             throw new RequestError(funcResult.failMsg || 'Proxy credentials required.', 407);
         }
 
-        if (funcResult && funcResult.upstreamProxyUrl) {
+        if (funcResult.upstreamProxyUrl) {
             try {
                 handlerOpts.upstreamProxyUrlParsed = new URL(funcResult.upstreamProxyUrl);
             } catch (error) {
@@ -408,7 +412,7 @@ export class Server extends EventEmitter {
 
         const { proxyChainId } = request.socket as Socket;
 
-        if (funcResult && funcResult.customResponseFunction) {
+        if (funcResult.customResponseFunction) {
             this.log(proxyChainId, 'Using custom response function');
 
             handlerOpts.customResponseFunction = funcResult.customResponseFunction;
