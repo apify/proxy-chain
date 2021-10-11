@@ -26,6 +26,7 @@ interface Options {
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
+    localAddress?: string;
 }
 
 interface ChainOpts {
@@ -46,7 +47,6 @@ export const chain = (
         handlerOpts,
         server,
         isPlain,
-        localAddress,
     }: ChainOpts,
 ): void => {
     if (head && head.length > 0) {
@@ -64,7 +64,7 @@ export const chain = (
             'host',
             request.url!,
         ],
-        localAddress,
+        localAddress: handlerOpts.localAddress,
     };
 
     if (proxy.username || proxy.password) {
