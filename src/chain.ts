@@ -38,6 +38,7 @@ interface ChainOpts {
     isPlain: boolean;
     localAddress?: string;
 }
+
 /**
  * Passes the traffic to upstream HTTP proxy server.
  * Client -> Apify -> Upstream -> Web

@@ -24,10 +24,20 @@ export interface HandlerOpts {
 
 /**
  * The request is read from the client and is resent.
- * This is similar to Direct, however it uses the CONNECT protocol instead.
+ * This is similar to Direct / Chain, however it uses the CONNECT protocol instead.
  * Forward uses standard HTTP methods.
+ *
+ * ```
  * Client -> Apify (HTTP) -> Web
  * Client <- Apify (HTTP) <- Web
+ * ```
+ *
+ * or
+ *
+ * ```
+ * Client -> Apify (HTTP) -> Upstream (HTTP) -> Web
+ * Client <- Apify (HTTP) <- Upstream (HTTP) <- Web
+ * ```
  */
 export const forward = async (
     request: http.IncomingMessage,

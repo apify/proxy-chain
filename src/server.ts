@@ -16,7 +16,6 @@ import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custo
 import { Socket } from './socket';
 
 // TODO:
-// - Fail gracefully if target proxy fails (invalid credentials or non-existent)
 // - Implement this requirement from rfc7230
 //   "A proxy MUST forward unrecognized header fields unless the field-name
 //    is listed in the Connection header field (Section 6.1) or the proxy
@@ -24,12 +23,6 @@ import { Socket } from './socket';
 //    fields.  Other recipients SHOULD ignore unrecognized header fields.
 //    These requirements allow HTTP's functionality to be enhanced without
 //    requiring prior update of deployed intermediaries."
-// - Add param to prepareRequestFunction() that would allow the caller to kill a connection
-
-// TODO:
-// - Use connection pooling and maybe other stuff from:
-// https://github.com/request/tunnel-agent/blob/master/index.js
-// https://github.com/request/request/blob/master/lib/tunnel.js
 
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
@@ -102,30 +95,34 @@ export class Server extends EventEmitter {
      * @param options
      * @param [options.port] Port where the server will listen. By default 8000.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests,
-     * provide URL to chained upstream proxy or potentially provide function that generates a custom response to HTTP requests.
+     * provide URL to upstream proxy or potentially provide a function that generates a custom response to HTTP requests.
      * It accepts a single parameter which is an object:
-     * ```{
-     *   connectionId: Number,
-     *   request: Object,
-     *   username: String,
-     *   password: String,
-     *   hostname: String,
-     *   port: Number,
-     *   isHttp: Boolean
-     * }```
+     * ```
+     * {
+     *   connectionId: symbol,
+     *   request: http.IncomingMessage,
+     *   username: string,
+     *   password: string,
+     *   hostname: string,
+     *   port: number,
+     *   isHttp: boolean,
+     * }
+     * ```
      * and returns an object (or promise resolving to the object) with following form:
-     * ```{
-     *   requestAuthentication: Boolean,
-     *   upstreamProxyUrl: String,
-     *   customResponseFunction: Function
-     * }```
-     * If `upstreamProxyUrl` is false-ish value, no upstream proxy is used.
+     * ```
+     * {
+     *   requestAuthentication: boolean,
+     *   upstreamProxyUrl: string,
+     *   customResponseFunction: Function,
+     * }
+     * ```
+     * If `upstreamProxyUrl` is a falsy value, no upstream proxy is used.
      * If `prepareRequestFunction` is not set, the proxy server will not require any authentication
      * and will not use any upstream proxy.
      * If `customResponseFunction` is set, it will be called to generate a custom response to the HTTP request.
      * It should not be used together with `upstreamProxyUrl`.
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
-     * @param [options.verbose] If true, the server logs
+     * @param [options.verbose] If true, the server will output logs
      */
     constructor(options: {
         port?: number,
@@ -215,6 +212,9 @@ export class Server extends EventEmitter {
         });
     }
 
+    /**
+     * Converts known errors to be instance of RequestError.
+     */
     normalizeHandlerError(error: NodeJS.ErrnoException): NodeJS.ErrnoException {
         if (error.message === 'Username contains an invalid colon') {
             return new RequestError('Invalid colon in username in upstream proxy credentials', 502);
