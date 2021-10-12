@@ -17,6 +17,11 @@ interface DirectOpts {
     handlerOpts: HandlerOpts;
 }
 
+/**
+ * Directly connects to the target.
+ * Client -> Apify (CONNECT) -> Web
+ * Client <- Apify (CONNECT) <- Web
+ */
 export const direct = (
     {
         request,

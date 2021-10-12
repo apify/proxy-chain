@@ -3,7 +3,7 @@ import { URL } from 'url';
 import { EventEmitter } from 'events';
 import { Buffer } from 'buffer';
 import { countTargetBytes } from './utils/count_target_bytes';
-import { getBasic } from './utils/get_basic';
+import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { Socket } from './socket';
 
 const createHttpResponse = (statusCode: number, message: string) => {
@@ -38,7 +38,11 @@ interface ChainOpts {
     isPlain: boolean;
     localAddress?: string;
 }
-
+/**
+ * Passes the traffic to upstream HTTP proxy server.
+ * Client -> Apify -> Upstream -> Web
+ * Client <- Apify <- Upstream <- Web
+ */
 export const chain = (
     {
         request,
@@ -68,7 +72,7 @@ export const chain = (
     };
 
     if (proxy.username || proxy.password) {
-        options.headers.push('proxy-authorization', getBasic(proxy));
+        options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
     }
 
     const client = http.request(proxy.origin, options as unknown as http.ClientRequestArgs);

@@ -5,7 +5,14 @@ const splitAt = (string: string, index: number) => {
     ];
 };
 
-export const parseAuthorizationHeader = (header: string) => {
+interface Authorization {
+    type: string;
+    data: string;
+    username?: string;
+    password?: string;
+}
+
+export const parseAuthorizationHeader = (header: string): Authorization | null => {
     if (header) {
         header = header.trim();
     }

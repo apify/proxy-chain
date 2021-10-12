@@ -2,14 +2,17 @@
 import { validateHeaderName, validateHeaderValue } from 'http';
 import { isHopByHopHeader } from './is_hop_by_hop_header';
 
-export const validHeadersOnly = (array: string[]): string[] => {
-    const rawHeaders = [];
+/**
+ * @see https://nodejs.org/api/http.html#http_message_rawheaders
+ */
+export const validHeadersOnly = (rawHeaders: string[]): string[] => {
+    const result = [];
 
     let containsHost = false;
 
-    for (let i = 0; i < array.length; i += 2) {
-        const name = array[i];
-        const value = array[i + 1];
+    for (let i = 0; i < rawHeaders.length; i += 2) {
+        const name = rawHeaders[i];
+        const value = rawHeaders[i + 1];
 
         try {
             validateHeaderName(name);
@@ -33,8 +36,8 @@ export const validHeadersOnly = (array: string[]): string[] => {
             containsHost = true;
         }
 
-        rawHeaders.push(name, value);
+        result.push(name, value);
     }
 
-    return rawHeaders;
+    return result;
 };

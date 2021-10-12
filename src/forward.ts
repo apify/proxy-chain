@@ -4,7 +4,7 @@ import stream from 'stream';
 import util from 'util';
 import { URL } from 'url';
 import { validHeadersOnly } from './utils/valid_headers_only';
-import { getBasic } from './utils/get_basic';
+import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { countTargetBytes } from './utils/count_target_bytes';
 
 const pipeline = util.promisify(stream.pipeline);
@@ -22,6 +22,13 @@ export interface HandlerOpts {
     localAddress?: string;
 }
 
+/**
+ * The request is read from the client and is resent.
+ * This is similar to Direct, however it uses the CONNECT protocol instead.
+ * Forward uses standard HTTP methods.
+ * Client -> Apify (HTTP) -> Web
+ * Client <- Apify (HTTP) <- Web
+ */
 export const forward = async (
     request: http.IncomingMessage,
     response: http.ServerResponse,
@@ -44,7 +51,7 @@ export const forward = async (
 
         try {
             if (proxy.username || proxy.password) {
-                options.headers.push('proxy-authorization', getBasic(proxy));
+                options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
             }
         } catch (error) {
             reject(error);
