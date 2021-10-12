@@ -8,16 +8,14 @@ const basicAuthParser = require('basic-auth-parser');
 const request = require('request');
 const express = require('express');
 
-const { anonymizeProxy, closeAnonymizedProxy } = require('../build/index');
-const { PORT_SELECTION_CONFIG } = require('./tools');
+const { anonymizeProxy, closeAnonymizedProxy } = require('../src/index');
 
-const ORIG_PORT_SELECTION_CONFIG = { ...PORT_SELECTION_CONFIG };
-
+let expressServer;
 let proxyServer;
-let proxyPort; // eslint-disable-line no-unused-vars
+let proxyPort;
 let testServerPort;
 const proxyAuth = { scheme: 'Basic', username: 'username', password: '' };
-let wasProxyCalled = false; // eslint-disable-line no-unused-vars
+let wasProxyCalled = false;
 
 // Setup local proxy server and web server for the tests
 before(() => {
@@ -62,8 +60,7 @@ before(() => {
 
             testServerPort = freePorts[1];
             return new Promise((resolve, reject) => {
-                app.listen(testServerPort, (err) => {
-                    if (err) reject(err);
+                expressServer = app.listen(testServerPort, () => {
                     resolve();
                 });
             });
@@ -72,9 +69,10 @@ before(() => {
 
 after(function () {
     this.timeout(5 * 1000);
+    expressServer.close();
+
     if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
 });
-
 
 const requestPromised = (opts) => {
     // console.log('requestPromised');
@@ -199,9 +197,5 @@ describe('utils.anonymizeProxyNoPassword', function () {
             .then((closed) => {
                 expect(closed).to.eql(false);
             });
-    });
-
-    after(() => {
-        Object.assign(PORT_SELECTION_CONFIG, PORT_SELECTION_CONFIG);
     });
 });

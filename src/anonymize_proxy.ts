@@ -1,24 +1,19 @@
+import net from 'net';
+import http from 'http';
+import { Buffer } from 'buffer';
+import { URL } from 'url';
 import { Server } from './server';
-import {
-    parseUrl, nodeify,
-} from './tools';
+import { nodeify } from './utils/nodeify';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
-const anonymizedProxyUrlToServer = {};
+const anonymizedProxyUrlToServer: Record<string, Server> = {};
 
 /**
  * Parses and validates a HTTP proxy URL. If the proxy requires authentication, then the function
  * starts an open local proxy server that forwards to the upstream proxy.
- * @param proxyUrl
- * @param callback Optional callback that receives the anonymous proxy URL
- * @return If no callback was supplied, returns a promise that resolves to a String with
- * anonymous proxy URL or the original URL if it was already anonymous.
  */
-export const anonymizeProxy = (proxyUrl, callback) => {
-    const parsedProxyUrl = parseUrl(proxyUrl);
-    if (!parsedProxyUrl.host || !parsedProxyUrl.port) {
-        throw new Error('Invalid "proxyUrl" option: the URL must contain both hostname and port.');
-    }
+export const anonymizeProxy = (proxyUrl: string, callback?: (error: Error | null) => void): Promise<string> => {
+    const parsedProxyUrl = new URL(proxyUrl);
     if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error('Invalid "proxyUrl" option: only HTTP proxies are currently supported.');
     }
@@ -28,7 +23,7 @@ export const anonymizeProxy = (proxyUrl, callback) => {
         return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
-    let server;
+    let server: Server & { port: number };
 
     const startServer = () => {
         return Promise.resolve()
@@ -42,7 +37,7 @@ export const anonymizeProxy = (proxyUrl, callback) => {
                             upstreamProxyUrl: proxyUrl,
                         };
                     },
-                });
+                }) as Server & { port: number };
 
                 return server.listen();
             });
@@ -62,13 +57,13 @@ export const anonymizeProxy = (proxyUrl, callback) => {
  * Closes anonymous proxy previously started by `anonymizeProxy()`.
  * If proxy was not found or was already closed, the function has no effect
  * and its result if `false`. Otherwise the result is `true`.
- * @param anonymizedProxyUrl
  * @param closeConnections If true, pending proxy connections are forcibly closed.
- * If `false`, the function will wait until all connections are closed, which can take a long time.
- * @param callback Optional callback
- * @returns Returns a promise if no callback was supplied
  */
-export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callback) => {
+export const closeAnonymizedProxy = (
+    anonymizedProxyUrl: string,
+    closeConnections: boolean,
+    callback?: (error: Error | null, result?: boolean) => void,
+): Promise<boolean> => {
     if (typeof anonymizedProxyUrl !== 'string') {
         throw new Error('The "anonymizedProxyUrl" parameter must be a string');
     }
@@ -87,17 +82,18 @@ export const closeAnonymizedProxy = (anonymizedProxyUrl, closeConnections, callb
     return nodeify(promise, callback);
 };
 
+type Callback = ({ response, socket, head }: { response: http.IncomingMessage; socket: net.Socket; head: Buffer; }) => void;
+
 /**
  * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy
  * Useful for some proxies that are using headers to send information like ProxyMesh
- * @param anonymizedProxyUrl
- * @param tunnelConnectRespondedCallback Callback to be invoked upon receiving the response. It
- * shall take an object as its parameter, with three keys `response`, `socket`, and `head` as
- * described here: https://nodejs.org/api/http.html#http_event_connect
  * @returns `true` if the callback is successfully configured, otherwise `false` (e.g. when an
  * invalid proxy URL is given).
  */
-export const listenConnectAnonymizedProxy = (anonymizedProxyUrl, tunnelConnectRespondedCallback) => {
+export const listenConnectAnonymizedProxy = (
+    anonymizedProxyUrl: string,
+    tunnelConnectRespondedCallback: Callback,
+): boolean => {
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
         return false;

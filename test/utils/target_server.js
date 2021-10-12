@@ -7,7 +7,6 @@ const WebSocket = require('ws');
 const basicAuth = require('basic-auth');
 const _ = require('underscore');
 
-
 /**
  * A HTTP server used for testing. It supports HTTPS and web sockets.
  */
@@ -76,17 +75,13 @@ class TargetServer {
 
     get1MACharsTogether(request, response) {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
-        let str = '';
-        for (let i = 0; i < 10000; i++) {
-            str += 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-        }
-        response.end(str);
+        response.end(''.padStart(1000 * 1000, 'a'));
     }
 
     get1MACharsStreamed(request, response) {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         for (let i = 0; i < 10000; i++) {
-            response.write('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+            response.write(`${''.padStart(99, 'a')}\n`);
         }
         response.end();
     }

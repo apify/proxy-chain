@@ -9,9 +9,9 @@
  *
  */
 
-import http from 'http';
-import proxy from 'proxy'; // eslint-disable-line import/no-extraneous-dependencies
-import { Server } from './server';
+const http = require('http');
+const proxy = require('proxy'); // eslint-disable-line import/no-extraneous-dependencies
+const { Server } = require('../../src/server');
 
 // Set up upstream proxy with no auth
 const upstreamProxyHttpServer = http.createServer();
