@@ -1,14 +1,23 @@
+<<<<<<< HEAD
 import type { Buffer } from 'node:buffer';
 import type http from 'node:http';
 import type net from 'node:net';
 import { URL } from 'node:url';
 
 import { Server, SOCKS_PROTOCOLS } from './server';
+=======
+import net from 'net';
+import http from 'http';
+import { Buffer } from 'buffer';
+import { URL } from 'url';
+import { Server } from './server';
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 import { nodeify } from './utils/nodeify';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};
 
+<<<<<<< HEAD
 export interface AnonymizeProxyOptions {
     url: string;
     port: number;
@@ -52,11 +61,26 @@ export const anonymizeProxy = async (
 
     // If upstream proxy requires no password or if there is no need to ignore HTTPS proxy cert errors, return it directly
     if (!parsedProxyUrl.username && !parsedProxyUrl.password && (!ignoreProxyCertificate || parsedProxyUrl.protocol !== 'https:')) {
+=======
+/**
+ * Parses and validates a HTTP proxy URL. If the proxy requires authentication, then the function
+ * starts an open local proxy server that forwards to the upstream proxy.
+ */
+export const anonymizeProxy = (proxyUrl: string, callback?: (error: Error | null) => void): Promise<string> => {
+    const parsedProxyUrl = new URL(proxyUrl);
+    if (parsedProxyUrl.protocol !== 'http:') {
+        throw new Error('Invalid "proxyUrl" option: only HTTP proxies are currently supported.');
+    }
+
+    // If upstream proxy requires no password, return it directly
+    if (!parsedProxyUrl.username && !parsedProxyUrl.password) {
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
         return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
     let server: Server & { port: number };
 
+<<<<<<< HEAD
     const startServer = async () => {
         return Promise.resolve().then(async () => {
             server = new Server({
@@ -81,6 +105,32 @@ export const anonymizeProxy = async (
         anonymizedProxyUrlToServer[url] = server;
         return url;
     });
+=======
+    const startServer = () => {
+        return Promise.resolve()
+            .then(() => {
+                server = new Server({
+                    // verbose: true,
+                    port: 0,
+                    prepareRequestFunction: () => {
+                        return {
+                            requestAuthentication: false,
+                            upstreamProxyUrl: proxyUrl,
+                        };
+                    },
+                }) as Server & { port: number };
+
+                return server.listen();
+            });
+    };
+
+    const promise = startServer()
+        .then(() => {
+            const url = `http://127.0.0.1:${server.port}`;
+            anonymizedProxyUrlToServer[url] = server;
+            return url;
+        });
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
     return nodeify(promise, callback);
 };
@@ -91,7 +141,11 @@ export const anonymizeProxy = async (
  * and its result if `false`. Otherwise the result is `true`.
  * @param closeConnections If true, pending proxy connections are forcibly closed.
  */
+<<<<<<< HEAD
 export const closeAnonymizedProxy = async (
+=======
+export const closeAnonymizedProxy = (
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
     anonymizedProxyUrl: string,
     closeConnections: boolean,
     callback?: (error: Error | null, result?: boolean) => void,
@@ -107,6 +161,7 @@ export const closeAnonymizedProxy = async (
 
     delete anonymizedProxyUrlToServer[anonymizedProxyUrl];
 
+<<<<<<< HEAD
     const promise = server.close(closeConnections).then(() => {
         return true;
     });
@@ -122,6 +177,16 @@ type Callback = ({
     socket: net.Socket;
     head: Buffer;
 }) => void;
+=======
+    const promise = server.close(closeConnections)
+        .then(() => {
+            return true;
+        });
+    return nodeify(promise, callback);
+};
+
+type Callback = ({ response, socket, head }: { response: http.IncomingMessage; socket: net.Socket; head: Buffer; }) => void;
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
 /**
  * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy

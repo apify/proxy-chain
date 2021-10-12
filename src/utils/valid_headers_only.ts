@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { validateHeaderName, validateHeaderValue } from 'node:http';
 
+=======
+// @ts-expect-error Missing types
+import { validateHeaderName, validateHeaderValue } from 'http';
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 import { isHopByHopHeader } from './is_hop_by_hop_header';
 
 /**
@@ -17,16 +22,29 @@ export const validHeadersOnly = (rawHeaders: string[]): string[] => {
         try {
             validateHeaderName(name);
             validateHeaderValue(name, value);
+<<<<<<< HEAD
         } catch {
+=======
+        } catch (error) {
+            // eslint-disable-next-line no-continue
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
             continue;
         }
 
         if (isHopByHopHeader(name)) {
+<<<<<<< HEAD
+=======
+            // eslint-disable-next-line no-continue
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
             continue;
         }
 
         if (name.toLowerCase() === 'host') {
             if (containsHost) {
+<<<<<<< HEAD
+=======
+                // eslint-disable-next-line no-continue
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
                 continue;
             }
 

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import type { Buffer } from 'node:buffer';
 import type dns from 'node:dns';
 import type { EventEmitter } from 'node:events';
@@ -11,13 +12,28 @@ export interface HandlerOpts {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
+=======
+import net from 'net';
+import { Buffer } from 'buffer';
+import { URL } from 'url';
+import { EventEmitter } from 'events';
+import { countTargetBytes } from './utils/count_target_bytes';
+import { Socket } from './socket';
+
+export interface HandlerOpts {
+    localAddress?: string;
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 }
 
 interface DirectOpts {
     request: { url?: string };
     sourceSocket: Socket;
     head: Buffer;
+<<<<<<< HEAD
     server: EventEmitter & { log: (connectionId: unknown, str: string) => void };
+=======
+    server: EventEmitter & { log: (...args: any[]) => void; };
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
     handlerOpts: HandlerOpts;
 }
 
@@ -46,16 +62,23 @@ export const direct = (
     }
 
     if (head.length > 0) {
+<<<<<<< HEAD
         // See comment in chain.ts
         sourceSocket.unshift(head);
+=======
+        throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
     }
 
     const options = {
         port: Number(url.port),
         host: url.hostname,
         localAddress: handlerOpts.localAddress,
+<<<<<<< HEAD
         family: handlerOpts.ipFamily,
         lookup: handlerOpts.dnsLookup,
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
     };
 
     if (options.host[0] === '[') {

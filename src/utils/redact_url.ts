@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { URL } from 'node:url';
+=======
+import { URL } from 'url';
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
 export const redactUrl = (url: string | URL, passwordReplacement = '<redacted>'): string => {
     if (typeof url !== 'object') {

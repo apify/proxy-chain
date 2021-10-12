@@ -72,8 +72,25 @@ const puppeteerGet = (url, proxyUrl) => {
     // eslint-disable-next-line global-require
     const puppeteer = require('puppeteer');
 
+<<<<<<< HEAD
     return (async () => {
         const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
+=======
+    let proxyParams = '';
+    if (proxyUrl) {
+        const parsed = new URL(proxyUrl);
+        const username = decodeURIComponent(parsed.username);
+        const password = decodeURIComponent(parsed.password);
+
+        proxyParams += `--proxy-type=http --proxy=${parsed.hostname}:${parsed.port} `;
+        if (username || password) {
+            if ((username && !password) || (!username && password)) {
+                throw new Error('PhantomJS cannot handle proxy only username or password!');
+            }
+            proxyParams += `--proxy-auth=${username}:${password} `;
+        }
+    }
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
         const browser = await puppeteer.launch({
             env: parsed ? {
@@ -258,7 +275,7 @@ const createTestSuite = ({
                             let addToMainProxyServerConnectionIds = true;
 
                             expect(request).to.be.an('object');
-                            expect(port).to.be.an('number');
+                            expect(port).to.be.an('string');
 
                             // All the fake hostnames here have a .gov TLD, because without a TLD,
                             // the tests would fail on GitHub Actions. We assume nobody will register
@@ -309,7 +326,11 @@ const createTestSuite = ({
                                     expect(trgParsed.hostname).to.be.eql(hostname);
                                     expect(trgParsed.pathname).to.be.eql('/some/path');
                                     expect(trgParsed.search).to.be.eql('?query=456');
+<<<<<<< HEAD
                                     expect(port).to.be.eql(1234);
+=======
+                                    expect(port).to.be.eql('1234');
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
                                     return {
                                         statusCode: 201,
                                         headers: {
@@ -461,7 +482,11 @@ const createTestSuite = ({
                     assert.fail();
                 })
                     .catch((err) => {
+<<<<<<< HEAD
                         expect(err.message.slice(-3)).to.contain(`${expectedStatusCode}`);
+=======
+                        expect(err.message).to.contain(`${expectedStatusCode}`);
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
                     })
                     .finally(() => {
                         mainProxyServer.removeListener('requestFailed', onRequestFailed);
@@ -640,7 +665,11 @@ const createTestSuite = ({
                     return requestPromised(opts)
                         .then((response) => {
                             if (useMainProxy) {
+<<<<<<< HEAD
                                 expect(response.statusCode).to.eql(592);
+=======
+                                expect(response.statusCode).to.eql(502);
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
                                 expect(response.body).to.eql('Bad status!');
                             } else {
                                 expect(response.statusCode).to.eql(55);
@@ -1079,12 +1108,20 @@ const createTestSuite = ({
                             await requestPromised(opts);
                             expect(false).to.be.eql(true);
                         } catch (error) {
+<<<<<<< HEAD
                             expect(error.message).to.be.eql('tunneling socket could not be established, statusCode=597');
+=======
+                            expect(error.message).to.be.eql('tunneling socket could not be established, statusCode=502');
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
                         }
                     } else {
                         const response = await requestPromised(opts);
 
+<<<<<<< HEAD
                         expect(response.statusCode).to.be.eql(597);
+=======
+                        expect(response.statusCode).to.be.eql(502);
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
                         expect(response.body).to.be.eql('Invalid colon in username in upstream proxy credentials');
                     }
                 });
@@ -1338,6 +1375,7 @@ it('supports localAddress', async () => {
     }
 });
 
+<<<<<<< HEAD
 it('supports https proxy relay', async () => {
     const target = https.createServer(() => {
     });
@@ -1576,6 +1614,8 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
     });
 });
 
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 // Run all combinations of test parameters
 const useSslVariants = [
     false,

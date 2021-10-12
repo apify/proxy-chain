@@ -14,4 +14,7 @@ docs
 package-lock.json
 .nyc_output
 dist
+<<<<<<< HEAD
 .vscode
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))

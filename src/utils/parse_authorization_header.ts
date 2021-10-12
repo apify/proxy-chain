@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 import { Buffer } from 'node:buffer';
 
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 const splitAt = (string: string, index: number) => {
     return [
         index === -1 ? '' : string.substring(0, index),
@@ -25,14 +28,18 @@ export const parseAuthorizationHeader = (header: string): Authorization | null =
 
     const [type, data] = splitAt(header, header.indexOf(' '));
 
+<<<<<<< HEAD
     // https://datatracker.ietf.org/doc/html/rfc7617#page-3
     // Note that both scheme and parameter names are matched case-
     // insensitively.
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
     if (type.toLowerCase() !== 'basic') {
         return { type, data };
     }
 
     const auth = Buffer.from(data, 'base64').toString();
+<<<<<<< HEAD
 
     // https://datatracker.ietf.org/doc/html/rfc7617#page-5
     // To receive authorization, the client
@@ -54,6 +61,9 @@ export const parseAuthorizationHeader = (header: string): Authorization | null =
     // This is a non-spec behavior. At Apify there are clients that rely on this.
     // If you want this behavior changed, please open an issue.
     const [username, password] = auth.includes(':') ? splitAt(auth, auth.indexOf(':')) : [auth, ''];
+=======
+    const [username, password] = splitAt(auth, auth.indexOf(':'));
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
     return {
         type,

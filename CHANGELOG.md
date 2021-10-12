@@ -1,13 +1,20 @@
+<<<<<<< HEAD
 2.0.1 / 2022-05-02
+=======
+2.0.0 / 2021-10-12
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 ==================
 - Simplify code, fix tests, move to TypeScript [#162](https://github.com/apify/proxy-chain/pull/162)
 - Bugfix: Memory leak in createTunnel [#160](https://github.com/apify/proxy-chain/issues/160)
 - Bugfix: Proxy fails to handle non-standard HTTP response in HTTP forwarding mode, on certain websites [#107](https://github.com/apify/proxy-chain/issues/107)
+<<<<<<< HEAD
 - Pass proxyChainId to tunnelConnectResponded [#173](https://github.com/apify/proxy-chain/pull/173)
 - feat: accept custom port for proxy anonymization [#214](https://github.com/apify/proxy-chain/pull/214)
 - fix: socket close race condition
 - feat: closeConnection by id [#176](https://github.com/apify/proxy-chain/pull/176)
 - feat: custom dns lookup [#175](https://github.com/apify/proxy-chain/pull/175)
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
 1.0.3 / 2021-08-17
 ==================

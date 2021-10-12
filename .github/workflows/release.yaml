@@ -18,8 +18,13 @@ jobs:
 
     strategy:
       matrix:
+<<<<<<< HEAD:.github/workflows/release.yaml
         os: [ubuntu-22.04] # add windows-latest later
         node-version: [14, 16, 18]
+=======
+        os: [ubuntu-latest] # add windows-latest later
+        node-version: [14, 16]
+>>>>>>> f1bbe42 (release: 2.0.0 (#162)):.github/workflows/release.yml
 
     steps:
       -

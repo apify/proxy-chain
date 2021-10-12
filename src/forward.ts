@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import type dns from 'node:dns';
 import http from 'node:http';
 import https from 'node:https';
@@ -10,6 +11,16 @@ import type { SocketWithPreviousStats } from './utils/count_target_bytes';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { validHeadersOnly } from './utils/valid_headers_only';
+=======
+import http from 'http';
+import https from 'https';
+import stream from 'stream';
+import util from 'util';
+import { URL } from 'url';
+import { validHeadersOnly } from './utils/valid_headers_only';
+import { getBasicAuthorizationHeader } from './utils/get_basic';
+import { countTargetBytes } from './utils/count_target_bytes';
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -19,16 +30,23 @@ interface Options {
     insecureHTTPParser: boolean;
     path?: string;
     localAddress?: string;
+<<<<<<< HEAD
     family?: number;
     lookup?: typeof dns['lookup'];
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
+<<<<<<< HEAD
     ignoreUpstreamProxyCertificate: boolean;
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
+=======
+    localAddress?: string;
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 }
 
 /**
@@ -62,8 +80,11 @@ export const forward = async (
         headers: validHeadersOnly(request.rawHeaders),
         insecureHTTPParser: true,
         localAddress: handlerOpts.localAddress,
+<<<<<<< HEAD
         family: handlerOpts.ipFamily,
         lookup: handlerOpts.dnsLookup,
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
     };
 
     // In case of proxy the path needs to be an absolute URL
@@ -80,12 +101,23 @@ export const forward = async (
         }
     }
 
+<<<<<<< HEAD
     const requestCallback = async (clientResponse: http.IncomingMessage) => {
+=======
+    const fn = origin!.startsWith('https:') ? https.request : http.request;
+
+    // We have to force cast `options` because @types/node doesn't support an array.
+    const client = fn(origin!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
         try {
             // This is necessary to prevent Node.js throwing an error
             let statusCode = clientResponse.statusCode!;
             if (statusCode < 100 || statusCode > 999) {
+<<<<<<< HEAD
                 statusCode = badGatewayStatusCodes.STATUS_CODE_OUT_OF_RANGE;
+=======
+                statusCode = 502;
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
             }
 
             // 407 is handled separately
@@ -107,6 +139,7 @@ export const forward = async (
             );
 
             resolve();
+<<<<<<< HEAD
         } catch {
             // Client error, pipeline already destroys the streams, ignore.
             resolve();
@@ -145,4 +178,26 @@ export const forward = async (
 
         resolve();
     });
+=======
+        } catch (error) {
+            reject(error);
+        }
+    });
+
+    client.once('socket', (socket) => {
+        countTargetBytes(request.socket, socket);
+    });
+
+    try {
+        // `pipeline` automatically handles all the events and data
+        await pipeline(
+            request,
+            client,
+        );
+    } catch (error: any) {
+        error.proxy = proxy;
+
+        reject(error);
+    }
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 });

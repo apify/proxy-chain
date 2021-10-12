@@ -9,7 +9,10 @@ const request = require('request');
 const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../src/index');
+<<<<<<< HEAD
 const { expectThrowsAsync } = require('./utils/throws_async');
+=======
+>>>>>>> f1bbe42 (release: 2.0.0 (#162))
 
 let expressServer;
 let proxyServer;
