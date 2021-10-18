@@ -27,7 +27,7 @@ import { Socket } from './socket';
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 
-type ConnectionStats = {
+export type ConnectionStats = {
     srcTxBytes: number;
     srcRxBytes: number;
     trgTxBytes: number | null;
@@ -47,7 +47,7 @@ type HandlerOpts = {
     localAddress?: string;
 };
 
-type PrepareRequestFunctionOpts = {
+export type PrepareRequestFunctionOpts = {
     connectionId: unknown;
     request: http.IncomingMessage;
     username: string;
@@ -57,7 +57,7 @@ type PrepareRequestFunctionOpts = {
     isHttp: boolean;
 };
 
-type PrepareRequestFunctionResult = {
+export type PrepareRequestFunctionResult = {
     customResponseFunction?: CustomResponseOpts['customResponseFunction'];
     requestAuthentication?: boolean;
     failMsg?: string;
@@ -66,7 +66,7 @@ type PrepareRequestFunctionResult = {
 };
 
 type Promisable<T> = T | Promise<T>;
-type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promisable<undefined | PrepareRequestFunctionResult>;
+export type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promisable<undefined | PrepareRequestFunctionResult>;
 
 /**
  * Represents the proxy server.
