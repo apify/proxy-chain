@@ -159,7 +159,7 @@ export class Server extends EventEmitter {
 
     log(connectionId: unknown, str: string): void {
         if (this.verbose) {
-            const logPrefix = connectionId ? `${connectionId} | ` : '';
+            const logPrefix = connectionId ? `${String(connectionId)} | ` : '';
             console.log(`ProxyServer[${this.port}]: ${logPrefix}${str}`);
         }
     }
