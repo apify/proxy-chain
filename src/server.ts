@@ -565,6 +565,21 @@ export class Server extends EventEmitter {
     }
 
     /**
+     * Forcibly closes pending proxy connections.
+     */
+    closeConnections(): void {
+        this.log(null, 'Closing pending sockets');
+
+        for (const socket of this.connections.values()) {
+            socket.destroy();
+        }
+
+        this.connections.clear();
+
+        this.log(null, `Destroyed ${this.connections.size} pending sockets`);
+    }
+
+    /**
      * Closes the proxy server.
      * @param closeConnections If true, pending proxy connections are forcibly closed.
      */
@@ -575,15 +590,7 @@ export class Server extends EventEmitter {
         }
 
         if (closeConnections) {
-            this.log(null, 'Closing pending sockets');
-
-            for (const socket of this.connections.values()) {
-                socket.destroy();
-            }
-
-            this.connections.clear();
-
-            this.log(null, `Destroyed ${this.connections.size} pending sockets`);
+            this.closeConnections();
         }
 
         if (this.server) {
