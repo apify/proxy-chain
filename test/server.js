@@ -242,7 +242,7 @@ const createTestSuite = ({
 
                     if (mainProxyAuth || useUpstreamProxy || testCustomResponse) {
                         opts.prepareRequestFunction = ({
-                            request, username, password, hostname, port, isHttp, connectionId,
+                            request, username, password, hostname, port, connectionId,
                         }) => {
                             const result = {
                                 requestAuthentication: false,
@@ -1156,7 +1156,7 @@ describe('non-200 upstream connect response', () => {
     it('fails downstream with 502', (done) => {
         const server = http.createServer();
         server.on('connect', (_request, socket) => {
-            socket.once('error', () => {});
+            socket.once('error', () => { });
             socket.end('HTTP/1.1 403 Forbidden\r\ncontent-length: 1\r\n\r\na');
         });
         server.listen(() => {
