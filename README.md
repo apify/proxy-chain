@@ -219,7 +219,7 @@ the parameter types of the event callback are described in [Node.js's documentat
 [1]: https://nodejs.org/api/http.html#http_event_connect
 
 ```javascript
-server.on('tunnelConnectResponded', ({ response, socket, head }) => {
+server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head }) => {
     console.log(`CONNECT response headers received: ${response.headers}`);
 });
 ```

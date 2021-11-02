@@ -118,6 +118,7 @@ export const chain = (
         }
 
         server.emit('tunnelConnectResponded', {
+            proxyChainId,
             response,
             socket: targetSocket,
             head: clientHead,
