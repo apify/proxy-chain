@@ -7,6 +7,7 @@ import { Socket } from './socket';
 
 export interface HandlerOpts {
     localAddress?: string;
+    dnsLookup?: any;
 }
 
 interface DirectOpts {
@@ -49,6 +50,7 @@ export const direct = (
         port: Number(url.port),
         host: url.hostname,
         localAddress: handlerOpts.localAddress,
+        lookup: handlerOpts.dnsLookup,
     };
 
     if (options.host[0] === '[') {

@@ -22,11 +22,13 @@ interface Options {
     headers: string[];
     path?: string;
     localAddress?: string;
+    lookup?: any;
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
     localAddress?: string;
+    dnsLookup?: any;
 }
 
 interface ChainOpts {
@@ -37,6 +39,7 @@ interface ChainOpts {
     server: EventEmitter & { log: (...args: any[]) => void; };
     isPlain: boolean;
     localAddress?: string;
+    dnsLookup?: any;
 }
 
 /**
@@ -70,6 +73,7 @@ export const chain = (
             request.url!,
         ],
         localAddress: handlerOpts.localAddress,
+        lookup: handlerOpts.dnsLookup,
     };
 
     if (proxy.username || proxy.password) {
