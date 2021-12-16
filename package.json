@@ -47,7 +47,7 @@
     "@apify/eslint-config-ts": "^0.1.4",
     "@apify/tsconfig": "^0.1.0",
     "@types/jest": "^27.0.2",
-    "@types/node": "^16.10.1",
+    "@types/node": "^17.0.0",
     "@typescript-eslint/eslint-plugin": "^4.31.2",
     "basic-auth": "^2.0.1",
     "basic-auth-parser": "^0.0.2",
