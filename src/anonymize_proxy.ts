@@ -1,21 +1,47 @@
-import net from 'net';
-import http from 'http';
-import { Buffer } from 'buffer';
-import { URL } from 'url';
-import { Server } from './server';
-import { nodeify } from './utils/nodeify';
+import net from "net";
+import http from "http";
+import { Buffer } from "buffer";
+import { URL } from "url";
+import { Server } from "./server";
+import { nodeify } from "./utils/nodeify";
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};
+
+export interface AnonymouseProxyOptions {
+    url: string;
+    port: number;
+}
 
 /**
  * Parses and validates a HTTP proxy URL. If the proxy requires authentication, then the function
  * starts an open local proxy server that forwards to the upstream proxy.
  */
-export const anonymizeProxy = (proxyUrl: string, callback?: (error: Error | null) => void): Promise<string> => {
+export const anonymizeProxy = (
+    options: string | AnonymouseProxyOptions,
+    callback?: (error: Error | null) => void
+): Promise<string> => {
+    let proxyUrl: string;
+    let port = 0;
+
+    if (typeof options === "string") {
+        proxyUrl = options;
+    } else {
+        proxyUrl = options.url;
+        port = options.port;
+
+        if (port < 0 || port > 65535) {
+            throw new Error(
+                'Invalid "port" option: only values equals or between 0-65535 are valid'
+            );
+        }
+    }
+
     const parsedProxyUrl = new URL(proxyUrl);
-    if (parsedProxyUrl.protocol !== 'http:') {
-        throw new Error('Invalid "proxyUrl" option: only HTTP proxies are currently supported.');
+    if (parsedProxyUrl.protocol !== "http:") {
+        throw new Error(
+            'Invalid "proxyUrl" option: only HTTP proxies are currently supported.'
+        );
     }
 
     // If upstream proxy requires no password, return it directly
@@ -26,29 +52,27 @@ export const anonymizeProxy = (proxyUrl: string, callback?: (error: Error | null
     let server: Server & { port: number };
 
     const startServer = () => {
-        return Promise.resolve()
-            .then(() => {
-                server = new Server({
-                    // verbose: true,
-                    port: 0,
-                    prepareRequestFunction: () => {
-                        return {
-                            requestAuthentication: false,
-                            upstreamProxyUrl: proxyUrl,
-                        };
-                    },
-                }) as Server & { port: number };
+        return Promise.resolve().then(() => {
+            server = new Server({
+                // verbose: true,
+                port,
+                prepareRequestFunction: () => {
+                    return {
+                        requestAuthentication: false,
+                        upstreamProxyUrl: proxyUrl,
+                    };
+                },
+            }) as Server & { port: number };
 
-                return server.listen();
-            });
+            return server.listen();
+        });
     };
 
-    const promise = startServer()
-        .then(() => {
-            const url = `http://127.0.0.1:${server.port}`;
-            anonymizedProxyUrlToServer[url] = server;
-            return url;
-        });
+    const promise = startServer().then(() => {
+        const url = `http://127.0.0.1:${server.port}`;
+        anonymizedProxyUrlToServer[url] = server;
+        return url;
+    });
 
     return nodeify(promise, callback);
 };
@@ -62,9 +86,9 @@ export const anonymizeProxy = (proxyUrl: string, callback?: (error: Error | null
 export const closeAnonymizedProxy = (
     anonymizedProxyUrl: string,
     closeConnections: boolean,
-    callback?: (error: Error | null, result?: boolean) => void,
+    callback?: (error: Error | null, result?: boolean) => void
 ): Promise<boolean> => {
-    if (typeof anonymizedProxyUrl !== 'string') {
+    if (typeof anonymizedProxyUrl !== "string") {
         throw new Error('The "anonymizedProxyUrl" parameter must be a string');
     }
 
@@ -75,14 +99,21 @@ export const closeAnonymizedProxy = (
 
     delete anonymizedProxyUrlToServer[anonymizedProxyUrl];
 
-    const promise = server.close(closeConnections)
-        .then(() => {
-            return true;
-        });
+    const promise = server.close(closeConnections).then(() => {
+        return true;
+    });
     return nodeify(promise, callback);
 };
 
-type Callback = ({ response, socket, head }: { response: http.IncomingMessage; socket: net.Socket; head: Buffer; }) => void;
+type Callback = ({
+    response,
+    socket,
+    head,
+}: {
+    response: http.IncomingMessage;
+    socket: net.Socket;
+    head: Buffer;
+}) => void;
 
 /**
  * Add a callback on 'tunnelConnectResponded' Event in order to get headers from CONNECT tunnel to proxy
@@ -92,13 +123,13 @@ type Callback = ({ response, socket, head }: { response: http.IncomingMessage; s
  */
 export const listenConnectAnonymizedProxy = (
     anonymizedProxyUrl: string,
-    tunnelConnectRespondedCallback: Callback,
+    tunnelConnectRespondedCallback: Callback
 ): boolean => {
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
         return false;
     }
-    server.on('tunnelConnectResponded', ({ response, socket, head }) => {
+    server.on("tunnelConnectResponded", ({ response, socket, head }) => {
         tunnelConnectRespondedCallback({ response, socket, head });
     });
     return true;
