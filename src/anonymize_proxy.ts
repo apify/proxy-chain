@@ -1,9 +1,9 @@
-import net from "net";
-import http from "http";
-import { Buffer } from "buffer";
-import { URL } from "url";
-import { Server } from "./server";
-import { nodeify } from "./utils/nodeify";
+import net from 'net';
+import http from 'http';
+import { Buffer } from 'buffer';
+import { URL } from 'url';
+import { Server } from './server';
+import { nodeify } from './utils/nodeify';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};
@@ -19,12 +19,12 @@ export interface AnonymouseProxyOptions {
  */
 export const anonymizeProxy = (
     options: string | AnonymouseProxyOptions,
-    callback?: (error: Error | null) => void
+    callback?: (error: Error | null) => void,
 ): Promise<string> => {
     let proxyUrl: string;
     let port = 0;
 
-    if (typeof options === "string") {
+    if (typeof options === 'string') {
         proxyUrl = options;
     } else {
         proxyUrl = options.url;
@@ -32,15 +32,15 @@ export const anonymizeProxy = (
 
         if (port < 0 || port > 65535) {
             throw new Error(
-                'Invalid "port" option: only values equals or between 0-65535 are valid'
+                'Invalid "port" option: only values equals or between 0-65535 are valid',
             );
         }
     }
 
     const parsedProxyUrl = new URL(proxyUrl);
-    if (parsedProxyUrl.protocol !== "http:") {
+    if (parsedProxyUrl.protocol !== 'http:') {
         throw new Error(
-            'Invalid "proxyUrl" option: only HTTP proxies are currently supported.'
+            'Invalid "proxyUrl" option: only HTTP proxies are currently supported.',
         );
     }
 
@@ -86,9 +86,9 @@ export const anonymizeProxy = (
 export const closeAnonymizedProxy = (
     anonymizedProxyUrl: string,
     closeConnections: boolean,
-    callback?: (error: Error | null, result?: boolean) => void
+    callback?: (error: Error | null, result?: boolean) => void,
 ): Promise<boolean> => {
-    if (typeof anonymizedProxyUrl !== "string") {
+    if (typeof anonymizedProxyUrl !== 'string') {
         throw new Error('The "anonymizedProxyUrl" parameter must be a string');
     }
 
@@ -123,13 +123,13 @@ type Callback = ({
  */
 export const listenConnectAnonymizedProxy = (
     anonymizedProxyUrl: string,
-    tunnelConnectRespondedCallback: Callback
+    tunnelConnectRespondedCallback: Callback,
 ): boolean => {
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
         return false;
     }
-    server.on("tunnelConnectResponded", ({ response, socket, head }) => {
+    server.on('tunnelConnectResponded', ({ response, socket, head }) => {
         tunnelConnectRespondedCallback({ response, socket, head });
     });
     return true;
