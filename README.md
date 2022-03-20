@@ -238,7 +238,7 @@ listenConnectAnonymizedProxy(anonymizedProxyUrl, ({ response, socket, head }) =>
 The package also provides several utility functions.
 
 
-### `anonymizeProxy(proxyUrl, callback)`
+### `anonymizeProxy({ proxyUrl, port }, callback)`
 
 Parses and validates a HTTP proxy URL. If the proxy requires authentication,
 then the function starts an open local proxy server that forwards to the proxy.
@@ -258,7 +258,7 @@ const proxyChain = require('proxy-chain');
 
 (async() => {
     const oldProxyUrl = 'http://bob:password123@proxy.example.com:8000';
-    const newProxyUrl = await proxyChain.anonymizeProxy(oldProxyUrl);
+    const newProxyUrl = await proxyChain.anonymizeProxy({ proxyUrl: oldProxyUrl });
 
     // Prints something like "http://127.0.0.1:45678"
     console.log(newProxyUrl);
