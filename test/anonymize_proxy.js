@@ -1,47 +1,37 @@
-const _ = require("underscore");
-const util = require("util");
-const { expect, assert } = require("chai");
-const proxy = require("proxy");
-const http = require("http");
-const portastic = require("portastic");
-const basicAuthParser = require("basic-auth-parser");
-const request = require("request");
-const express = require("express");
+const _ = require('underscore');
+const util = require('util');
+const { expect, assert } = require('chai');
+const proxy = require('proxy');
+const http = require('http');
+const portastic = require('portastic');
+const basicAuthParser = require('basic-auth-parser');
+const request = require('request');
+const express = require('express');
 
-const {
-    anonymizeProxy,
-    closeAnonymizedProxy,
-    listenConnectAnonymizedProxy,
-} = require("../src/index");
+const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../src/index');
 
 let expressServer;
 let proxyServer;
 let proxyPort;
 let testServerPort;
-const proxyAuth = {
-    scheme: "Basic",
-    username: "username",
-    password: "password",
-};
+const proxyAuth = { scheme: 'Basic', username: 'username', password: 'password' };
 let wasProxyCalled = false;
 
-const serverListen = (server, port) =>
-    new Promise((resolve, reject) => {
-        server.once("error", reject);
+const serverListen = (server, port) => new Promise((resolve, reject) => {
+    server.once('error', reject);
 
-        server.listen(port, () => {
-            server.off("error", reject);
+    server.listen(port, () => {
+        server.off('error', reject);
 
-            resolve(server.address().port);
-        });
+        resolve(server.address().port);
     });
+});
 
 // Setup local proxy server and web server for the tests
 before(() => {
     // Find free port for the proxy
     let freePorts;
-    return portastic
-        .find({ min: 50000, max: 50100 })
+    return portastic.find({ min: 50000, max: 50100 })
         .then((result) => {
             freePorts = result;
             return new Promise((resolve, reject) => {
@@ -50,7 +40,7 @@ before(() => {
                 // Setup proxy authorization
                 httpServer.authenticate = function (req, fn) {
                     // parse the "Proxy-Authorization" header
-                    const auth = req.headers["proxy-authorization"];
+                    const auth = req.headers['proxy-authorization'];
                     if (!auth) {
                         // optimization: don't invoke the child process if no
                         // "Proxy-Authorization" header was given
@@ -64,7 +54,7 @@ before(() => {
                     fn(null, isEqual);
                 };
 
-                httpServer.on("error", reject);
+                httpServer.on('error', reject);
 
                 proxyServer = proxy(httpServer);
                 proxyServer.listen(freePorts[0], () => {
@@ -76,7 +66,7 @@ before(() => {
         .then(() => {
             const app = express();
 
-            app.get("/", (req, res) => res.send("Hello World!"));
+            app.get('/', (req, res) => res.send('Hello World!'));
 
             // eslint-disable-next-line prefer-destructuring
             testServerPort = freePorts[1];
@@ -93,8 +83,7 @@ after(function () {
 
     expressServer.close();
 
-    if (proxyServer)
-        return util.promisify(proxyServer.close).bind(proxyServer)();
+    if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
 });
 
 const requestPromised = (opts) => {
@@ -104,137 +93,102 @@ const requestPromised = (opts) => {
         request(opts, (error, response, body) => {
             if (error) return reject(error);
             if (response.statusCode !== 200) {
-                return reject(
-                    new Error(
-                        `Received invalid response code: ${response.statusCode}`
-                    )
-                );
+                return reject(new Error(`Received invalid response code: ${response.statusCode}`));
             }
-            if (opts.expectBodyContainsText)
-                expect(body).to.contain(opts.expectBodyContainsText);
+            if (opts.expectBodyContainsText) expect(body).to.contain(opts.expectBodyContainsText);
             resolve();
         });
     });
 };
 
-describe("utils.anonymizeProxy", function () {
+describe('utils.anonymizeProxy', function () {
     // Need larger timeout for Travis CI
     this.timeout(5 * 1000);
-    it("throws for invalid args", () => {
-        assert.throws(() => {
-            anonymizeProxy(null);
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy();
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({});
-        }, Error);
+    it('throws for invalid args', () => {
+        assert.throws(() => { anonymizeProxy(null); }, Error);
+        assert.throws(() => { anonymizeProxy(); }, Error);
+        assert.throws(() => { anonymizeProxy({}); }, Error);
 
+        assert.throws(() => { closeAnonymizedProxy({}); }, Error);
+        assert.throws(() => { closeAnonymizedProxy(); }, Error);
+        assert.throws(() => { closeAnonymizedProxy(null); }, Error);
+    });
+
+    it('throws for unsupported proxy protocols', () => {
+        assert.throws(() => { anonymizeProxy('socks://whatever.com'); }, Error);
+        assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
+        assert.throws(() => { anonymizeProxy('socks5://whatever.com'); }, Error);
         assert.throws(() => {
-            closeAnonymizedProxy({});
+            anonymizeProxy({ proxyUrl: 'socks://whatever.com' });
         }, Error);
         assert.throws(() => {
-            closeAnonymizedProxy();
+            anonymizeProxy({ proxyUrl: 'https://whatever.com' });
         }, Error);
         assert.throws(() => {
-            closeAnonymizedProxy(null);
+            anonymizeProxy({ proxyUrl: 'socks5://whatever.com' });
         }, Error);
     });
 
-    it("throws for unsupported proxy protocols", () => {
+    it('throws for invalid ports', () => {
         assert.throws(() => {
-            anonymizeProxy("socks://whatever.com");
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy("https://whatever.com");
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy("socks5://whatever.com");
-        }, Error);
-
-        assert.throws(() => {
-            anonymizeProxy({ proxyUrl: "socks://whatever.com" });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ proxyUrl: "https://whatever.com" });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ proxyUrl: "socks5://whatever.com" });
-        }, Error);
-    });
-
-    it("throws for invalid ports", () => {
-        assert.throws(() => {
-            anonymizeProxy({ proxyUrl: "http://whatever.com", port: -16 });
+            anonymizeProxy({ proxyUrl: 'http://whatever.com', port: -16 });
         }, Error);
         assert.throws(() => {
             anonymizeProxy({
-                proxyUrl: "http://whatever.com",
+                proxyUrl: 'http://whatever.com',
                 port: 4324324324,
             });
         }, Error);
     });
 
-    it("throws for invalid URLs", () => {
+    it('throws for invalid URLs', () => {
+        assert.throws(() => { anonymizeProxy('://whatever.com'); }, Error);
+        assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
+        assert.throws(() => { anonymizeProxy('socks5://whatever.com'); }, Error);
         assert.throws(() => {
-            anonymizeProxy("://whatever.com");
+            anonymizeProxy({ proxyUrl: '://whatever.com' });
         }, Error);
         assert.throws(() => {
-            anonymizeProxy("https://whatever.com");
+            anonymizeProxy({ proxyUrl: 'https://whatever.com' });
         }, Error);
         assert.throws(() => {
-            anonymizeProxy("socks5://whatever.com");
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ proxyUrl: "://whatever.com" });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ proxyUrl: "https://whatever.com" });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ proxyUrl: "socks5://whatever.com" });
+            anonymizeProxy({ proxyUrl: 'socks5://whatever.com' });
         }, Error);
     });
 
-    it("keeps already anonymous proxies (both with callbacks and promises)", () => {
+    it('keeps already anonymous proxies (both with callbacks and promises)', () => {
         return Promise.resolve()
             .then(() => {
-                return anonymizeProxy("http://whatever:4567");
+                return anonymizeProxy('http://whatever:4567');
             })
             .then((anonymousProxyUrl) => {
-                expect(anonymousProxyUrl).to.eql("http://whatever:4567");
+                expect(anonymousProxyUrl).to.eql('http://whatever:4567');
             })
             .then(() => {
                 return new Promise((resolve, reject) => {
-                    anonymizeProxy("http://whatever:4567", (err, result) => {
+                    anonymizeProxy('http://whatever:4567', (err, result) => {
                         if (err) return reject(err);
                         resolve(result);
                     });
                 });
             })
             .then((anonymousProxyUrl) => {
-                expect(anonymousProxyUrl).to.eql("http://whatever:4567");
+                expect(anonymousProxyUrl).to.eql('http://whatever:4567');
             });
     });
 
-    it("anonymizes authenticated upstream proxy (both with callbacks and promises)", () => {
+    it('anonymizes authenticated upstream proxy (both with callbacks and promises)', () => {
         let proxyUrl1;
         let proxyUrl2;
         return Promise.resolve()
             .then(() => {
                 return Promise.all([
-                    anonymizeProxy(
-                        `http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`
-                    ),
+                    anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
                     new Promise((resolve, reject) => {
-                        anonymizeProxy(
-                            `http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`,
-                            (err, result) => {
-                                if (err) return reject(err);
-                                resolve(result);
-                            }
-                        );
+                        anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`, (err, result) => {
+                            if (err) return reject(err);
+                            resolve(result);
+                        });
                     }),
                 ]);
             })
@@ -249,7 +203,7 @@ describe("utils.anonymizeProxy", function () {
                 return requestPromised({
                     uri: `http://localhost:${testServerPort}`,
                     proxy: proxyUrl1,
-                    expectBodyContainsText: "Hello World!",
+                    expectBodyContainsText: 'Hello World!',
                 });
             })
             .then(() => {
@@ -261,7 +215,7 @@ describe("utils.anonymizeProxy", function () {
                 return requestPromised({
                     uri: `http://localhost:${testServerPort}`,
                     proxy: proxyUrl2,
-                    expectBodyContainsText: "Hello World!",
+                    expectBodyContainsText: 'Hello World!',
                 });
             })
             .then(() => {
@@ -273,7 +227,7 @@ describe("utils.anonymizeProxy", function () {
                 return requestPromised({
                     uri: `http://localhost:${testServerPort}`,
                     proxy: proxyUrl1,
-                    expectBodyContainsText: "Hello World!",
+                    expectBodyContainsText: 'Hello World!',
                 });
             })
             .then(() => {
@@ -291,7 +245,7 @@ describe("utils.anonymizeProxy", function () {
                         assert.fail();
                     })
                     .catch((err) => {
-                        expect(err.message).to.contain("ECONNREFUSED");
+                        expect(err.message).to.contain('ECONNREFUSED');
                     });
             })
             .then(() => {
@@ -325,7 +279,7 @@ describe("utils.anonymizeProxy", function () {
             });
     });
 
-    it("handles many concurrent calls without port collision", () => {
+    it('handles many concurrent calls without port collision', () => {
         const N = 20;
         let proxyUrls;
 
@@ -333,11 +287,7 @@ describe("utils.anonymizeProxy", function () {
             .then(() => {
                 const promises = [];
                 for (let i = 0; i < N; i++) {
-                    promises.push(
-                        anonymizeProxy(
-                            `http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`
-                        )
-                    );
+                    promises.push(anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`));
                 }
 
                 return Promise.all(promises);
@@ -349,13 +299,11 @@ describe("utils.anonymizeProxy", function () {
                     expect(proxyUrls[i]).to.not.contain(`${proxyPort}`);
 
                     // Test call through proxy
-                    promises.push(
-                        requestPromised({
-                            uri: `http://localhost:${testServerPort}`,
-                            proxy: proxyUrls[i],
-                            expectBodyContainsText: "Hello World!",
-                        })
-                    );
+                    promises.push(requestPromised({
+                        uri: `http://localhost:${testServerPort}`,
+                        proxy: proxyUrls[i],
+                        expectBodyContainsText: 'Hello World!',
+                    }));
                 }
 
                 return Promise.all(promises);
@@ -377,31 +325,25 @@ describe("utils.anonymizeProxy", function () {
             });
     });
 
-    it("handles HTTP CONNECT request properly", function () {
+    it('handles HTTP CONNECT request properly', function () {
         this.timeout(50 * 1000);
 
         const host = `localhost:${testServerPort}`;
         let onconnectArgs;
         function onconnect(message, socket) {
             onconnectArgs = message;
-            socket.write("HTTP/1.1 401 UNAUTHORIZED\r\n\r\n");
+            socket.write('HTTP/1.1 401 UNAUTHORIZED\r\n\r\n');
             socket.end();
             socket.destroy();
         }
 
         const localProxy = http.createServer();
-        localProxy.on("connect", onconnect);
+        localProxy.on('connect', onconnect);
 
         let proxyUrl;
 
         return serverListen(localProxy, 0)
-            .then(() =>
-                anonymizeProxy(
-                    `http://${proxyAuth.username}:${
-                        proxyAuth.password
-                    }@127.0.0.1:${localProxy.address().port}`
-                )
-            )
+            .then(() => anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`))
             .then((url) => {
                 proxyUrl = url;
 
@@ -410,26 +352,23 @@ describe("utils.anonymizeProxy", function () {
                     proxy: proxyUrl,
                 });
             })
-            .then(
-                () => {
-                    expect(false).to.equal(true);
-                },
-                () => {
-                    expect(onconnectArgs.headers.host).to.equal(host);
-                    expect(onconnectArgs.url).to.equal(host);
-                }
-            )
+            .then(() => {
+                expect(false).to.equal(true);
+            }, () => {
+                expect(onconnectArgs.headers.host).to.equal(host);
+                expect(onconnectArgs.url).to.equal(host);
+            })
             .finally(() => closeAnonymizedProxy(proxyUrl, true))
             .finally(() => localProxy.close());
     });
 
-    it("handles HTTP CONNECT callback properly", function () {
+    it('handles HTTP CONNECT callback properly', function () {
         this.timeout(50 * 1000);
 
         const host = `localhost:${testServerPort}`;
         let rawHeadersRetrieved;
         function onconnect(message, socket) {
-            socket.write("HTTP/1.1 200 OK\r\nfoo: bar\r\n\r\n");
+            socket.write('HTTP/1.1 200 OK\r\nfoo: bar\r\n\r\n');
             socket.end();
             socket.destroy();
         }
@@ -437,51 +376,41 @@ describe("utils.anonymizeProxy", function () {
         let proxyUrl;
 
         const localProxy = http.createServer();
-        localProxy.on("connect", onconnect);
+        localProxy.on('connect', onconnect);
 
         return serverListen(localProxy, 0)
-            .then(() =>
-                anonymizeProxy(
-                    `http://${proxyAuth.username}:${
-                        proxyAuth.password
-                    }@127.0.0.1:${localProxy.address().port}`
-                )
-            )
+            .then(() => anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${localProxy.address().port}`))
             .then((url) => {
                 proxyUrl = url;
 
-                listenConnectAnonymizedProxy(
-                    proxyUrl,
-                    ({ response, socket, head }) => {
-                        rawHeadersRetrieved = response.rawHeaders;
-                    }
-                );
+                listenConnectAnonymizedProxy(proxyUrl, ({ response, socket, head }) => {
+                    rawHeadersRetrieved = response.rawHeaders;
+                });
                 return requestPromised({
                     uri: `https://${host}`,
                     proxy: proxyUrl,
-                }).catch(() => {});
+                })
+                    .catch(() => {});
             })
             .then(() => {
-                expect(rawHeadersRetrieved).to.eql(["foo", "bar"]);
+                expect(rawHeadersRetrieved).to.eql(['foo', 'bar']);
             })
             .finally(() => closeAnonymizedProxy(proxyUrl, true))
             .finally(() => localProxy.close());
     });
 
-    it("fails with invalid upstream proxy credentials", () => {
+    it('fails with invalid upstream proxy credentials', () => {
         let anonymousProxyUrl;
         return Promise.resolve()
             .then(() => {
-                return anonymizeProxy(
-                    `http://username:bad-password@127.0.0.1:${proxyPort}`
-                );
+                return anonymizeProxy(`http://username:bad-password@127.0.0.1:${proxyPort}`);
             })
             .then((result) => {
                 anonymousProxyUrl = result;
                 expect(anonymousProxyUrl).to.not.contain(`${proxyPort}`);
                 wasProxyCalled = false;
                 return requestPromised({
-                    uri: "http://whatever",
+                    uri: 'http://whatever',
                     proxy: anonymousProxyUrl,
                 });
             })
@@ -489,9 +418,7 @@ describe("utils.anonymizeProxy", function () {
                 assert.fail();
             })
             .catch((err) => {
-                expect(err.message).to.contains(
-                    "Received invalid response code: 502"
-                ); // Gateway error
+                expect(err.message).to.contains('Received invalid response code: 502'); // Gateway error
                 expect(wasProxyCalled).to.equal(false);
             })
             .then(() => closeAnonymizedProxy(anonymousProxyUrl, true))
