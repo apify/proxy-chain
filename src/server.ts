@@ -14,6 +14,7 @@ import { forward, HandlerOpts as ForwardOpts } from './forward';
 import { direct } from './direct';
 import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
 import { Socket } from './socket';
+import { normalizeUrlPort } from './utils/normalize_url_port';
 
 // TODO:
 // - Implement this requirement from rfc7230
@@ -53,7 +54,7 @@ export type PrepareRequestFunctionOpts = {
     username: string;
     password: string;
     hostname: string;
-    port: string;
+    port: number;
     isHttp: boolean;
 };
 
@@ -354,7 +355,7 @@ export class Server extends EventEmitter {
                 username: '',
                 password: '',
                 hostname: handlerOpts.trgParsed!.hostname,
-                port: handlerOpts.trgParsed!.port,
+                port: normalizeUrlPort(handlerOpts.trgParsed!),
                 isHttp: handlerOpts.isHttp,
             };
 
