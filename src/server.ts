@@ -49,7 +49,7 @@ type HandlerOpts = {
 };
 
 export type PrepareRequestFunctionOpts = {
-    connectionId: unknown;
+    connectionId: symbol;
     request: http.IncomingMessage;
     username: string;
     password: string;
@@ -350,7 +350,7 @@ export class Server extends EventEmitter {
         // Authenticate the request using a user function (if provided)
         if (this.prepareRequestFunction) {
             const funcOpts: PrepareRequestFunctionOpts = {
-                connectionId: (request.socket as Socket).proxyChainId,
+                connectionId: (request.socket as Socket).proxyChainId!,
                 request,
                 username: '',
                 password: '',
