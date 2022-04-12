@@ -89,7 +89,7 @@ export class Server extends EventEmitter {
 
     stats: { httpRequestCount: number; connectRequestCount: number; };
 
-    connections: Map<unknown, Socket>;
+    connections: Map<symbol, Socket>;
 
     /**
      * Initializes a new instance of Server class.
@@ -542,14 +542,14 @@ export class Server extends EventEmitter {
     /**
      * Gets array of IDs of all active connections.
      */
-    getConnectionIds(): unknown[] {
+    getConnectionIds(): symbol[] {
         return [...this.connections.keys()];
     }
 
     /**
      * Gets data transfer statistics of a specific proxy connection.
      */
-    getConnectionStats(connectionId: unknown): ConnectionStats | undefined {
+    getConnectionStats(connectionId: symbol): ConnectionStats | undefined {
         const socket = this.connections.get(connectionId);
         if (!socket) return undefined;
 
