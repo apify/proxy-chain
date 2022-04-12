@@ -747,7 +747,7 @@ const createTestSuite = ({
                             return 0;
                         });
                         const lastConnectionId = sortedIds[sortedIds.length - 1];
-                        const stats = mainProxyServer.getConnectionStats(lastConnectionId)
+                        const stats = mainProxyServer.getConnectionStats(Number(lastConnectionId))
                             || mainProxyServerConnectionId2Stats[lastConnectionId];
 
                         // 5% range because network negotiation adds to network trafic
