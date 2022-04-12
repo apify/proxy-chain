@@ -49,7 +49,7 @@ type HandlerOpts = {
 };
 
 export type PrepareRequestFunctionOpts = {
-    connectionId: symbol;
+    connectionId: number;
     request: http.IncomingMessage;
     username: string;
     password: string;
@@ -89,7 +89,7 @@ export class Server extends EventEmitter {
 
     stats: { httpRequestCount: number; connectRequestCount: number; };
 
-    connections: Map<symbol, Socket>;
+    connections: Map<number, Socket>;
 
     /**
      * Initializes a new instance of Server class.
@@ -181,8 +181,7 @@ export class Server extends EventEmitter {
      * Needed for abrupt close of the server.
      */
     registerConnection(socket: Socket): void {
-        const weakId = Math.random().toString(36).slice(2);
-        const unique = Symbol(weakId);
+        const unique = this.lastHandlerId++;
 
         socket.proxyChainId = unique;
         this.connections.set(unique, socket);
@@ -290,7 +289,7 @@ export class Server extends EventEmitter {
     getHandlerOpts(request: http.IncomingMessage): HandlerOpts {
         const handlerOpts: HandlerOpts = {
             server: this,
-            id: ++this.lastHandlerId,
+            id: (request.socket as Socket).proxyChainId!,
             srcRequest: request,
             srcHead: null,
             trgParsed: null,
@@ -542,14 +541,14 @@ export class Server extends EventEmitter {
     /**
      * Gets array of IDs of all active connections.
      */
-    getConnectionIds(): symbol[] {
+    getConnectionIds(): number[] {
         return [...this.connections.keys()];
     }
 
     /**
      * Gets data transfer statistics of a specific proxy connection.
      */
-    getConnectionStats(connectionId: symbol): ConnectionStats | undefined {
+    getConnectionStats(connectionId: number): ConnectionStats | undefined {
         const socket = this.connections.get(connectionId);
         if (!socket) return undefined;
 
