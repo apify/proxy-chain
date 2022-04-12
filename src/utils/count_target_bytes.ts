@@ -25,6 +25,8 @@ export const countTargetBytes = (source: net.Socket, target: net.Socket): void =
     source[targetBytesRead] = source[targetBytesRead] || 0;
     source[targets] = source[targets] || new Set();
 
+    source[targets].add(target);
+
     target.once('close', () => {
         source[targetBytesWritten] += target.bytesWritten;
         source[targetBytesRead] += target.bytesRead;
