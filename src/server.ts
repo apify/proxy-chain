@@ -200,6 +200,12 @@ export class Server extends EventEmitter {
      * Handles incoming sockets, useful for error handling
      */
     onConnection(socket: Socket): void {
+        // https://github.com/nodejs/node/issues/23858
+        if (!socket.remoteAddress) {
+            socket.destroy();
+            return;
+        }
+
         this.registerConnection(socket);
 
         // We need to consume socket errors, because the handlers are attached asynchronously.
