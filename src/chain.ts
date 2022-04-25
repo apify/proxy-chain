@@ -81,7 +81,6 @@ export const chain = (
     client.on('connect', (response, targetSocket, clientHead) => {
         countTargetBytes(sourceSocket, targetSocket);
 
-        // @ts-expect-error Missing types
         if (sourceSocket.readyState !== 'open') {
             // Sanity check, should never reach.
             targetSocket.destroy();
@@ -154,7 +153,6 @@ export const chain = (
         server.log(proxyChainId, `Failed to connect to upstream proxy: ${error.stack}`);
 
         // The end socket may get connected after the client to proxy one gets disconnected.
-        // @ts-expect-error Missing types
         if (sourceSocket.readyState === 'open') {
             if (isPlain) {
                 sourceSocket.end();
