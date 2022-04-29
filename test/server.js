@@ -252,7 +252,7 @@ const createTestSuite = ({
                             let addToMainProxyServerConnectionIds = true;
 
                             expect(request).to.be.an('object');
-                            expect(port).to.be.an('string');
+                            expect(port).to.be.an('number');
 
                             // All the fake hostnames here have a .gov TLD, because without a TLD,
                             // the tests would fail on GitHub Actions. We assume nobody will register
@@ -291,7 +291,7 @@ const createTestSuite = ({
                                     expect(trgParsed.hostname).to.be.eql(hostname);
                                     expect(trgParsed.pathname).to.be.eql('/some/path');
                                     expect(trgParsed.search).to.be.eql('?query=456');
-                                    expect(port).to.be.eql('1234');
+                                    expect(port).to.be.eql(1234);
                                     return {
                                         statusCode: 201,
                                         headers: {
@@ -747,7 +747,7 @@ const createTestSuite = ({
                             return 0;
                         });
                         const lastConnectionId = sortedIds[sortedIds.length - 1];
-                        const stats = mainProxyServer.getConnectionStats(lastConnectionId)
+                        const stats = mainProxyServer.getConnectionStats(Number(lastConnectionId))
                             || mainProxyServerConnectionId2Stats[lastConnectionId];
 
                         // 5% range because network negotiation adds to network trafic
