@@ -6,6 +6,7 @@ import { URL } from 'url';
 import { validHeadersOnly } from './utils/valid_headers_only';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { countTargetBytes } from './utils/count_target_bytes';
+import dns from 'dns';
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -15,13 +16,13 @@ interface Options {
     insecureHTTPParser: boolean;
     path?: string;
     localAddress?: string;
-    lookup?: any;
+    lookup?: typeof dns['lookup'];
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
     localAddress?: string;
-    dnsLookup?: any;
+    dnsLookup?: typeof dns['lookup'];
 }
 
 /**

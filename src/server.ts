@@ -14,6 +14,7 @@ import { forward, HandlerOpts as ForwardOpts } from './forward';
 import { direct } from './direct';
 import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
 import { Socket } from './socket';
+import dns from "dns";
 
 // TODO:
 // - Implement this requirement from rfc7230
@@ -45,7 +46,7 @@ type HandlerOpts = {
     isHttp: boolean;
     customResponseFunction: CustomResponseOpts['customResponseFunction'] | null;
     localAddress?: string;
-    dnsLookup?: any;
+    dnsLookup?: typeof dns['lookup'];
 };
 
 export type PrepareRequestFunctionOpts = {
@@ -64,7 +65,7 @@ export type PrepareRequestFunctionResult = {
     failMsg?: string;
     upstreamProxyUrl?: string | null;
     localAddress?: string;
-    dnsLookup?: any;
+    dnsLookup?: typeof dns['lookup'];
 };
 
 type Promisable<T> = T | Promise<T>;

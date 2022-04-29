@@ -1,4 +1,5 @@
 import http from 'http';
+import dns from 'dns';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
 import { Buffer } from 'buffer';
@@ -22,13 +23,13 @@ interface Options {
     headers: string[];
     path?: string;
     localAddress?: string;
-    lookup?: any;
+    lookup?: typeof dns['lookup'];
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
     localAddress?: string;
-    dnsLookup?: any;
+    dnsLookup?: typeof dns['lookup'];
 }
 
 interface ChainOpts {
@@ -39,7 +40,7 @@ interface ChainOpts {
     server: EventEmitter & { log: (...args: any[]) => void; };
     isPlain: boolean;
     localAddress?: string;
-    dnsLookup?: any;
+    dnsLookup?: typeof dns['lookup'];
 }
 
 /**
