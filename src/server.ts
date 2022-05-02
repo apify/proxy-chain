@@ -571,6 +571,20 @@ export class Server extends EventEmitter {
     }
 
     /**
+     * Forcibly close a specific pending proxy connection.
+     */
+    closeConnection(connectionId: unknown): void {
+        this.log(null, 'Closing pending socket');
+
+        const socket = this.connections.get(connectionId);
+        if (!socket) return;
+
+        socket.destroy();
+
+        this.log(null, `Destroyed pending socket`);
+    }
+
+    /**
      * Forcibly closes pending proxy connections.
      */
     closeConnections(): void {
