@@ -39,8 +39,6 @@ interface ChainOpts {
     handlerOpts: HandlerOpts;
     server: EventEmitter & { log: (...args: any[]) => void; };
     isPlain: boolean;
-    localAddress?: string;
-    dnsLookup?: typeof dns['lookup'];
 }
 
 /**
