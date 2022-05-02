@@ -1,3 +1,4 @@
+import dns from 'dns';
 import http from 'http';
 import https from 'https';
 import stream from 'stream';
@@ -6,7 +7,6 @@ import { URL } from 'url';
 import { validHeadersOnly } from './utils/valid_headers_only';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { countTargetBytes } from './utils/count_target_bytes';
-import dns from 'dns';
 
 const pipeline = util.promisify(stream.pipeline);
 
