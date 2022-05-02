@@ -23,12 +23,14 @@ interface Options {
     headers: string[];
     path?: string;
     localAddress?: string;
+    family?: number;
     lookup?: typeof dns['lookup'];
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
     localAddress?: string;
+    ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
 }
 
@@ -74,6 +76,7 @@ export const chain = (
             request.url!,
         ],
         localAddress: handlerOpts.localAddress,
+        family: handlerOpts.ipFamily,
         lookup: handlerOpts.dnsLookup,
     };
 

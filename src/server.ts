@@ -47,6 +47,7 @@ type HandlerOpts = {
     isHttp: boolean;
     customResponseFunction: CustomResponseOpts['customResponseFunction'] | null;
     localAddress?: string;
+    ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
 };
 
@@ -66,6 +67,7 @@ export type PrepareRequestFunctionResult = {
     failMsg?: string;
     upstreamProxyUrl?: string | null;
     localAddress?: string;
+    ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
 };
 
@@ -400,6 +402,7 @@ export class Server extends EventEmitter {
         const funcResult = await this.callPrepareRequestFunction(request, handlerOpts);
 
         handlerOpts.localAddress = funcResult.localAddress;
+        handlerOpts.ipFamily = funcResult.ipFamily;
         handlerOpts.dnsLookup = funcResult.dnsLookup;
 
         // If not authenticated, request client to authenticate
