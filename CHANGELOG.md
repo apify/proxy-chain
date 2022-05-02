@@ -1,4 +1,4 @@
-2.0.0 / 2022-05-02
+2.0.1 / 2022-05-02
 ==================
 - Simplify code, fix tests, move to TypeScript [#162](https://github.com/apify/proxy-chain/pull/162)
 - Bugfix: Memory leak in createTunnel [#160](https://github.com/apify/proxy-chain/issues/160)
