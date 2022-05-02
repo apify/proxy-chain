@@ -1,3 +1,4 @@
+import dns from 'dns';
 import http from 'http';
 import https from 'https';
 import stream from 'stream';
@@ -15,11 +16,13 @@ interface Options {
     insecureHTTPParser: boolean;
     path?: string;
     localAddress?: string;
+    lookup?: typeof dns['lookup'];
 }
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
     localAddress?: string;
+    dnsLookup?: typeof dns['lookup'];
 }
 
 /**
@@ -53,6 +56,7 @@ export const forward = async (
         headers: validHeadersOnly(request.rawHeaders),
         insecureHTTPParser: true,
         localAddress: handlerOpts.localAddress,
+        lookup: handlerOpts.dnsLookup,
     };
 
     // In case of proxy the path needs to be an absolute URL

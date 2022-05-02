@@ -1,4 +1,5 @@
 import net from 'net';
+import dns from 'dns';
 import http from 'http';
 import util from 'util';
 import { URL } from 'url';
@@ -46,6 +47,7 @@ type HandlerOpts = {
     isHttp: boolean;
     customResponseFunction: CustomResponseOpts['customResponseFunction'] | null;
     localAddress?: string;
+    dnsLookup?: typeof dns['lookup'];
 };
 
 export type PrepareRequestFunctionOpts = {
@@ -64,6 +66,7 @@ export type PrepareRequestFunctionResult = {
     failMsg?: string;
     upstreamProxyUrl?: string | null;
     localAddress?: string;
+    dnsLookup?: typeof dns['lookup'];
 };
 
 type Promisable<T> = T | Promise<T>;
@@ -397,6 +400,7 @@ export class Server extends EventEmitter {
         const funcResult = await this.callPrepareRequestFunction(request, handlerOpts);
 
         handlerOpts.localAddress = funcResult.localAddress;
+        handlerOpts.dnsLookup = funcResult.dnsLookup;
 
         // If not authenticated, request client to authenticate
         if (funcResult.requestAuthentication) {

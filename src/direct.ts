@@ -1,4 +1,5 @@
 import net from 'net';
+import dns from 'dns';
 import { Buffer } from 'buffer';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
@@ -7,6 +8,7 @@ import { Socket } from './socket';
 
 export interface HandlerOpts {
     localAddress?: string;
+    dnsLookup?: typeof dns['lookup'];
 }
 
 interface DirectOpts {
@@ -49,6 +51,7 @@ export const direct = (
         port: Number(url.port),
         host: url.hostname,
         localAddress: handlerOpts.localAddress,
+        lookup: handlerOpts.dnsLookup,
     };
 
     if (options.host[0] === '[') {
