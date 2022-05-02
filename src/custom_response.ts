@@ -1,6 +1,6 @@
 import http from 'http';
 
-export interface Result {
+export interface CustomResponse {
     statusCode?: number;
     headers?: Record<string, string>;
     body?: string;
@@ -8,7 +8,7 @@ export interface Result {
 }
 
 export interface HandlerOpts {
-    customResponseFunction: () => Result | Promise<Result>,
+    customResponseFunction: () => CustomResponse | Promise<CustomResponse>,
 }
 
 export const handleCustomResponse = async (

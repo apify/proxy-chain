@@ -8,7 +8,7 @@ import { nodeify } from './utils/nodeify';
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};
 
-export interface AnonymouseProxyOptions {
+export interface AnonymizeProxyOptions {
     url: string;
     port: number;
 }
@@ -18,7 +18,7 @@ export interface AnonymouseProxyOptions {
  * starts an open local proxy server that forwards to the upstream proxy.
  */
 export const anonymizeProxy = (
-    options: string | AnonymouseProxyOptions,
+    options: string | AnonymizeProxyOptions,
     callback?: (error: Error | null) => void,
 ): Promise<string> => {
     let proxyUrl: string;
