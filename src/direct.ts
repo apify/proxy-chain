@@ -8,6 +8,7 @@ import { Socket } from './socket';
 
 export interface HandlerOpts {
     localAddress?: string;
+    ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
 }
 
@@ -51,6 +52,7 @@ export const direct = (
         port: Number(url.port),
         host: url.hostname,
         localAddress: handlerOpts.localAddress,
+        family: handlerOpts.ipFamily,
         lookup: handlerOpts.dnsLookup,
     };
 
