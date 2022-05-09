@@ -119,23 +119,23 @@ describe('utils.anonymizeProxy', function () {
         assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
         assert.throws(() => { anonymizeProxy('socks5://whatever.com'); }, Error);
         assert.throws(() => {
-            anonymizeProxy({ proxyUrl: 'socks://whatever.com' });
+            anonymizeProxy({ url: 'socks://whatever.com' });
         }, Error);
         assert.throws(() => {
-            anonymizeProxy({ proxyUrl: 'https://whatever.com' });
+            anonymizeProxy({ url: 'https://whatever.com' });
         }, Error);
         assert.throws(() => {
-            anonymizeProxy({ proxyUrl: 'socks5://whatever.com' });
+            anonymizeProxy({ url: 'socks5://whatever.com' });
         }, Error);
     });
 
     it('throws for invalid ports', () => {
         assert.throws(() => {
-            anonymizeProxy({ proxyUrl: 'http://whatever.com', port: -16 });
+            anonymizeProxy({ url: 'http://whatever.com', port: -16 });
         }, Error);
         assert.throws(() => {
             anonymizeProxy({
-                proxyUrl: 'http://whatever.com',
+                url: 'http://whatever.com',
                 port: 4324324324,
             });
         }, Error);
@@ -146,13 +146,13 @@ describe('utils.anonymizeProxy', function () {
         assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
         assert.throws(() => { anonymizeProxy('socks5://whatever.com'); }, Error);
         assert.throws(() => {
-            anonymizeProxy({ proxyUrl: '://whatever.com' });
+            anonymizeProxy({ url: '://whatever.com' });
         }, Error);
         assert.throws(() => {
-            anonymizeProxy({ proxyUrl: 'https://whatever.com' });
+            anonymizeProxy({ url: 'https://whatever.com' });
         }, Error);
         assert.throws(() => {
-            anonymizeProxy({ proxyUrl: 'socks5://whatever.com' });
+            anonymizeProxy({ url: 'socks5://whatever.com' });
         }, Error);
     });
 
