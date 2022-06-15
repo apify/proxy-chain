@@ -235,14 +235,6 @@ export class Server extends EventEmitter {
             return new RequestError('Invalid upstream proxy credentials', 502);
         }
 
-        if (error.code === 'ENOTFOUND') {
-            if ((error as any).proxy) {
-                return new RequestError('Failed to connect to upstream proxy', 502);
-            }
-
-            return new RequestError('Target website does not exist', 404);
-        }
-
         return error;
     }
 
