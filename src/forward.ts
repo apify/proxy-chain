@@ -135,5 +135,7 @@ export const forward = async (
         response.statusCode = statuses[error.code ?? ''];
         response.setHeader('content-type', 'text/plain; charset=utf-8');
         response.end(http.STATUS_CODES[response.statusCode]);
+
+        resolve();
     });
 });
