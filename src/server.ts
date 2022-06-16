@@ -349,7 +349,6 @@ export class Server extends EventEmitter {
      * @param handlerOpts
      */
     async callPrepareRequestFunction(request: http.IncomingMessage, handlerOpts: HandlerOpts): Promise<PrepareRequestFunctionResult> {
-        // Authenticate the request using a user function (if provided)
         if (this.prepareRequestFunction) {
             const funcOpts: PrepareRequestFunctionOpts = {
                 connectionId: (request.socket as Socket).proxyChainId!,
@@ -361,6 +360,7 @@ export class Server extends EventEmitter {
                 isHttp: handlerOpts.isHttp,
             };
 
+            // Authenticate the request using a user function (if provided)
             const proxyAuth = request.headers['proxy-authorization'];
             if (proxyAuth) {
                 const auth = parseAuthorizationHeader(proxyAuth);
@@ -457,8 +457,7 @@ export class Server extends EventEmitter {
             this.emit('requestFailed', { error, request });
         }
 
-        // Emit 'connectionClosed' event if request failed and connection was already reported
-        this.log(proxyChainId, 'Closed because request failed with error');
+        this.log(proxyChainId, 'Closing because request failed with error');
     }
 
     /**
