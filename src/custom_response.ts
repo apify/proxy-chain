@@ -1,4 +1,5 @@
-import http from 'http';
+import type http from 'http';
+import type { Buffer } from 'buffer';
 
 export interface CustomResponse {
     statusCode?: number;
