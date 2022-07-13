@@ -1,4 +1,5 @@
 const fs = require('fs');
+const zlib = require('zlib');
 const path = require('path');
 const stream = require('stream');
 const childProcess = require('child_process');
@@ -269,6 +270,18 @@ const createTestSuite = ({
                             }
                             if (hostname === 'activate-error-in-prep-req-func-promise-known.gov') {
                                 throw new RequestError('Known error 2', 501);
+                            }
+
+                            if (hostname === 'test-custom-response-buffer.gov') {
+                                result.customResponseFunction = () => {
+                                    return {
+                                        statusCode: 200,
+                                        headers: {
+                                            'content-encoding': 'gzip',
+                                        },
+                                        body: zlib.gzipSync('Hello, world!'),
+                                    };
+                                };
                             }
 
                             if (hostname === 'test-custom-response-simple.gov') {
@@ -1008,6 +1021,16 @@ const createTestSuite = ({
 
             if (testCustomResponse) {
                 if (!useSsl) {
+                    it('supports custom response - buffer', () => {
+                        const opts = getRequestOpts('http://test-custom-response-buffer.gov');
+                        opts.gzip = true;
+                        return requestPromised(opts)
+                            .then((response) => {
+                                expect(response.statusCode).to.eql(200);
+                                expect(response.body).to.eql('Hello, world!');
+                            });
+                    });
+
                     it('supports custom response - simple', () => {
                         const opts = getRequestOpts('http://test-custom-response-simple.gov/some/path');
                         return requestPromised(opts)
