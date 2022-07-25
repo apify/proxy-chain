@@ -123,16 +123,15 @@ export const forward = async (
             return;
         }
 
-        const statuses: {[code: string]: number} = {
+        const statuses: {[code: string]: number | undefined} = {
             ENOTFOUND: proxy ? 502 : 404,
             ECONNREFUSED: 502,
             ECONNRESET: 502,
             EPIPE: 502,
             ETIMEDOUT: 504,
-            '': 500,
         };
 
-        response.statusCode = statuses[error.code ?? ''];
+        response.statusCode = statuses[error.code!] ?? 502;
         response.setHeader('content-type', 'text/plain; charset=utf-8');
         response.end(http.STATUS_CODES[response.statusCode]);
 

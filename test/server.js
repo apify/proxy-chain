@@ -891,6 +891,30 @@ const createTestSuite = ({
         });
 
         if (useMainProxy) {
+            if (!useUpstreamProxy) {
+                _it(`handles malformed response`, async () => {
+                    const server = net.createServer((socket) => {
+                        socket.end(`HTTP/1.1 x \r\n\r\n`);
+                    });
+
+                    await new Promise((resolve, reject) => {
+                        server.once('error', reject);
+
+                        server.listen(0, () => {
+                            server.off('error', reject);
+                            resolve();
+                        });
+                    });
+
+                    const opts = getRequestOpts(`http://127.0.0.1:${server.address().port}`);
+                    return requestPromised(opts)
+                        .then((response) => {
+                            expect(response.statusCode).to.eql(502);
+                            server.close();
+                        });
+                });
+            }
+
             _it('returns 404 for non-existent hostname', () => {
                 const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
                 return requestPromised(opts)
