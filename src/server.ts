@@ -306,7 +306,11 @@ export class Server extends EventEmitter {
 
         if (request.method === 'CONNECT') {
             // CONNECT server.example.com:80 HTTP/1.1
-            handlerOpts.trgParsed = new URL(`connect://${request.url}`);
+            try {
+                handlerOpts.trgParsed = new URL(`connect://${request.url}`);
+            } catch {
+                throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
+            }
 
             if (!handlerOpts.trgParsed.hostname || !handlerOpts.trgParsed.port) {
                 throw new RequestError(`Target "${request.url}" could not be parsed`, 400);

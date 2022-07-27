@@ -915,6 +915,24 @@ const createTestSuite = ({
                 });
             }
 
+            it('handles invalid CONNECT path', (done) => {
+                const req = http.request(mainProxyUrl, {
+                    method: 'CONNECT',
+                    path: ':443',
+                    headers: {
+                        host: ':443',
+                    },
+                });
+                req.once('connect', (response, socket, head) => {
+                    expect(response.statusCode).to.equal(400);
+
+                    socket.destroy();
+                    done();
+                });
+
+                req.end();
+            });
+
             _it('returns 404 for non-existent hostname', () => {
                 const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
                 return requestPromised(opts)
