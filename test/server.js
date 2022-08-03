@@ -350,7 +350,9 @@ const createTestSuite = ({
                             }
 
                             if (mainProxyAuth) {
-                                if (mainProxyAuth.username !== username || mainProxyAuth.password !== password) {
+                                const authDoesNotMatch = mainProxyAuth.username !== username || mainProxyAuth.password !== password;
+                                const nopassword = username === 'nopassword' && password === '';
+                                if (authDoesNotMatch && !nopassword) {
                                     result.requestAuthentication = true;
                                     addToMainProxyServerConnectionIds = false;
                                     // Now that authentication is requested, upstream proxy should not get used,
@@ -965,6 +967,38 @@ const createTestSuite = ({
             });
 
             if (mainProxyAuth) {
+                it('implies username if colon missing', (done) => {
+                    const server = net.createServer((socket) => {
+                        socket.end();
+                    });
+
+                    server.once('error', (error) => {
+                        done(error);
+                    });
+
+                    server.listen(0, () => {
+                        const req = http.request(mainProxyUrl, {
+                            method: 'CONNECT',
+                            path: `127.0.0.1:${server.address().port}`,
+                            headers: {
+                                host: `127.0.0.1:${server.address().port}`,
+                                'proxy-authorization': `Basic ${Buffer.from('nopassword').toString('base64')}`,
+                            },
+                        });
+                        req.once('connect', (response, socket, head) => {
+                            expect(response.statusCode).to.equal(200);
+                            expect(head.length).to.equal(0);
+
+                            socket.destroy();
+                            server.close(() => {
+                                done();
+                            });
+                        });
+
+                        req.end();
+                    });
+                });
+
                 it('returns 407 for invalid credentials', () => {
                     return Promise.resolve()
                         .then(() => {
