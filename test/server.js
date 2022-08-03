@@ -66,35 +66,39 @@ const requestPromised = (opts) => {
 
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
-// Opens web page in phantomjs and returns the HTML content
-const phantomGet = (url, proxyUrl) => {
-    const phantomPath = path.join(__dirname, '../node_modules/.bin/phantomjs');
-    const scriptPath = path.join(__dirname, './phantom_get.js');
+// Opens web page in puppeteer and returns the HTML content
+const puppeteerGet = (url, proxyUrl) => {
+    // eslint-disable-next-line global-require
+    const puppeteer = require('puppeteer');
 
-    let proxyParams = '';
-    if (proxyUrl) {
-        const parsed = new URL(proxyUrl);
-        const username = decodeURIComponent(parsed.username);
-        const password = decodeURIComponent(parsed.password);
+    return (async () => {
+        const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
 
-        proxyParams += `--proxy-type=http --proxy=${parsed.hostname}:${parsed.port} `;
-        if (username || password) {
-            if ((username && !password) || (!username && password)) {
-                throw new Error('PhantomJS cannot handle proxy only username or password!');
-            }
-            proxyParams += `--proxy-auth=${username}:${password} `;
-        }
-    }
-
-    return new Promise((resolve, reject) => {
-        const cmd = `${phantomPath} --ignore-ssl-errors=true ${proxyParams} ${scriptPath} ${url}`;
-        childProcess.exec(cmd, (error, stdout, stderr) => {
-            if (error) {
-                return reject(new Error(`Cannot open page in PhantomJS: ${error}: ${stderr || stdout}`));
-            }
-            resolve(stdout);
+        const browser = await puppeteer.launch({
+            env: parsed ? {
+                HTTP_PROXY: parsed.origin,
+            } : {},
+            ignoreHTTPSErrors: true,
         });
-    });
+
+        try {
+            const page = await browser.newPage();
+
+            if (parsed) {
+                await page.authenticate({
+                    username: decodeURIComponent(parsed.username),
+                    password: decodeURIComponent(parsed.password),
+                });
+            }
+
+            const response = await page.goto(url);
+            const text = await response.text();
+
+            return text;
+        } finally {
+            await browser.close();
+        }
+    })();
 };
 
 // Opens web page in curl and returns the HTML content.
@@ -817,21 +821,18 @@ const createTestSuite = ({
                 });
         });
 
-        // NOTE: PhantomJS cannot handle proxy auth with empty user or password, both need to be present!
         if (!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) {
-            _it('handles GET request from PhantomJS', async () => {
-                // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
+            it('handles GET request using puppeteer', async () => {
                 const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const response = await phantomGet(phantomUrl, mainProxyUrl);
+                const response = await puppeteerGet(phantomUrl, mainProxyUrl);
                 expect(response).to.contain('Hello world!');
             });
         }
 
         if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
-            it('handles GET request from PhantomJS with invalid credentials', async () => {
-                // NOTE: use other hostname than 'localhost' or '127.0.0.1' otherwise PhantomJS would skip the proxy!
+            it('handles GET request using puppeteer with invalid credentials', async () => {
                 const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const response = await phantomGet(phantomUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                const response = await puppeteerGet(phantomUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`);
                 expect(response).to.contain('Proxy credentials required');
             });
         }
