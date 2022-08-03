@@ -66,7 +66,7 @@ const requestPromised = (opts) => {
 
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
-// Opens web page in phantomjs and returns the HTML content
+// Opens web page in puppeteer and returns the HTML content
 const puppeteerGet = (url, proxyUrl) => {
     // eslint-disable-next-line global-require
     const puppeteer = require('puppeteer');
