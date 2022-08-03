@@ -373,7 +373,10 @@ export class Server extends EventEmitter {
                     throw new RequestError('Invalid "Proxy-Authorization" header', 400);
                 }
 
-                if (auth.type !== 'Basic') {
+                // https://datatracker.ietf.org/doc/html/rfc7617#page-3
+                // Note that both scheme and parameter names are matched case-
+                // insensitively.
+                if (auth.type.toLowerCase() !== 'basic') {
                     throw new RequestError('The "Proxy-Authorization" header must have the "Basic" type.', 400);
                 }
 
