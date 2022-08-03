@@ -969,7 +969,7 @@ const createTestSuite = ({
             if (mainProxyAuth) {
                 it('implies username if colon missing', (done) => {
                     const server = net.createServer((socket) => {
-                        socket.end('yo bye');
+                        socket.end();
                     });
 
                     server.once('error', (error) => {
@@ -990,7 +990,9 @@ const createTestSuite = ({
                             expect(head.length).to.equal(0);
 
                             socket.destroy();
-                            done();
+                            server.close(() => {
+                                done();
+                            });
                         });
 
                         req.end();

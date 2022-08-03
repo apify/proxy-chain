@@ -79,9 +79,10 @@ describe('tools.parseAuthorizationHeader()', () => {
             data: 'dXNlcm5hbWU6',
         });
 
+        // Do not alter this test, see comment in src/utils/parse_authorization_header.ts
         expect(parse(authStr('Basic', 'username'))).to.eql({
             type: 'Basic',
-            username: '',
+            username: 'username',
             password: '',
             data: 'dXNlcm5hbWU=',
         });
