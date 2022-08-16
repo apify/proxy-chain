@@ -59,7 +59,8 @@ export const chain = (
     }: ChainOpts,
 ): void => {
     if (head && head.length > 0) {
-        throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
+        sourceSocket.end(createHttpResponse(400, 'CONNECT payload must be empty'));
+        return;
     }
 
     const { proxyChainId } = sourceSocket;
