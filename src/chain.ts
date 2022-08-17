@@ -59,7 +59,14 @@ export const chain = (
     }: ChainOpts,
 ): void => {
     if (head && head.length > 0) {
-        throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
+        // HTTP/1.1 has no defined semantics when sending payload along with CONNECT and servers can reject the request.
+        // HTTP/2 only says that subsequent DATA frames must be transferred after HEADERS has been sent.
+        // HTTP/3 says that all DATA frames should be transferred (implies pre-HEADERS data).
+        //
+        // Let's go with the HTTP/3 behavior.
+        // There are also clients that send payload along with CONNECT to save milliseconds apparently.
+        // Beware of upstream proxy servers that send out valid CONNECT responses with diagnostic data such as IPs!
+        sourceSocket.unshift(head);
     }
 
     const { proxyChainId } = sourceSocket;
@@ -118,8 +125,8 @@ export const chain = (
         }
 
         if (clientHead.length > 0) {
-            targetSocket.destroy(new Error(`Unexpected data on CONNECT: ${clientHead.length} bytes`));
-            return;
+            // See comment above
+            targetSocket.unshift(clientHead);
         }
 
         server.emit('tunnelConnectResponded', {
