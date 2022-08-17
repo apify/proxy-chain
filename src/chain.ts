@@ -125,8 +125,8 @@ export const chain = (
         }
 
         if (clientHead.length > 0) {
-            targetSocket.destroy(new Error(`Unexpected data on CONNECT: ${clientHead.length} bytes`));
-            return;
+            // See comment above
+            targetSocket.unshift(clientHead);
         }
 
         server.emit('tunnelConnectResponded', {
