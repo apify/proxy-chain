@@ -45,7 +45,8 @@ export const direct = (
     }
 
     if (head.length > 0) {
-        throw new Error(`Unexpected data on CONNECT: ${head.length} bytes`);
+        // See comment in chain.ts
+        sourceSocket.unshift(head);
     }
 
     const options = {

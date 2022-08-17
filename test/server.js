@@ -1331,6 +1331,73 @@ it('supports localAddress', async () => {
     }
 });
 
+it('supports pre-response CONNECT payload', (done) => {
+    const plain = net.createServer((socket) => {
+        socket.pipe(socket);
+    });
+
+    plain.once('error', done);
+
+    plain.listen(0, async () => {
+        const server = new Server({
+            port: 0,
+        });
+
+        try {
+            await server.listen();
+        } catch (error) {
+            done(error);
+            return;
+        }
+
+        const socket = net.connect({
+            host: '127.0.0.1',
+            port: server.port,
+        });
+
+        socket.write([
+            `CONNECT 127.0.0.1:${plain.address().port} HTTP/1.1`,
+            `Host: 127.0.0.1:${plain.address().port}`,
+            ``,
+            `foobar`,
+        ].join('\r\n'));
+
+        let packets = 2;
+        let success = false;
+
+        socket.once('error', done);
+        socket.on('data', (data) => {
+            packets--;
+
+            if (data.includes('foobar')) {
+                success = true;
+                socket.end();
+                return;
+            }
+
+            if (packets === 0) {
+                socket.end();
+            }
+        });
+
+        socket.setTimeout(1000, () => {
+            socket.destroy(new Error('Socket timed out'));
+        });
+
+        socket.once('close', () => {
+            plain.close(async () => {
+                await server.close();
+
+                if (success) {
+                    done();
+                } else {
+                    done(new Error('failure'));
+                }
+            });
+        });
+    });
+});
+
 // Run all combinations of test parameters
 const useSslVariants = [
     false,
