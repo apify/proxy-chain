@@ -1362,22 +1362,12 @@ it('supports pre-response CONNECT payload', (done) => {
             `foobar`,
         ].join('\r\n'));
 
-        let packets = 2;
         let success = false;
 
         socket.once('error', done);
         socket.on('data', (data) => {
-            packets--;
-
-            if (data.includes('foobar')) {
-                success = true;
-                socket.end();
-                return;
-            }
-
-            if (packets === 0) {
-                socket.end();
-            }
+            success = data.includes('foobar');
+            socket.end();
         });
 
         socket.setTimeout(1000, () => {
