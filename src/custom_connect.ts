@@ -12,7 +12,7 @@ export const customConnect = async (socket: net.Socket, server: http.Server): Pr
     server.emit('connection', socket);
 
     return new Promise((resolve) => {
-        if (socket.closed) {
+        if (socket.destroyed) {
             resolve();
             return;
         }
