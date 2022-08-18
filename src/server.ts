@@ -17,6 +17,7 @@ import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custo
 import { Socket } from './socket';
 import { normalizeUrlPort } from './utils/normalize_url_port';
 import { badGatewayStatusCodes } from './statuses';
+import { customConnect } from './custom_connect';
 
 // TODO:
 // - Implement this requirement from rfc7230
@@ -46,7 +47,8 @@ type HandlerOpts = {
     trgParsed: URL | null;
     upstreamProxyUrlParsed: URL | null;
     isHttp: boolean;
-    customResponseFunction: CustomResponseOpts['customResponseFunction'] | null;
+    customResponseFunction?: CustomResponseOpts['customResponseFunction'] | null;
+    customConnectServer?: http.Server | null;
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
@@ -64,6 +66,7 @@ export type PrepareRequestFunctionOpts = {
 
 export type PrepareRequestFunctionResult = {
     customResponseFunction?: CustomResponseOpts['customResponseFunction'];
+    customConnectServer?: http.Server | null;
     requestAuthentication?: boolean;
     failMsg?: string;
     upstreamProxyUrl?: string | null;
@@ -274,6 +277,11 @@ export class Server extends EventEmitter {
 
             const data = { request, sourceSocket: socket, head, handlerOpts: handlerOpts as ChainOpts, server: this, isPlain: false };
 
+            if (handlerOpts.customConnectServer) {
+                socket.unshift(head); // See chain.ts for why we do this
+                return await customConnect(socket, handlerOpts.customConnectServer);
+            }
+
             if (handlerOpts.upstreamProxyUrlParsed) {
                 this.log(socket.proxyChainId, `Using HandlerTunnelChain => ${request.url}`);
                 return await chain(data);
@@ -301,6 +309,7 @@ export class Server extends EventEmitter {
             isHttp: false,
             srcResponse: null,
             customResponseFunction: null,
+            customConnectServer: null,
         };
 
         this.log((request.socket as Socket).proxyChainId, `!!! Handling ${request.method} ${request.url} HTTP/${request.httpVersion}`);
@@ -404,6 +413,7 @@ export class Server extends EventEmitter {
         handlerOpts.localAddress = funcResult.localAddress;
         handlerOpts.ipFamily = funcResult.ipFamily;
         handlerOpts.dnsLookup = funcResult.dnsLookup;
+        handlerOpts.customConnectServer = funcResult.customConnectServer;
 
         // If not authenticated, request client to authenticate
         if (funcResult.requestAuthentication) {
