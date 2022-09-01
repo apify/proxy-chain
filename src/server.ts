@@ -131,6 +131,7 @@ export class Server extends EventEmitter {
      * @param [options.verbose] If true, the server will output logs
      */
     constructor(options: {
+        forceTunnel?: boolean,
         port?: number,
         prepareRequestFunction?: PrepareRequestFunction,
         verbose?: boolean,

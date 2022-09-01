@@ -11,6 +11,7 @@ const anonymizedProxyUrlToServer: Record<string, Server> = {};
 export interface AnonymizeProxyOptions {
     url: string;
     port: number;
+    forceTunnel: boolean;
 }
 
 /**
@@ -23,12 +24,13 @@ export const anonymizeProxy = (
 ): Promise<string> => {
     let proxyUrl: string;
     let port = 0;
-
+    let forceTunnel = false;
     if (typeof options === 'string') {
         proxyUrl = options;
     } else {
         proxyUrl = options.url;
         port = options.port;
+        forceTunnel = options.forceTunnel;
 
         if (port < 0 || port > 65535) {
             throw new Error(
@@ -45,7 +47,7 @@ export const anonymizeProxy = (
     }
 
     // If upstream proxy requires no password, return it directly
-    if (!parsedProxyUrl.username && !parsedProxyUrl.password) {
+    if (!parsedProxyUrl.username && !parsedProxyUrl.password && !forceTunnel) {
         return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
