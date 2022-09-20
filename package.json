@@ -62,7 +62,7 @@
     "isparta": "^4.1.1",
     "mocha": "^10.0.0",
     "nyc": "^15.1.0",
-    "puppeteer": "^16.0.0",
+    "puppeteer": "^18.0.3",
     "portastic": "^1.0.1",
     "proxy": "^1.0.2",
     "request": "^2.88.2",
