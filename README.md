@@ -93,6 +93,23 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
+## A different approach to `502 Bad Gateway`
+
+`502` status code is not that comprehensive. Therefore, the server may respond with `590-599` instead:
+
+- `590` - upstream responded with a different status than `200`
+- `592` - upstream responded with HTTP status code out of range
+- `593` - upstream does not exist - `ENOTFOUND`
+- `594` - upstream refused connection - `ECONNREFUSED`
+- `595` - connection reset - `ECONNRESET`
+- `596` - broken pipe - `EPIPE`
+- `597` - upstream auth failed
+- `599` - connection to upstream failed
+
+`591` and `598` are reserved.
+
+The status message contains more information about the error.
+
 ## Custom error responses
 
 To return a custom HTTP response to indicate an error to the client,

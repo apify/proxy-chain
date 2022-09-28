@@ -228,11 +228,11 @@ export class Server extends EventEmitter {
      */
     normalizeHandlerError(error: NodeJS.ErrnoException): NodeJS.ErrnoException {
         if (error.message === 'Username contains an invalid colon') {
-            return new RequestError('Invalid colon in username in upstream proxy credentials', 502);
+            return new RequestError('Invalid colon in username in upstream proxy credentials', 597);
         }
 
         if (error.message === '407 Proxy Authentication Required') {
-            return new RequestError('Invalid upstream proxy credentials', 502);
+            return new RequestError('Invalid upstream proxy credentials', 597);
         }
 
         return error;

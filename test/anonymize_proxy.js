@@ -418,7 +418,7 @@ describe('utils.anonymizeProxy', function () {
                 assert.fail();
             })
             .catch((err) => {
-                expect(err.message).to.contains('Received invalid response code: 502'); // Gateway error
+                expect(err.message).to.contains('Received invalid response code: 597'); // Gateway error
                 expect(wasProxyCalled).to.equal(false);
             })
             .then(() => closeAnonymizedProxy(anonymousProxyUrl, true))
