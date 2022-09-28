@@ -126,7 +126,7 @@ export const forward = async (
 
         const statusCode = statuses[error.code!] ?? 599;
 
-        response.statusCode = !proxy && statusCode === 593 ? 404 : statusCode;
+        response.statusCode = !proxy && statusCode === statuses.ENOTFOUND ? 404 : statusCode;
         response.setHeader('content-type', 'text/plain; charset=utf-8');
         response.end(http.STATUS_CODES[response.statusCode]);
 
