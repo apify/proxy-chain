@@ -1,3 +1,5 @@
+import { STATUS_CODES } from 'http';
+
 type HttpStatusCode = number;
 
 export const badGatewayStatusCodes = {
@@ -38,6 +40,15 @@ export const badGatewayStatusCodes = {
      */
     GENERIC_ERROR: 599,
 } as const;
+
+STATUS_CODES['590'] = 'Non Successful';
+STATUS_CODES['592'] = 'Status Code Out Of Range';
+STATUS_CODES['593'] = 'Not Found';
+STATUS_CODES['594'] = 'Connection Refused';
+STATUS_CODES['595'] = 'Connection Reset';
+STATUS_CODES['596'] = 'Broken Pipe';
+STATUS_CODES['597'] = 'Auth Failed';
+STATUS_CODES['599'] = 'Upstream Error';
 
 // https://nodejs.org/api/errors.html#common-system-errors
 export const errorCodeToStatusCode: {[errorCode: string]: HttpStatusCode | undefined} = {
