@@ -127,7 +127,7 @@ Trying to write on a closed socket.
 
 ### `597 Auth Failed`
 
-Invalid username / password when connection to upstream.
+Incorrect upstream credentials.
 
 ### `598 RESERVED`
 

@@ -30,7 +30,7 @@ export const badGatewayStatusCodes = {
      */
     BROKEN_PIPE: 596,
     /**
-     * Invalid username / password when connection to upstream.
+     * Incorrect upstream credentials.
      */
     AUTH_FAILED: 597,
     /**
