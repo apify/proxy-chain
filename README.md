@@ -93,6 +93,58 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
+## A different approach to `502 Bad Gateway`
+
+`502` status code is not comprehensive enough. Therefore, the server may respond with `590-599` instead:
+
+### `590 Non Successful`
+
+Upstream responded with non-200 status code.
+
+### `591 RESERVED`
+
+*This status code is reserved for further use.*
+
+### `592 Status Code Out Of Range`
+
+Upstream respondend with status code different than 100-999.
+
+### `593 Not Found`
+
+DNS lookup failed - [`EAI_NODATA`](https://github.com/libuv/libuv/blob/cdbba74d7a756587a696fb3545051f9a525b85ac/include/uv.h#L82) or [`EAI_NONAME`](https://github.com/libuv/libuv/blob/cdbba74d7a756587a696fb3545051f9a525b85ac/include/uv.h#L83).
+
+### `594 Connection Refused`
+
+Upstream refused connection.
+
+### `595 Connection Reset`
+
+Connection reset due to loss of connection or timeout.
+
+### `596 Broken Pipe`
+
+Trying to write on a closed socket.
+
+### `597 Auth Failed`
+
+Incorrect upstream credentials.
+
+### `598 RESERVED`
+
+*This status code is reserved for further use.*
+
+### `599 Upstream Error`
+
+Generic upstream error.
+
+---
+
+`590` and `592` indicate an issue on the upstream side. \
+`593` indicates an incorrect `proxy-chain` configuration.\
+`594`, `595` and `596` may occur due to connection loss.\
+`597` indicates incorrect upstream credentials.\
+`599` is a generic error, where the above is not applicable.
+
 ## Custom error responses
 
 To return a custom HTTP response to indicate an error to the client,

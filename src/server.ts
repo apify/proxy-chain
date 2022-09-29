@@ -16,6 +16,7 @@ import { direct } from './direct';
 import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
 import { Socket } from './socket';
 import { normalizeUrlPort } from './utils/normalize_url_port';
+import { badGatewayStatusCodes } from './statuses';
 
 // TODO:
 // - Implement this requirement from rfc7230
@@ -228,11 +229,11 @@ export class Server extends EventEmitter {
      */
     normalizeHandlerError(error: NodeJS.ErrnoException): NodeJS.ErrnoException {
         if (error.message === 'Username contains an invalid colon') {
-            return new RequestError('Invalid colon in username in upstream proxy credentials', 502);
+            return new RequestError('Invalid colon in username in upstream proxy credentials', badGatewayStatusCodes.AUTH_FAILED);
         }
 
         if (error.message === '407 Proxy Authentication Required') {
-            return new RequestError('Invalid upstream proxy credentials', 502);
+            return new RequestError('Invalid upstream proxy credentials', badGatewayStatusCodes.AUTH_FAILED);
         }
 
         return error;

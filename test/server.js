@@ -460,7 +460,7 @@ const createTestSuite = ({
                     assert.fail();
                 })
                     .catch((err) => {
-                        expect(err.message).to.contain(`${expectedStatusCode}`);
+                        expect(err.message.slice(-3)).to.contain(`${expectedStatusCode}`);
                     })
                     .finally(() => {
                         mainProxyServer.removeListener('requestFailed', onRequestFailed);
@@ -639,7 +639,7 @@ const createTestSuite = ({
                     return requestPromised(opts)
                         .then((response) => {
                             if (useMainProxy) {
-                                expect(response.statusCode).to.eql(502);
+                                expect(response.statusCode).to.eql(592);
                                 expect(response.body).to.eql('Bad status!');
                             } else {
                                 expect(response.statusCode).to.eql(55);
@@ -912,7 +912,7 @@ const createTestSuite = ({
                     const opts = getRequestOpts(`http://127.0.0.1:${server.address().port}`);
                     return requestPromised(opts)
                         .then((response) => {
-                            expect(response.statusCode).to.eql(502);
+                            expect(response.statusCode).to.eql(599);
                             server.close();
                         });
                 });
@@ -1073,25 +1073,25 @@ const createTestSuite = ({
                             await requestPromised(opts);
                             expect(false).to.be.eql(true);
                         } catch (error) {
-                            expect(error.message).to.be.eql('tunneling socket could not be established, statusCode=502');
+                            expect(error.message).to.be.eql('tunneling socket could not be established, statusCode=597');
                         }
                     } else {
                         const response = await requestPromised(opts);
 
-                        expect(response.statusCode).to.be.eql(502);
+                        expect(response.statusCode).to.be.eql(597);
                         expect(response.body).to.be.eql('Invalid colon in username in upstream proxy credentials');
                     }
                 });
 
                 it('fails gracefully on non-existent upstream proxy host', () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-unknown-upstream-proxy-host.gov`);
-                    return testForErrorResponse(opts, 502);
+                    return testForErrorResponse(opts, 593);
                 });
 
                 if (upstreamProxyAuth) {
                     _it('fails gracefully on bad upstream proxy credentials', () => {
                         const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-bad-upstream-proxy-credentials.gov`);
-                        return testForErrorResponse(opts, 502);
+                        return testForErrorResponse(opts, 597);
                     });
                 }
             }
@@ -1253,7 +1253,7 @@ describe('non-200 upstream connect response', () => {
         }
     });
 
-    it('fails downstream with 502', (done) => {
+    it('fails downstream with 590', (done) => {
         const server = http.createServer();
         server.on('connect', (_request, socket) => {
             socket.once('error', () => {});
@@ -1282,7 +1282,8 @@ describe('non-200 upstream connect response', () => {
                     },
                 });
                 req.once('connect', (response, socket, head) => {
-                    expect(response.statusCode).to.equal(502);
+                    expect(response.statusCode).to.equal(590);
+                    expect(response.statusMessage).to.equal('UPSTREAM403');
                     expect(head.length).to.equal(0);
                     success = true;
 

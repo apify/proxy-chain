@@ -6,10 +6,11 @@ import { Buffer } from 'buffer';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { Socket } from './socket';
+import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
 
-const createHttpResponse = (statusCode: number, message: string) => {
+const createHttpResponse = (statusCode: number, statusMessage: string, message = '') => {
     return [
-        `HTTP/1.1 ${statusCode} ${http.STATUS_CODES[statusCode] || 'Unknown Status Code'}`,
+        `HTTP/1.1 ${statusCode} ${statusMessage || http.STATUS_CODES[statusCode] || 'Unknown Status Code'}`,
         'Connection: close',
         `Date: ${(new Date()).toUTCString()}`,
         `Content-Length: ${Buffer.byteLength(message)}`,
@@ -118,7 +119,12 @@ export const chain = (
             if (isPlain) {
                 sourceSocket.end();
             } else {
-                sourceSocket.end(createHttpResponse(502, ''));
+                const { statusCode } = response;
+                const status = statusCode === 401 || statusCode === 407
+                    ? badGatewayStatusCodes.AUTH_FAILED
+                    : badGatewayStatusCodes.NON_200;
+
+                sourceSocket.end(createHttpResponse(status, `UPSTREAM${response.statusCode}`));
             }
 
             return;
@@ -162,7 +168,7 @@ export const chain = (
         });
     });
 
-    client.on('error', (error) => {
+    client.on('error', (error: NodeJS.ErrnoException) => {
         server.log(proxyChainId, `Failed to connect to upstream proxy: ${error.stack}`);
 
         // The end socket may get connected after the client to proxy one gets disconnected.
@@ -170,7 +176,9 @@ export const chain = (
             if (isPlain) {
                 sourceSocket.end();
             } else {
-                sourceSocket.end(createHttpResponse(502, ''));
+                const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
+                const response = createHttpResponse(statusCode, error.code ?? 'Upstream Closed Early');
+                sourceSocket.end(response);
             }
         }
     });
