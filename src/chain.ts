@@ -6,7 +6,7 @@ import { Buffer } from 'buffer';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { Socket } from './socket';
-import { statuses } from './statuses';
+import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
 
 const createHttpResponse = (statusCode: number, statusMessage: string, message = '') => {
     return [
@@ -119,8 +119,10 @@ export const chain = (
             if (isPlain) {
                 sourceSocket.end();
             } else {
-                const unauthorized = [401, /* 403, */ 407];
-                const status = unauthorized.includes(response.statusCode!) ? 597 : 590;
+                const { statusCode } = response;
+                const status = statusCode === 401 || statusCode === 407
+                    ? badGatewayStatusCodes.AUTH_FAILED
+                    : badGatewayStatusCodes.NON_200;
 
                 sourceSocket.end(createHttpResponse(status, `UPSTREAM${response.statusCode}`));
             }
@@ -174,7 +176,9 @@ export const chain = (
             if (isPlain) {
                 sourceSocket.end();
             } else {
-                sourceSocket.end(createHttpResponse(statuses[error.code!] ?? 599, error.code ?? 'Upstream Closed Early'));
+                const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
+                const response = createHttpResponse(statusCode, error.code ?? 'Upstream Closed Early');
+                sourceSocket.end(response);
             }
         }
     });
