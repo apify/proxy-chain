@@ -1,4 +1,3 @@
-// @ts-expect-error Missing types
 import { validateHeaderName, validateHeaderValue } from 'http';
 import { isHopByHopHeader } from './is_hop_by_hop_header';
 
