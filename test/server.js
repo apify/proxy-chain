@@ -1332,6 +1332,53 @@ it('supports localAddress', async () => {
     }
 });
 
+it('supports custom CONNECT server handler', async () => {
+    const server = new Server({
+        port: 0,
+        prepareRequestFunction: () => {
+            const customConnectServer = http.createServer((_request, response) => {
+                response.end('Hello, world!');
+            });
+
+            return {
+                customConnectServer,
+            };
+        },
+    });
+
+    await server.listen();
+
+    try {
+        const response = await new Promise((resolve, reject) => {
+            http.request(`http://127.0.0.1:${server.port}`, {
+                method: 'CONNECT',
+                path: 'example.com:80',
+                headers: {
+                    host: 'example.com:80',
+                },
+            }).on('connect', (connectResponse, socket, head) => {
+                http.request('http://example.com', {
+                    createConnection: () => socket,
+                }, (res) => {
+                    const buffer = [];
+
+                    res.on('data', (chunk) => {
+                        buffer.push(chunk);
+                    });
+
+                    res.on('end', () => {
+                        resolve(Buffer.concat(buffer).toString());
+                    });
+                }).on('error', reject).end();
+            }).on('error', reject).end();
+        });
+
+        expect(response).to.be.equal('Hello, world!');
+    } finally {
+        await server.close();
+    }
+});
+
 it('supports pre-response CONNECT payload', (done) => {
     const plain = net.createServer((socket) => {
         socket.pipe(socket);

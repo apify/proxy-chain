@@ -244,6 +244,61 @@ server.listen(() => {
 });
 ```
 
+## Routing CONNECT to another HTTP server
+
+While `customResponseFunction` enables custom handling methods such as `GET` and `POST`, many HTTP clients rely on `CONNECT` tunnels.
+It's possible to route those requests differently using the `customConnectServer` option. It accepts an instance of Node.js HTTP server.
+
+```javascript
+const http = require('http');
+const ProxyChain = require('proxy-chain');
+
+const exampleServer = http.createServer((request, response) => {
+    response.end('Hello from a custom server!');
+});
+
+const server = new ProxyChain.Server({
+    port: 8000,
+    prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
+        if (request.url.toLowerCase() === 'example.com:80') {
+            return {
+                customConnectServer: exampleServer,
+            };
+        }
+
+        return {};
+    },
+});
+
+server.listen(() => {
+  console.log(`Proxy server is listening on port ${server.port}`);
+});
+```
+
+In the example above, all CONNECT tunnels to `example.com` are overridden.
+This is an unsecure server, so it accepts only `http:` requests.
+
+In order to intercept `https:` requests, `https.createServer` should be used instead, along with a self signed certificate.
+
+```javascript
+const https = require('https');
+const fs = require('fs');
+const key = fs.readFileSync('./test/ssl.key');
+const cert = fs.readFileSync('./test/ssl.crt');
+
+const exampleServer = https.createServer({
+    key,
+    cert,
+}, (request, response) => {
+    response.end('Hello from a custom server!');
+});
+```
+
+```diff
+-if (request.url.toLowerCase() === 'example.com:80') {
++if (request.url.toLowerCase() === 'example.com:443') {
+```
+
 ## Closing the server
 
 To shut down the proxy server, call the `close([destroyConnections], [callback])` function. For example:

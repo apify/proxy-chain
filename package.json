@@ -1,6 +1,6 @@
 {
   "name": "proxy-chain",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
   "main": "dist/index.js",
   "keywords": [
@@ -47,7 +47,7 @@
     "@apify/eslint-config-ts": "^0.2.3",
     "@apify/tsconfig": "^0.1.0",
     "@types/jest": "^28.1.2",
-    "@types/node": "^18.0.0",
+    "@types/node": "^18.8.3",
     "@typescript-eslint/eslint-plugin": "5.29.0",
     "@typescript-eslint/parser": "5.29.0",
     "basic-auth": "^2.0.1",
