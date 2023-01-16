@@ -66,7 +66,7 @@
     "portastic": "^1.0.1",
     "proxy": "^1.0.2",
     "request": "^2.88.2",
-    "rimraf": "^3.0.2",
+    "rimraf": "^4.0.7",
     "sinon": "^13.0.2",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
