@@ -3,7 +3,7 @@ import net from 'net';
 import { Buffer } from 'buffer';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
-import { SocksClient, SocksProxy } from 'socks';
+import { SocksClient, type SocksProxy } from 'socks';
 import { countTargetBytes } from '../utils/count_target_bytes';
 import { Socket } from '../socket';
 
@@ -50,8 +50,6 @@ export const tunnelSocks = async ({
     }
 
     if (!url.port) {
-        console.log(url);
-
         throw new Error('Missing CONNECT port');
     }
 

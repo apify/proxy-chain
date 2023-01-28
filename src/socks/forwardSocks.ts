@@ -2,7 +2,7 @@ import http from 'http';
 import stream from 'stream';
 import util from 'util';
 import { URL } from 'url';
-import { SocksProxy } from 'socks';
+import type { SocksProxy } from 'socks';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { validHeadersOnly } from '../utils/valid_headers_only';
 import { countTargetBytes } from '../utils/count_target_bytes';
