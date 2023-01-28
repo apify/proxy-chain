@@ -5,7 +5,7 @@ import { isHopByHopHeader } from './is_hop_by_hop_header';
  * @see https://nodejs.org/api/http.html#http_message_rawheaders
  */
 export const validHeadersOnly = (rawHeaders: string[]): string[] => {
-    const result = [];
+    const result: string[] = [];
 
     let containsHost = false;
 

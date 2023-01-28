@@ -12,6 +12,8 @@ import { getTargetStats } from './utils/count_target_bytes';
 import { RequestError } from './request_error';
 import { chain, HandlerOpts as ChainOpts } from './chain';
 import { forward, HandlerOpts as ForwardOpts } from './forward';
+import { tunnelSocks } from './socks/tunnelSocks';
+import { forwardSocks } from './socks/forwardSocks';
 import { direct } from './direct';
 import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
 import { Socket } from './socket';
@@ -256,7 +258,10 @@ export class Server extends EventEmitter {
                 this.log(proxyChainId, 'Using HandlerCustomResponse');
                 return await handleCustomResponse(request, response, handlerOpts as CustomResponseOpts);
             }
-
+            if (handlerOpts.upstreamProxyUrlParsed && ['socks:'].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
+                this.log(proxyChainId, 'Using socksForward');
+                return await forwardSocks(request, response, handlerOpts as ForwardOpts);
+            }
             this.log(proxyChainId, 'Using forward');
             return await forward(request, response, handlerOpts as ForwardOpts);
         } catch (error) {
@@ -283,6 +288,10 @@ export class Server extends EventEmitter {
             }
 
             if (handlerOpts.upstreamProxyUrlParsed) {
+                if (['socks:'].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
+                    this.log(socket.proxyChainId, `Using HandlerSocksTunnelChain => ${request.url}`);
+                    return await tunnelSocks(data);
+                }
                 this.log(socket.proxyChainId, `Using HandlerTunnelChain => ${request.url}`);
                 return await chain(data);
             }
@@ -427,7 +436,7 @@ export class Server extends EventEmitter {
                 throw new Error(`Invalid "upstreamProxyUrl" provided: ${error} (was "${funcResult.upstreamProxyUrl}"`);
             }
 
-            if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
+            if (!['http:', 'socks:'].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
                 // eslint-disable-next-line max-len
                 throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
             }
