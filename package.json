@@ -67,7 +67,7 @@
     "proxy": "^1.0.2",
     "request": "^2.88.2",
     "rimraf": "^4.1.2",
-    "sinon": "^13.0.2",
+    "sinon": "^15.0.1",
     "sinon-stub-promise": "^4.0.0",
     "through": "^2.3.8",
     "ts-node": "^10.2.1",
