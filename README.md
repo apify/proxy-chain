@@ -365,7 +365,7 @@ const proxyChain = require('proxy-chain');
 
 (async() => {
     const oldProxyUrl = 'http://bob:password123@proxy.example.com:8000';
-    const newProxyUrl = await proxyChain.anonymizeProxy({ url: oldProxyUrl });
+    const newProxyUrl = await proxyChain.anonymizeProxy(oldProxyUrl);
 
     // Prints something like "http://127.0.0.1:45678"
     console.log(newProxyUrl);
