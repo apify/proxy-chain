@@ -203,6 +203,11 @@ export class Server extends EventEmitter {
 
             this.connections.delete(unique);
         });
+        // We have to manually destroy the socket if it timeouts.
+        // This will prevent connections from leaking and close them properly.
+        socket.on('timeout', () => {
+            socket.destroy();
+        });
     }
 
     /**
