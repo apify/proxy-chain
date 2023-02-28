@@ -128,7 +128,7 @@ export const chain = (
                 sourceSocket.end(createHttpResponse(status, `UPSTREAM${response.statusCode}`));
             }
 
-            server.emit('tunnelConnectError', {
+            server.emit('tunnelConnectFailed', {
                 proxyChainId,
                 response,
                 metadata,

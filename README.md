@@ -72,6 +72,10 @@ const server = new ProxyChain.Server({
             // If "requestAuthentication" is true, you can use the following property
             // to define a custom error message to return to the client instead of the default "Proxy credentials required"
             failMsg: 'Bad username or password, please try again.',
+
+            // Optional metadata that will be passed back via
+            // `tunnelConnectResponded` or `tunnelConnectFailed` events
+            metadata: { userId: '123' },
         };
     },
 });
@@ -326,7 +330,7 @@ the parameter types of the event callback are described in [Node.js's documentat
 [1]: https://nodejs.org/api/http.html#http_event_connect
 
 ```javascript
-server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head }) => {
+server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head, metadata }) => {
     console.log(`CONNECT response headers received: ${response.headers}`);
 });
 ```
@@ -339,6 +343,14 @@ listenConnectAnonymizedProxy(anonymizedProxyUrl, ({ response, socket, head }) =>
 });
 ```
 
+You can also listen to CONNECT requests that receive response with status code different from 200.
+The proxy server would emit a `tunnelConnectFailed` event.
+
+```javascript
+server.on('tunnelConnectFailed', ({ proxyChainId, response, socket, head, metadata }) => {
+    console.log(`CONNECT response failed with status code: ${response.statusCode}`);
+});
+```
 
 ## Helper functions
 
