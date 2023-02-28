@@ -52,7 +52,7 @@ type HandlerOpts = {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
-    metadata?: unknown;
+    customTag?: unknown;
 };
 
 export type PrepareRequestFunctionOpts = {
@@ -74,7 +74,7 @@ export type PrepareRequestFunctionResult = {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
-    metadata?: unknown;
+    customTag?: unknown;
 };
 
 type Promisable<T> = T | Promise<T>;
@@ -421,7 +421,7 @@ export class Server extends EventEmitter {
         handlerOpts.ipFamily = funcResult.ipFamily;
         handlerOpts.dnsLookup = funcResult.dnsLookup;
         handlerOpts.customConnectServer = funcResult.customConnectServer;
-        handlerOpts.metadata = funcResult.metadata;
+        handlerOpts.customTag = funcResult.customTag;
 
         // If not authenticated, request client to authenticate
         if (funcResult.requestAuthentication) {

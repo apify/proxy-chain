@@ -73,9 +73,11 @@ const server = new ProxyChain.Server({
             // to define a custom error message to return to the client instead of the default "Proxy credentials required"
             failMsg: 'Bad username or password, please try again.',
 
-            // Optional metadata that will be passed back via
+            // Optional custom tag that will be passed back via
             // `tunnelConnectResponded` or `tunnelConnectFailed` events
-            metadata: { userId: '123' },
+            // Can be used to pass information between proxy-chain
+            // and any external code or application using it
+            customTag: { userId: '123' },
         };
     },
 });
@@ -330,7 +332,7 @@ the parameter types of the event callback are described in [Node.js's documentat
 [1]: https://nodejs.org/api/http.html#http_event_connect
 
 ```javascript
-server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head, metadata }) => {
+server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head, customTag }) => {
     console.log(`CONNECT response headers received: ${response.headers}`);
 });
 ```
@@ -347,7 +349,7 @@ You can also listen to CONNECT requests that receive response with status code d
 The proxy server would emit a `tunnelConnectFailed` event.
 
 ```javascript
-server.on('tunnelConnectFailed', ({ proxyChainId, response, socket, head, metadata }) => {
+server.on('tunnelConnectFailed', ({ proxyChainId, response, socket, head, customTag }) => {
     console.log(`CONNECT response failed with status code: ${response.statusCode}`);
 });
 ```
