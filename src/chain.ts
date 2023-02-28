@@ -33,7 +33,7 @@ export interface HandlerOpts {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
-    metadata?: Record<string, unknown>;
+    metadata?: unknown;
 }
 
 interface ChainOpts {

@@ -52,7 +52,7 @@ type HandlerOpts = {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
-    metadata?: Record<string, unknown>;
+    metadata?: unknown;
 };
 
 export type PrepareRequestFunctionOpts = {
@@ -74,7 +74,7 @@ export type PrepareRequestFunctionResult = {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
-    metadata?: Record<string, unknown>;
+    metadata?: unknown;
 };
 
 type Promisable<T> = T | Promise<T>;
