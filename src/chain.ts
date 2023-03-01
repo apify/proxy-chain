@@ -33,6 +33,7 @@ export interface HandlerOpts {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
+    customTag?: unknown;
 }
 
 interface ChainOpts {
@@ -72,7 +73,7 @@ export const chain = (
 
     const { proxyChainId } = sourceSocket;
 
-    const { upstreamProxyUrlParsed: proxy } = handlerOpts;
+    const { upstreamProxyUrlParsed: proxy, customTag } = handlerOpts;
 
     const options: Options = {
         method: 'CONNECT',
@@ -127,6 +128,14 @@ export const chain = (
                 sourceSocket.end(createHttpResponse(status, `UPSTREAM${response.statusCode}`));
             }
 
+            server.emit('tunnelConnectFailed', {
+                proxyChainId,
+                response,
+                customTag,
+                socket: targetSocket,
+                head: clientHead,
+            });
+
             return;
         }
 
@@ -138,6 +147,7 @@ export const chain = (
         server.emit('tunnelConnectResponded', {
             proxyChainId,
             response,
+            customTag,
             socket: targetSocket,
             head: clientHead,
         });

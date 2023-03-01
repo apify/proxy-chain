@@ -45,7 +45,7 @@ const server = new ProxyChain.Server({
     // Custom user-defined function to authenticate incoming proxy requests,
     // and optionally provide the URL to chained upstream proxy.
     // The function must return an object (or promise resolving to the object) with the following signature:
-    // { requestAuthentication: Boolean, upstreamProxyUrl: String }
+    // { requestAuthentication: boolean, upstreamProxyUrl: string, failMsg?: string, customTag?: unknown }
     // If the function is not defined or is null, the server runs in simple mode.
     // Note that the function takes a single argument with the following properties:
     // * request      - An instance of http.IncomingMessage class with information about the client request
@@ -72,6 +72,12 @@ const server = new ProxyChain.Server({
             // If "requestAuthentication" is true, you can use the following property
             // to define a custom error message to return to the client instead of the default "Proxy credentials required"
             failMsg: 'Bad username or password, please try again.',
+
+            // Optional custom tag that will be passed back via
+            // `tunnelConnectResponded` or `tunnelConnectFailed` events
+            // Can be used to pass information between proxy-chain
+            // and any external code or application using it
+            customTag: { userId: '123' },
         };
     },
 });
@@ -326,7 +332,7 @@ the parameter types of the event callback are described in [Node.js's documentat
 [1]: https://nodejs.org/api/http.html#http_event_connect
 
 ```javascript
-server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head }) => {
+server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head, customTag }) => {
     console.log(`CONNECT response headers received: ${response.headers}`);
 });
 ```
@@ -339,6 +345,14 @@ listenConnectAnonymizedProxy(anonymizedProxyUrl, ({ response, socket, head }) =>
 });
 ```
 
+You can also listen to CONNECT requests that receive response with status code different from 200.
+The proxy server would emit a `tunnelConnectFailed` event.
+
+```javascript
+server.on('tunnelConnectFailed', ({ proxyChainId, response, socket, head, customTag }) => {
+    console.log(`CONNECT response failed with status code: ${response.statusCode}`);
+});
+```
 
 ## Helper functions
 
