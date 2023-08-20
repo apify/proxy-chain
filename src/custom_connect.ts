@@ -2,7 +2,8 @@ import net from 'net';
 import type http from 'http';
 import { promisify } from 'util';
 
-const asyncWrite = promisify(net.Socket.prototype.write);
+const socket = new net.Socket();
+const asyncWrite = promisify(socket.write).bind(socket);
 
 export const customConnect = async (socket: net.Socket, server: http.Server): Promise<void> => {
     // `countTargetBytes(socket, socket)` is incorrect here since `socket` is not a target.
