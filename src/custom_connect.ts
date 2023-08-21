@@ -10,7 +10,7 @@ export const customConnect = async (socket: net.Socket, server: http.Server): Pr
     // (whether any additional sockets are used).
 
     const asyncWrite = promisify(socket.write).bind(socket);
-    await asyncWrite.call(socket, 'HTTP/1.1 200 Connection Established\r\n\r\n');
+    await asyncWrite('HTTP/1.1 200 Connection Established\r\n\r\n');
     server.emit('connection', socket);
 
     return new Promise((resolve) => {
