@@ -39,6 +39,10 @@ const server = new ProxyChain.Server({
     // Port where the server will listen. By default 8000.
     port: 8000,
 
+    // Hostname where the server will listen.
+    // optional, defaults to unspecified IP address, see e.g. https://en.wikipedia.org/wiki/IPv6_address#Unspecified_address
+    hostname: 'localhost',
+
     // Enables verbose logging
     verbose: true,
 
