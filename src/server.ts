@@ -88,7 +88,7 @@ export type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promi
 export class Server extends EventEmitter {
     port: number;
 
-    hostname?: string;
+    host?: string;
 
     prepareRequestFunction?: PrepareRequestFunction;
 
@@ -140,7 +140,7 @@ export class Server extends EventEmitter {
      */
     constructor(options: {
         port?: number,
-        hostname?: string,
+        host?: string,
         prepareRequestFunction?: PrepareRequestFunction,
         verbose?: boolean,
         authRealm?: unknown,
@@ -153,7 +153,7 @@ export class Server extends EventEmitter {
             this.port = options.port;
         }
 
-        this.hostname = options.hostname;
+        this.host = options.host;
         this.prepareRequestFunction = options.prepareRequestFunction;
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
@@ -564,7 +564,7 @@ export class Server extends EventEmitter {
 
             this.server.on('error', onError);
             this.server.on('listening', onListening);
-            this.server.listen(this.port, this.hostname);
+            this.server.listen(this.port, this.host);
         });
 
         return nodeify(promise, callback);
