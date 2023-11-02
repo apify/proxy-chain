@@ -56,6 +56,7 @@ export const anonymizeProxy = (
             server = new Server({
                 // verbose: true,
                 port,
+                host: '127.0.0.1',
                 prepareRequestFunction: () => {
                     return {
                         requestAuthentication: false,

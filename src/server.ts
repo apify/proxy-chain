@@ -88,6 +88,8 @@ export type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promi
 export class Server extends EventEmitter {
     port: number;
 
+    host?: string;
+
     prepareRequestFunction?: PrepareRequestFunction;
 
     authRealm: unknown;
@@ -138,6 +140,7 @@ export class Server extends EventEmitter {
      */
     constructor(options: {
         port?: number,
+        host?: string,
         prepareRequestFunction?: PrepareRequestFunction,
         verbose?: boolean,
         authRealm?: unknown,
@@ -150,6 +153,7 @@ export class Server extends EventEmitter {
             this.port = options.port;
         }
 
+        this.host = options.host;
         this.prepareRequestFunction = options.prepareRequestFunction;
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
@@ -537,8 +541,6 @@ export class Server extends EventEmitter {
 
     /**
      * Starts listening at a port specified in the constructor.
-     * @param callback Optional callback
-     * @return {(Promise|undefined)}
      */
     listen(callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
         const promise = new Promise<void>((resolve, reject) => {
@@ -562,7 +564,7 @@ export class Server extends EventEmitter {
 
             this.server.on('error', onError);
             this.server.on('listening', onListening);
-            this.server.listen(this.port);
+            this.server.listen(this.port, this.host);
         });
 
         return nodeify(promise, callback);
