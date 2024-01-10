@@ -21,7 +21,7 @@ const createHttpResponse = (statusCode: number, statusMessage: string, message =
 
 interface Options {
     method: string;
-    headers: string[];
+    headers: Record<string, string>;
     path?: string;
     localAddress?: string;
     family?: number;
@@ -78,20 +78,19 @@ export const chain = (
     const options: Options = {
         method: 'CONNECT',
         path: request.url,
-        headers: [
-            'host',
-            request.url!,
-        ],
+        headers: {
+            host: request.url!,
+        },
         localAddress: handlerOpts.localAddress,
         family: handlerOpts.ipFamily,
         lookup: handlerOpts.dnsLookup,
     };
 
     if (proxy.username || proxy.password) {
-        options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
+        options.headers['proxy-authorization'] = getBasicAuthorizationHeader(proxy);
     }
 
-    const client = http.request(proxy.origin, options as unknown as http.ClientRequestArgs);
+    const client = http.request(proxy.origin, options);
 
     client.on('connect', (response, targetSocket, clientHead) => {
         countTargetBytes(sourceSocket, targetSocket);

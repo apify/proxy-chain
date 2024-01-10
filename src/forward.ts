@@ -13,7 +13,7 @@ const pipeline = util.promisify(stream.pipeline);
 
 interface Options {
     method: string;
-    headers: string[];
+    headers: Record<string, string>;
     insecureHTTPParser: boolean;
     path?: string;
     localAddress?: string;
@@ -69,7 +69,7 @@ export const forward = async (
 
         try {
             if (proxy.username || proxy.password) {
-                options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
+                options.headers['proxy-authorization'] = getBasicAuthorizationHeader(proxy);
             }
         } catch (error) {
             reject(error);
@@ -79,8 +79,7 @@ export const forward = async (
 
     const fn = origin!.startsWith('https:') ? https.request : http.request;
 
-    // We have to force cast `options` because @types/node doesn't support an array.
-    const client = fn(origin!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
+    const client = fn(origin!, options, async (clientResponse) => {
         try {
             // This is necessary to prevent Node.js throwing an error
             let statusCode = clientResponse.statusCode!;

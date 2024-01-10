@@ -4,8 +4,8 @@ import { isHopByHopHeader } from './is_hop_by_hop_header';
 /**
  * @see https://nodejs.org/api/http.html#http_message_rawheaders
  */
-export const validHeadersOnly = (rawHeaders: string[]): string[] => {
-    const result = [];
+export const validHeadersOnly = (rawHeaders: string[]): Record<string, string> => {
+    const result: Record<string, string> = {};
 
     let containsHost = false;
 
@@ -35,7 +35,7 @@ export const validHeadersOnly = (rawHeaders: string[]): string[] => {
             containsHost = true;
         }
 
-        result.push(name, value);
+        result[name] = value;
     }
 
     return result;
