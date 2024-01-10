@@ -21,7 +21,7 @@ const createHttpResponse = (statusCode: number, statusMessage: string, message =
 
 interface Options {
     method: string;
-    headers: Record<string, string>;
+    headers: http.OutgoingHttpHeaders;
     path?: string;
     localAddress?: string;
     family?: number;

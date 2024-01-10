@@ -13,7 +13,7 @@ const pipeline = util.promisify(stream.pipeline);
 
 interface Options {
     method: string;
-    headers: Record<string, string>;
+    headers: http.OutgoingHttpHeaders;
     insecureHTTPParser: boolean;
     path?: string;
     localAddress?: string;
