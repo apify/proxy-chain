@@ -12,11 +12,11 @@ With this package, you can set up a local proxy server without any password
 that will forward requests to the upstream proxy with password.
 For details, read [How to make headless Chrome and Puppeteer use a proxy server with authentication](https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212/).
 
-The proxy-chain package was developed by [Apify](https://apify.com/), the full-stack web scraping and data extraction platform, to support their [Apify Proxy](https://apify.com/proxy) product,
-which provides an easy access to a large pool of datacenter and residential proxies around the world. The proxy-chain package is also used by [Crawlee](https://crawlee.dev/),
+The proxy-chain package is developed by [Apify](https://apify.com/), the full-stack web scraping and data extraction platform, to support their [Apify Proxy](https://apify.com/proxy) product,
+which provides an easy access to a large pool of datacenter and residential IP addresses all around the world. The proxy-chain package is also used by [Crawlee](https://crawlee.dev/),
 the world's most popular web craling library for Node.js.
 
-Note that the proxy-chain package currently only supports HTTP proxying and HTTP CONNECT tunneling to proxy arbitrary protocols such as HTTP/TLS or FTP ([learn more](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff)). The SOCKS protocol is not supported yet.
+Note that the proxy-chain package currently only supports HTTP forwarding and HTTP CONNECT tunneling to forward arbitrary protocols such as HTTPS or FTP ([learn more](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff)). The SOCKS protocol is not supported yet.
 Also, proxy-chain only supports the Basic [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization).
 
 ## Run a simple HTTP/HTTPS proxy server
