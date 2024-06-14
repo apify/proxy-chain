@@ -105,9 +105,9 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
-## A different approach to `502 Bad Gateway`
+## Error status codes
 
-`502` status code is not comprehensive enough. Therefore, the server may respond with `590-599` instead:
+The `502 Bad Gateway` HTTP status code is not comprehensive enough. Therefore, the server may respond with `590-599` instead:
 
 ### `590 Non Successful`
 
