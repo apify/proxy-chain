@@ -1,22 +1,23 @@
 # Programmable HTTP proxy server for Node.js
 
 [![npm version](https://badge.fury.io/js/proxy-chain.svg)](http://badge.fury.io/js/proxy-chain)
-[![Build Status](https://travis-ci.com/apify/proxy-chain.svg?branch=master)](https://travis-ci.com/apify/proxy-chain)
 
-Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining,
-custom HTTP responses and measuring traffic statistics.
-The authentication and proxy chaining configuration is defined in code and can be dynamic.
-Note that the proxy server only supports Basic authentication
-(see [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization) for details).
+A programmable proxy server (think Squid) with support for SSL/TLS, authentication, upstream proxy chaining,
+custom HTTP responses, and traffic statistics.
+The authentication and proxy chaining configuration is defined in code and can be fully dynamic, giving you a high level of customization for your use case.
 
-For example, this package is useful if you need to use proxies with authentication
-in the headless Chrome web browser, because it doesn't accept proxy URLs such as `http://username:password@proxy.example.com:8080`.
-With this library, you can set up a local proxy server without any password
+For example, the proxy-chain package is useful if you need to use headless Chrome web browser and proxies with authentication,
+because Chrome doesn't support proxy URLs with password, such as `http://username:password@proxy.example.com:8080`.
+With this package, you can set up a local proxy server without any password
 that will forward requests to the upstream proxy with password.
-The package is used for this exact purpose by the [Apify web scraping platform](https://www.apify.com).
+For details, read [How to make headless Chrome and Puppeteer use a proxy server with authentication](https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212/).
 
-To learn more about the rationale behind this package,
-read [How to make headless Chrome and Puppeteer use a proxy server with authentication](https://medium.com/@jancurn/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212).
+The proxy-chain package is developed by [Apify](https://apify.com/), the full-stack web scraping and data extraction platform, to support their [Apify Proxy](https://apify.com/proxy) product,
+which provides an easy access to a large pool of datacenter and residential IP addresses all around the world. The proxy-chain package is also used by [Crawlee](https://crawlee.dev/),
+the world's most popular web craling library for Node.js.
+
+Note that the proxy-chain package currently only supports HTTP forwarding and HTTP CONNECT tunneling to forward arbitrary protocols such as HTTPS or FTP ([learn more](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff)). The SOCKS protocol is not supported yet.
+Also, proxy-chain only supports the Basic [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization).
 
 ## Run a simple HTTP/HTTPS proxy server
 
@@ -104,9 +105,9 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
-## A different approach to `502 Bad Gateway`
+## Error status codes
 
-`502` status code is not comprehensive enough. Therefore, the server may respond with `590-599` instead:
+The `502 Bad Gateway` HTTP status code is not comprehensive enough. Therefore, the server may respond with `590-599` instead:
 
 ### `590 Non Successful`
 
