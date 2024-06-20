@@ -16,7 +16,7 @@ interface DirectOpts {
     request: { url?: string };
     sourceSocket: Socket;
     head: Buffer;
-    server: EventEmitter & { log: (...args: any[]) => void; };
+    server: EventEmitter & { log: (connectionId: unknown, str: string) => void };
     handlerOpts: HandlerOpts;
 }
 
