@@ -18,6 +18,10 @@ import { Socket } from './socket';
 import { normalizeUrlPort } from './utils/normalize_url_port';
 import { badGatewayStatusCodes } from './statuses';
 import { customConnect } from './custom_connect';
+import { forwardSocks } from './forward_socks';
+import { chainSocks } from './chain_socks';
+
+const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'socks5h:'];
 
 // TODO:
 // - Implement this requirement from rfc7230
@@ -176,6 +180,7 @@ export class Server extends EventEmitter {
     log(connectionId: unknown, str: string): void {
         if (this.verbose) {
             const logPrefix = connectionId ? `${String(connectionId)} | ` : '';
+            // eslint-disable-next-line no-console
             console.log(`ProxyServer[${this.port}]: ${logPrefix}${str}`);
         }
     }
@@ -264,11 +269,16 @@ export class Server extends EventEmitter {
             const { proxyChainId } = request.socket as Socket;
 
             if (handlerOpts.customResponseFunction) {
-                this.log(proxyChainId, 'Using HandlerCustomResponse');
+                this.log(proxyChainId, 'Using handleCustomResponse()');
                 return await handleCustomResponse(request, response, handlerOpts as CustomResponseOpts);
             }
 
-            this.log(proxyChainId, 'Using forward');
+            if (handlerOpts.upstreamProxyUrlParsed && SOCKS_PROTOCOLS.includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
+                this.log(proxyChainId, 'Using forwardSocks()');
+                return await forwardSocks(request, response, handlerOpts as ForwardOpts);
+            }
+
+            this.log(proxyChainId, 'Using forward()');
             return await forward(request, response, handlerOpts as ForwardOpts);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error as NodeJS.ErrnoException));
@@ -294,11 +304,15 @@ export class Server extends EventEmitter {
             }
 
             if (handlerOpts.upstreamProxyUrlParsed) {
-                this.log(socket.proxyChainId, `Using HandlerTunnelChain => ${request.url}`);
+                if (SOCKS_PROTOCOLS.includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
+                    this.log(socket.proxyChainId, `Using chainSocks() => ${request.url}`);
+                    return await chainSocks(data);
+                }
+                this.log(socket.proxyChainId, `Using chain() => ${request.url}`);
                 return await chain(data);
             }
 
-            this.log(socket.proxyChainId, `Using HandlerTunnelDirect => ${request.url}`);
+            this.log(socket.proxyChainId, `Using direct() => ${request.url}`);
             return await direct(data);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error as NodeJS.ErrnoException));
@@ -439,9 +453,9 @@ export class Server extends EventEmitter {
                 throw new Error(`Invalid "upstreamProxyUrl" provided: ${error} (was "${funcResult.upstreamProxyUrl}"`);
             }
 
-            if (handlerOpts.upstreamProxyUrlParsed.protocol !== 'http:') {
+            if (!['http:', ...SOCKS_PROTOCOLS].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
                 // eslint-disable-next-line max-len
-                throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have the "http" protocol (was "${funcResult.upstreamProxyUrl}")`);
+                throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have one of the following protocols: "http", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${funcResult.upstreamProxyUrl}")`);
             }
         }
 
@@ -512,7 +526,6 @@ export class Server extends EventEmitter {
             headers.date = (new Date()).toUTCString();
             headers['content-length'] = String(Buffer.byteLength(message));
 
-            // TODO: we should use ??= here
             headers.server = headers.server || this.authRealm;
             headers['content-type'] = headers['content-type'] || 'text/plain; charset=utf-8';
 

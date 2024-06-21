@@ -6,18 +6,7 @@ import { Buffer } from 'buffer';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { Socket } from './socket';
-import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
-
-const createHttpResponse = (statusCode: number, statusMessage: string, message = '') => {
-    return [
-        `HTTP/1.1 ${statusCode} ${statusMessage || http.STATUS_CODES[statusCode] || 'Unknown Status Code'}`,
-        'Connection: close',
-        `Date: ${(new Date()).toUTCString()}`,
-        `Content-Length: ${Buffer.byteLength(message)}`,
-        ``,
-        message,
-    ].join('\r\n');
-};
+import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses';
 
 interface Options {
     method: string;
@@ -41,7 +30,7 @@ interface ChainOpts {
     sourceSocket: Socket;
     head?: Buffer;
     handlerOpts: HandlerOpts;
-    server: EventEmitter & { log: (...args: any[]) => void; };
+    server: EventEmitter & { log: (connectionId: unknown, str: string) => void };
     isPlain: boolean;
 }
 
@@ -125,7 +114,7 @@ export const chain = (
                     ? badGatewayStatusCodes.AUTH_FAILED
                     : badGatewayStatusCodes.NON_200;
 
-                sourceSocket.end(createHttpResponse(status, `UPSTREAM${response.statusCode}`));
+                sourceSocket.end(createCustomStatusHttpResponse(status, `UPSTREAM${statusCode}`));
             }
 
             server.emit('tunnelConnectFailed', {
@@ -187,7 +176,7 @@ export const chain = (
                 sourceSocket.end();
             } else {
                 const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
-                const response = createHttpResponse(statusCode, error.code ?? 'Upstream Closed Early');
+                const response = createCustomStatusHttpResponse(statusCode, error.code ?? 'Upstream Closed Early');
                 sourceSocket.end(response);
             }
         }

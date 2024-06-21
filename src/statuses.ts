@@ -50,6 +50,17 @@ STATUS_CODES['596'] = 'Broken Pipe';
 STATUS_CODES['597'] = 'Auth Failed';
 STATUS_CODES['599'] = 'Upstream Error';
 
+export const createCustomStatusHttpResponse = (statusCode: number, statusMessage: string, message = '') => {
+    return [
+        `HTTP/1.1 ${statusCode} ${statusMessage || STATUS_CODES[statusCode] || 'Unknown Status Code'}`,
+        'Connection: close',
+        `Date: ${(new Date()).toUTCString()}`,
+        `Content-Length: ${Buffer.byteLength(message)}`,
+        ``,
+        message,
+    ].join('\r\n');
+};
+
 // https://nodejs.org/api/errors.html#common-system-errors
 export const errorCodeToStatusCode: {[errorCode: string]: HttpStatusCode | undefined} = {
     ENOTFOUND: badGatewayStatusCodes.NOT_FOUND,
@@ -58,3 +69,14 @@ export const errorCodeToStatusCode: {[errorCode: string]: HttpStatusCode | undef
     EPIPE: badGatewayStatusCodes.BROKEN_PIPE,
     ETIMEDOUT: badGatewayStatusCodes.TIMEOUT,
 } as const;
+
+export const socksErrorMessageToStatusCode = (socksErrorMessage: string): typeof badGatewayStatusCodes[keyof typeof badGatewayStatusCodes] => {
+    switch (socksErrorMessage) {
+        case 'Proxy connection timed out':
+            return badGatewayStatusCodes.TIMEOUT;
+        case 'Socks5 Authentication failed':
+            return badGatewayStatusCodes.AUTH_FAILED;
+        default:
+            return badGatewayStatusCodes.GENERIC_ERROR;
+    };
+};

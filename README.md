@@ -2,7 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/proxy-chain.svg)](http://badge.fury.io/js/proxy-chain)
 
-A programmable proxy server (think Squid) with support for SSL/TLS, authentication, upstream proxy chaining,
+A programmable proxy server (think Squid) with support for SSL/TLS, authentication, upstream proxy chaining, SOCKS4/5 protocol,
 custom HTTP responses, and traffic statistics.
 The authentication and proxy chaining configuration is defined in code and can be fully dynamic, giving you a high level of customization for your use case.
 
@@ -69,11 +69,13 @@ const server = new ProxyChain.Server({
             // requiring Basic authentication. Here you can verify user credentials.
             requestAuthentication: username !== 'bob' || password !== 'TopSecret',
 
-            // Sets up an upstream HTTP proxy to which all the requests are forwarded.
+            // Sets up an upstream HTTP/SOCKS proxy to which all the requests are forwarded.
             // If null, the proxy works in direct mode, i.e. the connection is forwarded directly
             // to the target server. This field is ignored if "requestAuthentication" is true.
             // The username and password must be URI-encoded.
             upstreamProxyUrl: `http://username:password@proxy.example.com:3128`,
+            // Or use SOCKS4/5 proxy, e.g.
+            // upstreamProxyUrl: `socks://username:password@proxy.example.com:1080`,
 
             // If "requestAuthentication" is true, you can use the following property
             // to define a custom error message to return to the client instead of the default "Proxy credentials required"
@@ -104,6 +106,11 @@ server.on('requestFailed', ({ request, error }) => {
   console.error(error);
 });
 ```
+
+## SOCKS support
+SOCKS protocol is supported for versions 4 and 5, specifically: `['socks', 'socks4', 'socks4a', 'socks5', 'socks5h']`, where `socks` will default to version 5.
+
+You can use an `upstreamProxyUrl` like `socks://username:password@proxy.example.com:1080`.
 
 ## Error status codes
 
