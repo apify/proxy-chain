@@ -16,8 +16,7 @@ The proxy-chain package is developed by [Apify](https://apify.com/), the full-st
 which provides an easy access to a large pool of datacenter and residential IP addresses all around the world. The proxy-chain package is also used by [Crawlee](https://crawlee.dev/),
 the world's most popular web craling library for Node.js.
 
-Note that the proxy-chain package currently only supports HTTP forwarding and HTTP CONNECT tunneling to forward arbitrary protocols such as HTTPS or FTP ([learn more](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff)). The SOCKS protocol is not supported yet.
-Also, proxy-chain only supports the Basic [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization).
+The proxy-chain package currently supports HTTP/SOCKS forwarding and HTTP CONNECT tunneling to forward arbitrary protocols such as HTTPS or FTP ([learn more](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff)). The HTTP CONNECT tunneling also supports the SOCKS protocol. Also, proxy-chain only supports the Basic [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization).
 
 ## Run a simple HTTP/HTTPS proxy server
 
