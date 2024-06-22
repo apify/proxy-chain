@@ -5,16 +5,24 @@ const { expect } = require('chai');
 const ProxyChain = require('../src/index');
 
 describe('SOCKS protocol', () => {
+    let socksServer;
+    let proxyServer;
+
+    afterEach(() => {
+        if (socksServer) socksServer.close();
+        if (proxyServer) proxyServer.close();
+    });
+
     it('works without auth', (done) => {
         portastic.find({ min: 50000, max: 50250 }).then((ports) => {
             const [socksPort, proxyPort] = ports;
-            const socksServer = socksv5.createServer((info, accept) => {
+            socksServer = socksv5.createServer((info, accept) => {
                 accept();
             });
             socksServer.listen(socksPort, 'localhost');
             socksServer.useAuth(socksv5.auth.None());
 
-            const proxyServer = new ProxyChain.Server({
+            proxyServer = new ProxyChain.Server({
                 port: proxyPort,
                 prepareRequestFunction() {
                     return {
@@ -36,7 +44,7 @@ describe('SOCKS protocol', () => {
     it('work with auth', (done) => {
         portastic.find({ min: 50250, max: 50500 }).then((ports) => {
             const [socksPort, proxyPort] = ports;
-            const socksServer = socksv5.createServer((info, accept) => {
+            socksServer = socksv5.createServer((info, accept) => {
                 accept();
             });
             socksServer.listen(socksPort, 'localhost');
@@ -44,7 +52,7 @@ describe('SOCKS protocol', () => {
                 cb(user === 'proxy-chain' && password === 'rules!');
             }));
 
-            const proxyServer = new ProxyChain.Server({
+            proxyServer = new ProxyChain.Server({
                 port: proxyPort,
                 prepareRequestFunction() {
                     return {
