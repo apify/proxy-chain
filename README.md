@@ -312,11 +312,6 @@ const exampleServer = https.createServer({
 });
 ```
 
-```diff
--if (request.url.toLowerCase() === 'example.com:80') {
-+if (request.url.toLowerCase() === 'example.com:443') {
-```
-
 ## Closing the server
 
 To shut down the proxy server, call the `close([destroyConnections], [callback])` function. For example:
