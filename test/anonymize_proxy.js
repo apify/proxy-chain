@@ -136,15 +136,11 @@ describe('utils.anonymizeProxy', function () {
     it('throws for invalid URLs', () => {
         assert.throws(() => { anonymizeProxy('://whatever.com'); }, Error);
         assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
-        assert.throws(() => { anonymizeProxy('socks5://whatever.com'); }, Error);
         assert.throws(() => {
             anonymizeProxy({ url: '://whatever.com' });
         }, Error);
         assert.throws(() => {
             anonymizeProxy({ url: 'https://whatever.com' });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ url: 'socks5://whatever.com' });
         }, Error);
     });
 
