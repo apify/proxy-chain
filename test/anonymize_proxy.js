@@ -114,18 +114,10 @@ describe('utils.anonymizeProxy', function () {
         assert.throws(() => { closeAnonymizedProxy(null); }, Error);
     });
 
-    it('throws for unsupported proxy protocols', () => {
-        assert.throws(() => { anonymizeProxy('socks://whatever.com'); }, Error);
+    it('throws for unsupported https: protocol', () => {
         assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
-        assert.throws(() => { anonymizeProxy('socks5://whatever.com'); }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ url: 'socks://whatever.com' });
-        }, Error);
         assert.throws(() => {
             anonymizeProxy({ url: 'https://whatever.com' });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ url: 'socks5://whatever.com' });
         }, Error);
     });
 
