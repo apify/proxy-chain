@@ -21,7 +21,7 @@ import { customConnect } from './custom_connect';
 import { forwardSocks } from './forward_socks';
 import { chainSocks } from './chain_socks';
 
-const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'socks5h:'];
+export const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'socks5h:'];
 
 // TODO:
 // - Implement this requirement from rfc7230
