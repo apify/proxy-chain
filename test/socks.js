@@ -70,4 +70,24 @@ describe('SOCKS protocol', () => {
                 .catch(done);
         });
     }).timeout(5 * 1000);
+
+    it('works with anonymizeProxy', (done) => {
+        portastic.find({ min: 50500, max: 50750 }).then((ports) => {
+            const [socksPort, proxyPort] = ports;
+            socksServer = socksv5.createServer((info, accept) => {
+                accept();
+            });
+            socksServer.listen(socksPort, 'localhost');
+            socksServer.useAuth(socksv5.auth.None());
+
+            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://localhost:${socksPort}` }).then(() => {
+                gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` })
+                    .then((response) => {
+                        expect(response.body).to.contain('Example Domain');
+                        done();
+                    })
+                    .catch(done);
+            });
+        });
+    }).timeout(5 * 1000);
 });
