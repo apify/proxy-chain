@@ -78,9 +78,11 @@ describe('SOCKS protocol', () => {
                 accept();
             });
             socksServer.listen(socksPort, 'localhost');
-            socksServer.useAuth(socksv5.auth.None());
+            socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+                cb(user === 'proxy-chain' && password === 'rules!');
+            }));
 
-            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://localhost:${socksPort}` }).then(() => {
+            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-chain:rules!@localhost:${socksPort}` }).then(() => {
                 gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` })
                     .then((response) => {
                         expect(response.body).to.contain('Example Domain');
