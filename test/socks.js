@@ -7,10 +7,12 @@ const ProxyChain = require('../src/index');
 describe('SOCKS protocol', () => {
     let socksServer;
     let proxyServer;
+    let anonymizeProxyUrl;
 
     afterEach(() => {
         if (socksServer) socksServer.close();
         if (proxyServer) proxyServer.close();
+        if (anonymizeProxyUrl) ProxyChain.closeAnonymizedProxy(anonymizeProxyUrl, true);
     });
 
     it('works without auth', (done) => {
@@ -82,8 +84,9 @@ describe('SOCKS protocol', () => {
                 cb(user === 'proxy-chain' && password === 'rules!');
             }));
 
-            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-chain:rules!@localhost:${socksPort}` }).then(() => {
-                gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` })
+            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-chain:rules!@localhost:${socksPort}` }).then((anonymizedProxyUrl) => {
+                anonymizeProxyUrl = anonymizedProxyUrl;
+                gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizedProxyUrl })
                     .then((response) => {
                         expect(response.body).to.contain('Example Domain');
                         done();
