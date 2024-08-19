@@ -2,7 +2,7 @@ import net from 'net';
 import http from 'http';
 import { Buffer } from 'buffer';
 import { URL } from 'url';
-import { Server } from './server';
+import { Server, SOCKS_PROTOCOLS } from './server';
 import { nodeify } from './utils/nodeify';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
@@ -38,10 +38,9 @@ export const anonymizeProxy = (
     }
 
     const parsedProxyUrl = new URL(proxyUrl);
-    if (parsedProxyUrl.protocol !== 'http:') {
-        throw new Error(
-            'Invalid "proxyUrl" option: only HTTP proxies are currently supported.',
-        );
+    if (!['http:', ...SOCKS_PROTOCOLS].includes(parsedProxyUrl.protocol)) {
+        // eslint-disable-next-line max-len
+        throw new Error(`Invalid "proxyUrl" provided: URL must have one of the following protocols: "http", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${parsedProxyUrl}")`);
     }
 
     // If upstream proxy requires no password, return it directly

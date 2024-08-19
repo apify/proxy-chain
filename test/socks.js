@@ -7,10 +7,12 @@ const ProxyChain = require('../src/index');
 describe('SOCKS protocol', () => {
     let socksServer;
     let proxyServer;
+    let anonymizeProxyUrl;
 
     afterEach(() => {
         if (socksServer) socksServer.close();
         if (proxyServer) proxyServer.close();
+        if (anonymizeProxyUrl) ProxyChain.closeAnonymizedProxy(anonymizeProxyUrl, true);
     });
 
     it('works without auth', (done) => {
@@ -68,6 +70,29 @@ describe('SOCKS protocol', () => {
                     done();
                 })
                 .catch(done);
+        });
+    }).timeout(5 * 1000);
+
+    it('works with anonymizeProxy', (done) => {
+        portastic.find({ min: 50500, max: 50750 }).then((ports) => {
+            const [socksPort, proxyPort] = ports;
+            socksServer = socksv5.createServer((info, accept) => {
+                accept();
+            });
+            socksServer.listen(socksPort, 'localhost');
+            socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+                cb(user === 'proxy-chain' && password === 'rules!');
+            }));
+
+            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-chain:rules!@localhost:${socksPort}` }).then((anonymizedProxyUrl) => {
+                anonymizeProxyUrl = anonymizedProxyUrl;
+                gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizedProxyUrl })
+                    .then((response) => {
+                        expect(response.body).to.contain('Example Domain');
+                        done();
+                    })
+                    .catch(done);
+            });
         });
     }).timeout(5 * 1000);
 });
