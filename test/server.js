@@ -633,7 +633,7 @@ const createTestSuite = ({
             });
 
             if (!useSsl) {
-                _it('gracefully fails on invalid HTTP status code', () => {
+                _it('fails on invalid HTTP status code', () => {
                     const opts = getRequestOpts('/get-invalid-status-code');
                     opts.method = 'GET';
                     return requestPromised(opts)
@@ -645,6 +645,9 @@ const createTestSuite = ({
                                 expect(response.statusCode).to.eql(55);
                                 expect(response.body).to.eql('Bad status!');
                             }
+                        })
+                        .catch((err) => {
+                            expect(err.message).to.contain('Invalid status code');
                         });
                 });
             }
