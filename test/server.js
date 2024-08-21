@@ -56,7 +56,6 @@ const AUTH_REALM = 'Test Proxy'; // Test space in realm string
 const requestPromised = (opts) => {
     return new Promise((resolve, reject) => {
         request(opts, (error, response, body) => {
-            console.log('request promised', error);
             if (error) {
                 return reject(error);
             }
@@ -640,7 +639,7 @@ const createTestSuite = ({
                     return requestPromised(opts)
                         .then((response) => {
                             if (useMainProxy) {
-                                expect(response.statusCode).to.eql(592);
+                                expect(response.statusCode).to.be.oneOf([592, 599]); // 599 for Node.js 20+
                                 expect(response.body).to.eql('Bad status!');
                             } else {
                                 expect(response.statusCode).to.eql(55);
