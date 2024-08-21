@@ -630,9 +630,6 @@ const createTestSuite = ({
                             expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
                             expect(response.headers['invalid-header-value']).to.eql(skipInvalidHeaderValue ? undefined : 'some\value');
                         }
-                    })
-                    .catch((err) => { // Case for Node.js 22+
-                        expect(err.message).to.contain('Invalid header token');
                     });
             });
 
