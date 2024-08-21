@@ -640,7 +640,7 @@ const createTestSuite = ({
                         .then((response) => {
                             if (useMainProxy) {
                                 expect(response.statusCode).to.be.oneOf([592, 599]); // 599 for Node.js 20+
-                                expect(response.body).to.eql('Bad status!');
+                                expect(response.body).to.contain.oneOf(['Bad status!', 'Upstream Error']); // Upstream Error for Node.js 20+
                             } else {
                                 expect(response.statusCode).to.eql(55);
                                 expect(response.body).to.eql('Bad status!');
