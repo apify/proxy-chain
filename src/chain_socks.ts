@@ -50,8 +50,8 @@ export const chainSocks = async ({
         host: hostname,
         port: Number(port),
         type: socksProtocolToVersionNumber(handlerOpts.upstreamProxyUrlParsed.protocol),
-        userId: username,
-        password,
+        userId: decodeURIComponent(username),
+        password: decodeURIComponent(password),
     };
 
     if (head && head.length > 0) {
