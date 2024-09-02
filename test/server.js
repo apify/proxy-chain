@@ -855,7 +855,12 @@ const createTestSuite = ({
                 // For SSL, we need to return curl's stderr to check what kind of error was there
                 const output = await curlGet(curlUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`, !useSsl);
                 if (useSsl) {
-                    expect(output).to.contain('Received HTTP code 407 from proxy after CONNECT');
+                    expect(output).to.contain.oneOf([
+                        // Old error message before dafdb20a26d0c890e83dea61a104b75408481ebd
+                        'Received HTTP code 407 from proxy after CONNECT',
+                        // and that after
+                        'CONNECT tunnel failed, response 407',
+                    ]);
                 } else {
                     expect(output).to.contain('Proxy credentials required');
                 }
