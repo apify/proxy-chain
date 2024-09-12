@@ -51,14 +51,14 @@ describe('SOCKS protocol', () => {
             });
             socksServer.listen(socksPort, 'localhost');
             socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
-                cb(user === 'proxy-chain' && password === 'rules!');
+                cb(user === 'proxy-ch@in' && password === 'rules!');
             }));
 
             proxyServer = new ProxyChain.Server({
                 port: proxyPort,
                 prepareRequestFunction() {
                     return {
-                        upstreamProxyUrl: `socks://proxy-chain:rules!@localhost:${socksPort}`,
+                        upstreamProxyUrl: `socks://proxy-ch@in:rules!@localhost:${socksPort}`,
                     };
                 },
             });
@@ -81,10 +81,10 @@ describe('SOCKS protocol', () => {
             });
             socksServer.listen(socksPort, 'localhost');
             socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
-                cb(user === 'proxy-chain' && password === 'rules!');
+                cb(user === 'proxy-ch@in' && password === 'rules!');
             }));
 
-            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-chain:rules!@localhost:${socksPort}` }).then((anonymizedProxyUrl) => {
+            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-ch@in:rules!@localhost:${socksPort}` }).then((anonymizedProxyUrl) => {
                 anonymizeProxyUrl = anonymizedProxyUrl;
                 gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizedProxyUrl })
                     .then((response) => {
