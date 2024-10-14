@@ -633,8 +633,6 @@ export class Server extends EventEmitter {
             socket.destroy();
         }
 
-        this.connections.clear();
-
         this.log(null, `Destroyed ${this.connections.size} pending sockets`);
     }
 
