@@ -9,6 +9,7 @@ const util = require('util');
 const { expect, assert } = require('chai');
 const proxy = require('proxy');
 const http = require('http');
+const https = require('https');
 const portastic = require('portastic');
 const request = require('request');
 const WebSocket = require('faye-websocket');
@@ -1336,6 +1337,45 @@ it('supports localAddress', async () => {
         await util.promisify(target.close.bind(target))();
     }
 });
+
+it('supports https proxy relay', async () => {
+    const target = https.createServer((_req, _res) => {
+    });
+    target.listen(() => {
+    });
+
+    const proxy = new ProxyChain.Server({
+        port: 6666,
+        prepareRequestFunction: () => {
+            console.log(`https://localhost:${target.address().port}`);
+            return {
+                upstreamProxyUrl: `https://localhost:${target.address().port}`,
+            }
+        }
+    })
+    let proxyServerError = false;
+    proxy.on('requestFailed', (_err) => {
+        // requestFailed will be called if we pass an invalid proxy url
+        proxyServerError = true;
+    })
+
+    await proxy.listen();
+
+    try {
+        await requestPromised({
+            url: 'https://www.google.com',
+            proxy: 'http://localhost:6666',
+            strictSSL: false,
+        });
+    } catch (e) {
+        // the request will fail with the following error:
+        // Error: tunneling socket could not be established, statusCode=599
+    }
+    expect(proxyServerError).to.be.equal(false);
+
+    proxy.close();
+    target.close();
+})
 
 it('supports custom CONNECT server handler', async () => {
     const server = new Server({
