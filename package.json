@@ -44,7 +44,7 @@
     "node": ">=14"
   },
   "devDependencies": {
-    "@apify/eslint-config-ts": "^0.2.3",
+    "@apify/eslint-config-ts": "^0.3.0",
     "@apify/tsconfig": "^0.1.0",
     "@types/jest": "^28.1.2",
     "@types/node": "^18.8.3",
