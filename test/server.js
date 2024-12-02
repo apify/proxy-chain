@@ -1339,7 +1339,7 @@ it('supports localAddress', async () => {
 });
 
 it('supports https proxy relay', async () => {
-    const target = https.createServer((_req, _res) => {
+    const target = https.createServer(() => {
     });
     target.listen(() => {
     });
