@@ -1344,7 +1344,7 @@ it('supports https proxy relay', async () => {
     target.listen(() => {
     });
 
-    const proxy = new ProxyChain.Server({
+    const proxyServer = new ProxyChain.Server({
         port: 6666,
         prepareRequestFunction: () => {
             console.log(`https://localhost:${target.address().port}`);
@@ -1354,12 +1354,12 @@ it('supports https proxy relay', async () => {
         },
     });
     let proxyServerError = false;
-    proxy.on('requestFailed', () => {
+    proxyServer.on('requestFailed', () => {
         // requestFailed will be called if we pass an invalid proxy url
         proxyServerError = true;
     })
 
-    await proxy.listen();
+    await proxyServer.listen();
 
     try {
         await requestPromised({
@@ -1373,7 +1373,7 @@ it('supports https proxy relay', async () => {
     }
     expect(proxyServerError).to.be.equal(false);
 
-    proxy.close();
+    proxyServer.close();
     target.close();
 });
 
