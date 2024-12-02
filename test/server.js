@@ -1354,7 +1354,7 @@ it('supports https proxy relay', async () => {
         },
     })
     let proxyServerError = false;
-    proxy.on('requestFailed', (_err) => {
+    proxy.on('requestFailed', () => {
         // requestFailed will be called if we pass an invalid proxy url
         proxyServerError = true;
     })
