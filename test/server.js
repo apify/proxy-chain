@@ -1352,7 +1352,7 @@ it('supports https proxy relay', async () => {
                 upstreamProxyUrl: `https://localhost:${target.address().port}`,
             };
         },
-    })
+    });
     let proxyServerError = false;
     proxy.on('requestFailed', () => {
         // requestFailed will be called if we pass an invalid proxy url
