@@ -1350,7 +1350,7 @@ it('supports https proxy relay', async () => {
             console.log(`https://localhost:${target.address().port}`);
             return {
                 upstreamProxyUrl: `https://localhost:${target.address().port}`,
-            }
+            };
         }
     })
     let proxyServerError = false;
