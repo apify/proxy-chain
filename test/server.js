@@ -1375,7 +1375,7 @@ it('supports https proxy relay', async () => {
 
     proxy.close();
     target.close();
-})
+});
 
 it('supports custom CONNECT server handler', async () => {
     const server = new Server({
