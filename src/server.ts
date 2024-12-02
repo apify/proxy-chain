@@ -453,9 +453,9 @@ export class Server extends EventEmitter {
                 throw new Error(`Invalid "upstreamProxyUrl" provided: ${error} (was "${funcResult.upstreamProxyUrl}"`);
             }
 
-            if (!['http:', ...SOCKS_PROTOCOLS].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
+            if (!['http:', 'https:', ...SOCKS_PROTOCOLS].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
                 // eslint-disable-next-line max-len
-                throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have one of the following protocols: "http", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${funcResult.upstreamProxyUrl}")`);
+                throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have one of the following protocols: "http", "https", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${funcResult.upstreamProxyUrl}")`);
             }
         }
 

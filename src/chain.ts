@@ -1,4 +1,5 @@
 import http from 'http';
+import https from 'https';
 import dns from 'dns';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
@@ -80,7 +81,8 @@ export const chain = (
         options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
     }
 
-    const client = http.request(proxy.origin, options as unknown as http.ClientRequestArgs);
+    const fn = proxy.protocol === 'https:' ? https.request : http.request;
+    const client = fn(proxy.origin, options as unknown as http.ClientRequestArgs);
 
     client.on('connect', (response, targetSocket, clientHead) => {
         countTargetBytes(sourceSocket, targetSocket);
