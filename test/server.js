@@ -1351,7 +1351,7 @@ it('supports https proxy relay', async () => {
             return {
                 upstreamProxyUrl: `https://localhost:${target.address().port}`,
             };
-        }
+        },
     })
     let proxyServerError = false;
     proxy.on('requestFailed', (_err) => {
