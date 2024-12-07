@@ -233,7 +233,9 @@ describe('utils.anonymizeProxy', function () {
                         assert.fail();
                     })
                     .catch((err) => {
-                        expect(err.message).to.contain('ECONNREFUSED');
+                        // ECONNREFUSED for Node.js <= 17
+                        // socket hang up for Node.js >= 18
+                        expect(err.message).to.contain.oneOf(['ECONNREFUSED', 'socket hang up']);
                     });
             })
             .then(() => {
