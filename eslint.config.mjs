@@ -14,6 +14,7 @@ export default [
         },
         rules: {
             'no-param-reassign': 'off',
-        }
+            'import/extensions': 'off',
+        },
     },
 ];

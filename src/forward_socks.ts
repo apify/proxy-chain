@@ -5,9 +5,9 @@ import util from 'util';
 
 import { SocksProxyAgent } from 'socks-proxy-agent';
 
-import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
-import { countTargetBytes } from './utils/count_target_bytes.js';
-import { validHeadersOnly } from './utils/valid_headers_only.js';
+import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
+import { countTargetBytes } from './utils/count_target_bytes';
+import { validHeadersOnly } from './utils/valid_headers_only';
 
 const pipeline = util.promisify(stream.pipeline);
 

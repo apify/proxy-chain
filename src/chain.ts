@@ -5,10 +5,10 @@ import http from 'http';
 import https from 'https';
 import type { URL } from 'url';
 
-import type { Socket } from './socket.js';
-import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses.js';
-import { countTargetBytes } from './utils/count_target_bytes.js';
-import { getBasicAuthorizationHeader } from './utils/get_basic.js';
+import type { Socket } from './socket';
+import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses';
+import { countTargetBytes } from './utils/count_target_bytes';
+import { getBasicAuthorizationHeader } from './utils/get_basic';
 
 interface Options {
     method: string;

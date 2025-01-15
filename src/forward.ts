@@ -5,10 +5,10 @@ import stream from 'stream';
 import type { URL } from 'url';
 import util from 'util';
 
-import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
-import { countTargetBytes } from './utils/count_target_bytes.js';
-import { getBasicAuthorizationHeader } from './utils/get_basic.js';
-import { validHeadersOnly } from './utils/valid_headers_only.js';
+import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
+import { countTargetBytes } from './utils/count_target_bytes';
+import { getBasicAuthorizationHeader } from './utils/get_basic';
+import { validHeadersOnly } from './utils/valid_headers_only';
 
 const pipeline = util.promisify(stream.pipeline);
 

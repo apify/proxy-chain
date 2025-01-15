@@ -1,6 +1,6 @@
 import { validateHeaderName, validateHeaderValue } from 'http';
 
-import { isHopByHopHeader } from './is_hop_by_hop_header.js';
+import { isHopByHopHeader } from './is_hop_by_hop_header';
 
 /**
  * @see https://nodejs.org/api/http.html#http_message_rawheaders

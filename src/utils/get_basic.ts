@@ -1,6 +1,6 @@
 import type { URL } from 'url';
 
-import { decodeURIComponentSafe } from './decode_uri_component_safe.js';
+import { decodeURIComponentSafe } from './decode_uri_component_safe';
 
 export const getBasicAuthorizationHeader = (url: URL): string => {
     const username = decodeURIComponentSafe(url.username);

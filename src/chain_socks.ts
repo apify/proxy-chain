@@ -6,9 +6,9 @@ import { URL } from 'url';
 
 import { type SocksClientError, SocksClient, type SocksProxy } from 'socks';
 
-import type { Socket } from './socket.js';
-import { createCustomStatusHttpResponse, socksErrorMessageToStatusCode } from './statuses.js';
-import { countTargetBytes } from './utils/count_target_bytes.js';
+import type { Socket } from './socket';
+import { createCustomStatusHttpResponse, socksErrorMessageToStatusCode } from './statuses';
+import { countTargetBytes } from './utils/count_target_bytes';
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;

@@ -1,8 +1,8 @@
 import net from 'net';
 import { URL } from 'url';
 
-import { chain } from './chain.js';
-import { nodeify } from './utils/nodeify.js';
+import { chain } from './chain';
+import { nodeify } from './utils/nodeify';
 
 const runningServers: Record<string, { server: net.Server, connections: Set<net.Socket> }> = {};
 
