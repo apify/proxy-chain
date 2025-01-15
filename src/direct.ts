@@ -1,10 +1,11 @@
+import type { Buffer } from 'buffer';
+import type dns from 'dns';
+import type { EventEmitter } from 'events';
 import net from 'net';
-import dns from 'dns';
-import { Buffer } from 'buffer';
 import { URL } from 'url';
-import { EventEmitter } from 'events';
-import { countTargetBytes } from './utils/count_target_bytes';
-import { Socket } from './socket';
+
+import type { Socket } from './socket.js';
+import { countTargetBytes } from './utils/count_target_bytes.js';
 
 export interface HandlerOpts {
     localAddress?: string;

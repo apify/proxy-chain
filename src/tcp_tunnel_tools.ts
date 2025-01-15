@@ -1,7 +1,8 @@
-import { URL } from 'url';
 import net from 'net';
-import { chain } from './chain';
-import { nodeify } from './utils/nodeify';
+import { URL } from 'url';
+
+import { chain } from './chain.js';
+import { nodeify } from './utils/nodeify.js';
 
 const runningServers: Record<string, { server: net.Server, connections: Set<net.Socket> }> = {};
 
@@ -15,7 +16,7 @@ const getAddress = (server: net.Server) => {
     return `${host}:${port}`;
 };
 
-export function createTunnel(
+export async function createTunnel(
     proxyUrl: string,
     targetHost: string,
     options: {
@@ -40,13 +41,13 @@ export function createTunnel(
 
     const verbose = options && options.verbose;
 
-    const server = net.createServer();
+    const server: net.Server & { log?: (...args: unknown[]) => void } = net.createServer();
 
     const log = (...args: unknown[]): void => {
         if (verbose) console.log(...args);
     };
 
-    (server as any).log = log;
+    server.log = log;
 
     server.on('connection', (sourceSocket) => {
         const remoteAddress = `${sourceSocket.remoteAddress}:${sourceSocket.remotePort}`;
@@ -91,7 +92,7 @@ export function createTunnel(
     return nodeify(promise, callback);
 }
 
-export function closeTunnel(
+export async function closeTunnel(
     serverPath: string,
     closeConnections: boolean | undefined,
     callback: (error: Error | null, result?: boolean) => void,
@@ -101,15 +102,24 @@ export function closeTunnel(
     if (!port) throw new Error('serverPath must contain port');
 
     const promise = new Promise((resolve) => {
-        if (!runningServers[serverPath]) return resolve(false);
-        if (!closeConnections) return resolve(true);
+        if (!runningServers[serverPath]) {
+            resolve(false);
+            return;
+        }
+        if (!closeConnections) {
+            resolve(true);
+            return;
+        }
         for (const connection of runningServers[serverPath].connections) {
             connection.destroy();
         }
         resolve(true);
     })
-        .then((serverExists) => new Promise<boolean>((resolve) => {
-            if (!serverExists) return resolve(false);
+        .then(async (serverExists) => new Promise<boolean>((resolve) => {
+            if (!serverExists) {
+                resolve(false);
+                return;
+            }
             runningServers[serverPath].server.close(() => {
                 delete runningServers[serverPath];
                 resolve(true);

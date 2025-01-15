@@ -78,5 +78,5 @@ export const socksErrorMessageToStatusCode = (socksErrorMessage: string): typeof
             return badGatewayStatusCodes.AUTH_FAILED;
         default:
             return badGatewayStatusCodes.GENERIC_ERROR;
-    };
+    }
 };

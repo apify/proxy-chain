@@ -1,12 +1,14 @@
-import http from 'http';
-import net from 'net';
-import { Buffer } from 'buffer';
+import type { Buffer } from 'buffer';
+import type { EventEmitter } from 'events';
+import type http from 'http';
+import type net from 'net';
 import { URL } from 'url';
-import { EventEmitter } from 'events';
-import { SocksClient, SocksClientError, type SocksProxy } from 'socks';
-import { countTargetBytes } from './utils/count_target_bytes';
-import { Socket } from './socket';
-import { createCustomStatusHttpResponse, socksErrorMessageToStatusCode } from './statuses';
+
+import { type SocksClientError, SocksClient, type SocksProxy } from 'socks';
+
+import type { Socket } from './socket.js';
+import { createCustomStatusHttpResponse, socksErrorMessageToStatusCode } from './statuses.js';
+import { countTargetBytes } from './utils/count_target_bytes.js';
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;

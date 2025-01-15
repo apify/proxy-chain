@@ -1,6 +1,6 @@
 {
   "name": "proxy-chain",
-  "version": "2.5.6",
+  "version": "2.5.7",
   "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
   "main": "dist/index.js",
   "keywords": [
@@ -38,24 +38,22 @@
     "local-proxy": "node ./dist/run_locally.js",
     "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail",
     "lint": "eslint src",
-    "lint-fix": "eslint src --fix"
+    "lint:fix": "eslint src --fix"
   },
   "engines": {
     "node": ">=14"
   },
   "devDependencies": {
-    "@apify/eslint-config-ts": "^0.2.3",
+    "@apify/eslint-config": "^0.5.0-beta.2",
     "@apify/tsconfig": "^0.1.0",
     "@types/jest": "^28.1.2",
     "@types/node": "^18.8.3",
-    "@typescript-eslint/eslint-plugin": "5.29.0",
-    "@typescript-eslint/parser": "5.29.0",
     "basic-auth": "^2.0.1",
     "basic-auth-parser": "^0.0.2",
     "body-parser": "^1.19.0",
     "chai": "^4.3.4",
     "cross-env": "^7.0.3",
-    "eslint": "^8.10.0",
+    "eslint": "^9.18.0",
     "express": "^4.17.1",
     "faye-websocket": "^0.11.4",
     "got-scraping": "^3.2.4-beta.0",
@@ -73,6 +71,7 @@
     "through": "^2.3.8",
     "ts-node": "^10.2.1",
     "typescript": "^4.4.3",
+    "typescript-eslint": "^8.20.0",
     "underscore": "^1.13.1",
     "ws": "^8.2.2"
   },

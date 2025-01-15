@@ -1,11 +1,13 @@
 import http from 'http';
 import stream from 'stream';
+import type { URL } from 'url';
 import util from 'util';
-import { URL } from 'url';
+
 import { SocksProxyAgent } from 'socks-proxy-agent';
-import { validHeadersOnly } from './utils/valid_headers_only';
-import { countTargetBytes } from './utils/count_target_bytes';
-import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
+
+import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
+import { countTargetBytes } from './utils/count_target_bytes.js';
+import { validHeadersOnly } from './utils/valid_headers_only.js';
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -74,7 +76,7 @@ export const forwardSocks = async (
             );
 
             resolve();
-        } catch (error) {
+        } catch {
             // Client error, pipeline already destroys the streams, ignore.
             resolve();
         }
