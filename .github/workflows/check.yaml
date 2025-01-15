@@ -14,7 +14,7 @@ jobs:
 
         strategy:
             matrix:
-                os: [ubuntu-latest] # add windows-latest later
+                os: [ubuntu-22.04] # add windows-latest later
                 node-version: [14, 16]
 
         steps:
@@ -39,7 +39,7 @@ jobs:
                 run: npm install
             -
                 name: Add localhost-test to Linux hosts file
-                if: ${{ matrix.os == 'ubuntu-latest' }}
+                if: ${{ matrix.os == 'ubuntu-22.04' }}
                 run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 #            -
 #                name: Add localhost-test to Windows hosts file
@@ -52,7 +52,7 @@ jobs:
     lint:
         name: Lint
         needs: [build_and_test]
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
 
         steps:
             -
