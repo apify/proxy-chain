@@ -1,15 +1,24 @@
 const { expect } = require('chai');
 
-const expectThrowsAsync = async (method, errorMessage) => {
+/**
+ * Expect an async function to throw
+ * @param {*} func Async function to be tested
+ * @param {*} errorMessage Error message to be expected, can be a string or a RegExp
+ */
+const expectThrowsAsync = async (func, errorMessage) => {
     let error = null;
     try {
-        await method();
+        await func();
     } catch (err) {
         error = err;
     }
     expect(error).to.be.an('Error');
     if (errorMessage) {
-        expect(error.message).to.equal(errorMessage);
+        if (errorMessage instanceof RegExp) {
+            expect(error.message).to.match(errorMessage);
+        } else {
+            expect(error.message).to.contain(errorMessage);
+        }
     }
 };
 

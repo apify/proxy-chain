@@ -4,6 +4,7 @@ const http = require('http');
 const proxy = require('proxy');
 
 const { createTunnel, closeTunnel } = require('../src/index');
+const { expectThrowsAsync } = require('./utils/throws_async');
 
 const destroySocket = (socket) => new Promise((resolve, reject) => {
     if (!socket || socket.destroyed) return resolve();
@@ -42,16 +43,16 @@ const closeServer = (server, connections) => new Promise((resolve, reject) => {
 
 describe('tcp_tunnel.createTunnel', () => {
     it('throws error if proxyUrl is not in correct format', () => {
-        assert.throws(() => { createTunnel('socks://user:password@whatever.com:123', 'localhost:9000'); }, /must have the "http" protocol/);
-        assert.throws(() => { createTunnel('socks5://user:password@whatever.com', 'localhost:9000'); }, /must have the "http" protocol/);
+        expectThrowsAsync(async () => { await createTunnel('socks://user:password@whatever.com:123', 'localhost:9000'); }, /must have the "http" protocol/);
+        expectThrowsAsync(async () => { await createTunnel('socks5://user:password@whatever.com', 'localhost:9000'); }, /must have the "http" protocol/);
     });
     it('throws error if target is not in correct format', () => {
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12'); }, 'Missing target hostname');
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', null); }, 'Missing target hostname');
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ''); }, 'Missing target hostname');
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', 'whatever'); }, 'Missing target port');
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', 'whatever:'); }, 'Missing target port');
-        assert.throws(() => { createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /Invalid URL/);
+        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12'); }, 'Missing target hostname');
+        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', null); }, 'Missing target hostname');
+        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', ''); }, 'Missing target hostname');
+        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', 'whatever'); }, 'Missing target port');
+        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', 'whatever:'); }, 'Missing target port');
+        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /Invalid URL/);
     });
     it('correctly tunnels to tcp service and then is able to close the connection', () => {
         const proxyServerConnections = [];
