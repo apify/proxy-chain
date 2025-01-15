@@ -18,8 +18,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest] # add windows-latest later
-        node-version: [14, 16]
+        os: [ubuntu-22.04] # add windows-latest later
+        node-version: [14, 16, 18]
 
     steps:
       -
@@ -31,18 +31,18 @@ jobs:
           node-version: ${{ matrix.node-version }}
       -
         name: Cache Node Modules
-        if: ${{ matrix.node-version == 16 }}
+        if: ${{ matrix.node-version == 18 }}
         uses: actions/cache@v2
         with:
           path: |
             node_modules
             build
-          key: cache-${{ github.run_id }}-v16
+          key: cache-${{ github.run_id }}-v18
       -
         name: Install Dependencies
         run: npm install
       -   name: Add localhost-test to Linux hosts file
-          if: ${{ matrix.os == 'ubuntu-latest' }}
+          if: ${{ matrix.os == 'ubuntu-22.04' }}
           run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 #     -
 #         name: Add localhost-test to Windows hosts file
@@ -55,16 +55,16 @@ jobs:
   lint:
     name: Lint
     needs: [build_and_test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       -
         uses: actions/checkout@v2
       -
-        name: Use Node.js 16
+        name: Use Node.js 18
         uses: actions/setup-node@v1
         with:
-          node-version: 16
+          node-version: 18
       -
         name: Load Cache
         uses: actions/cache@v2
@@ -72,7 +72,7 @@ jobs:
           path: |
             node_modules
             build
-          key: cache-${{ github.run_id }}-v16
+          key: cache-${{ github.run_id }}-v18
       -
         run: npm run lint
 
@@ -82,14 +82,14 @@ jobs:
   deploy:
     name: Publish to NPM
     needs: [lint]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       -
         uses: actions/checkout@v2
       -
         uses: actions/setup-node@v1
         with:
-          node-version: 16
+          node-version: 18
           registry-url: https://registry.npmjs.org/
       -
         name: Load Cache
@@ -98,7 +98,7 @@ jobs:
           path: |
             node_modules
             build
-          key: cache-${{ github.run_id }}-v16
+          key: cache-${{ github.run_id }}-v18
       -
         # Determine if this is a beta or latest release
         name: Set Release Tag

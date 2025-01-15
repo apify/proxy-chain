@@ -1,13 +1,14 @@
+import type { Buffer } from 'buffer';
+import type dns from 'dns';
+import type { EventEmitter } from 'events';
 import http from 'http';
 import https from 'https';
-import dns from 'dns';
-import { URL } from 'url';
-import { EventEmitter } from 'events';
-import { Buffer } from 'buffer';
+import type { URL } from 'url';
+
+import type { Socket } from './socket';
+import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
-import { Socket } from './socket';
-import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses';
 
 interface Options {
     method: string;

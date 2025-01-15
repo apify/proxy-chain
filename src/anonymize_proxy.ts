@@ -1,7 +1,8 @@
-import net from 'net';
-import http from 'http';
-import { Buffer } from 'buffer';
+import type { Buffer } from 'buffer';
+import type http from 'http';
+import type net from 'net';
 import { URL } from 'url';
+
 import { Server, SOCKS_PROTOCOLS } from './server';
 import { nodeify } from './utils/nodeify';
 
@@ -17,7 +18,7 @@ export interface AnonymizeProxyOptions {
  * Parses and validates a HTTP proxy URL. If the proxy requires authentication, then the function
  * starts an open local proxy server that forwards to the upstream proxy.
  */
-export const anonymizeProxy = (
+export const anonymizeProxy = async (
     options: string | AnonymizeProxyOptions,
     callback?: (error: Error | null) => void,
 ): Promise<string> => {
@@ -39,7 +40,6 @@ export const anonymizeProxy = (
 
     const parsedProxyUrl = new URL(proxyUrl);
     if (!['http:', ...SOCKS_PROTOCOLS].includes(parsedProxyUrl.protocol)) {
-        // eslint-disable-next-line max-len
         throw new Error(`Invalid "proxyUrl" provided: URL must have one of the following protocols: "http", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${parsedProxyUrl}")`);
     }
 
@@ -50,8 +50,8 @@ export const anonymizeProxy = (
 
     let server: Server & { port: number };
 
-    const startServer = () => {
-        return Promise.resolve().then(() => {
+    const startServer = async () => {
+        return Promise.resolve().then(async () => {
             server = new Server({
                 // verbose: true,
                 port,
@@ -83,7 +83,7 @@ export const anonymizeProxy = (
  * and its result if `false`. Otherwise the result is `true`.
  * @param closeConnections If true, pending proxy connections are forcibly closed.
  */
-export const closeAnonymizedProxy = (
+export const closeAnonymizedProxy = async (
     anonymizedProxyUrl: string,
     closeConnections: boolean,
     callback?: (error: Error | null, result?: boolean) => void,

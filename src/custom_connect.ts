@@ -1,5 +1,5 @@
-import net from 'net';
 import type http from 'http';
+import type net from 'net';
 import { promisify } from 'util';
 
 export const customConnect = async (socket: net.Socket, server: http.Server): Promise<void> => {

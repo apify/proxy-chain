@@ -1,25 +1,30 @@
-import net from 'net';
-import dns from 'dns';
-import http from 'http';
-import util from 'util';
-import { URL } from 'url';
-import { EventEmitter } from 'events';
+/* eslint-disable no-use-before-define */
 import { Buffer } from 'buffer';
+import type dns from 'dns';
+import { EventEmitter } from 'events';
+import http from 'http';
+import type net from 'net';
+import { URL } from 'url';
+import util from 'util';
+
+import type { HandlerOpts as ChainOpts } from './chain';
+import { chain } from './chain';
+import { chainSocks } from './chain_socks';
+import { customConnect } from './custom_connect';
+import type { HandlerOpts as CustomResponseOpts } from './custom_response';
+import { handleCustomResponse } from './custom_response';
+import { direct } from './direct';
+import type { HandlerOpts as ForwardOpts } from './forward';
+import { forward } from './forward';
+import { forwardSocks } from './forward_socks';
+import { RequestError } from './request_error';
+import type { Socket } from './socket';
+import { badGatewayStatusCodes } from './statuses';
+import { getTargetStats } from './utils/count_target_bytes';
+import { nodeify } from './utils/nodeify';
+import { normalizeUrlPort } from './utils/normalize_url_port';
 import { parseAuthorizationHeader } from './utils/parse_authorization_header';
 import { redactUrl } from './utils/redact_url';
-import { nodeify } from './utils/nodeify';
-import { getTargetStats } from './utils/count_target_bytes';
-import { RequestError } from './request_error';
-import { chain, HandlerOpts as ChainOpts } from './chain';
-import { forward, HandlerOpts as ForwardOpts } from './forward';
-import { direct } from './direct';
-import { handleCustomResponse, HandlerOpts as CustomResponseOpts } from './custom_response';
-import { Socket } from './socket';
-import { normalizeUrlPort } from './utils/normalize_url_port';
-import { badGatewayStatusCodes } from './statuses';
-import { customConnect } from './custom_connect';
-import { forwardSocks } from './forward_socks';
-import { chainSocks } from './chain_socks';
 
 export const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'socks5h:'];
 
@@ -270,16 +275,18 @@ export class Server extends EventEmitter {
 
             if (handlerOpts.customResponseFunction) {
                 this.log(proxyChainId, 'Using handleCustomResponse()');
-                return await handleCustomResponse(request, response, handlerOpts as CustomResponseOpts);
+                await handleCustomResponse(request, response, handlerOpts as CustomResponseOpts);
+                return;
             }
 
             if (handlerOpts.upstreamProxyUrlParsed && SOCKS_PROTOCOLS.includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
                 this.log(proxyChainId, 'Using forwardSocks()');
-                return await forwardSocks(request, response, handlerOpts as ForwardOpts);
+                await forwardSocks(request, response, handlerOpts as ForwardOpts);
+                return;
             }
 
             this.log(proxyChainId, 'Using forward()');
-            return await forward(request, response, handlerOpts as ForwardOpts);
+            await forward(request, response, handlerOpts as ForwardOpts);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error as NodeJS.ErrnoException));
         }
@@ -300,20 +307,23 @@ export class Server extends EventEmitter {
 
             if (handlerOpts.customConnectServer) {
                 socket.unshift(head); // See chain.ts for why we do this
-                return await customConnect(socket, handlerOpts.customConnectServer);
+                await customConnect(socket, handlerOpts.customConnectServer);
+                return;
             }
 
             if (handlerOpts.upstreamProxyUrlParsed) {
                 if (SOCKS_PROTOCOLS.includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
                     this.log(socket.proxyChainId, `Using chainSocks() => ${request.url}`);
-                    return await chainSocks(data);
+                    await chainSocks(data);
+                    return;
                 }
                 this.log(socket.proxyChainId, `Using chain() => ${request.url}`);
-                return await chain(data);
+                chain(data);
+                return;
             }
 
             this.log(socket.proxyChainId, `Using direct() => ${request.url}`);
-            return await direct(data);
+            direct(data);
         } catch (error) {
             this.failRequest(request, this.normalizeHandlerError(error as NodeJS.ErrnoException));
         }
@@ -363,7 +373,7 @@ export class Server extends EventEmitter {
             let parsed;
             try {
                 parsed = new URL(request.url!);
-            } catch (error) {
+            } catch {
                 // If URL is invalid, throw HTTP 400 error
                 throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
             }
@@ -454,7 +464,6 @@ export class Server extends EventEmitter {
             }
 
             if (!['http:', 'https:', ...SOCKS_PROTOCOLS].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
-                // eslint-disable-next-line max-len
                 throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have one of the following protocols: "http", "https", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${funcResult.upstreamProxyUrl}")`);
             }
         }
@@ -555,7 +564,7 @@ export class Server extends EventEmitter {
     /**
      * Starts listening at a port specified in the constructor.
      */
-    listen(callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
+    async listen(callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
         const promise = new Promise<void>((resolve, reject) => {
             // Unfortunately server.listen() is not a normal function that fails on error,
             // so we need this trickery
@@ -640,7 +649,7 @@ export class Server extends EventEmitter {
      * Closes the proxy server.
      * @param closeConnections If true, pending proxy connections are forcibly closed.
      */
-    close(closeConnections: boolean, callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
+    async close(closeConnections: boolean, callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
         if (typeof closeConnections === 'function') {
             callback = closeConnections;
             closeConnections = false;

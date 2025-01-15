@@ -9,6 +9,7 @@ const request = require('request');
 const express = require('express');
 
 const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../src/index');
+const { expectThrowsAsync } = require('./utils/throws_async');
 
 let expressServer;
 let proxyServer;
@@ -105,43 +106,35 @@ describe('utils.anonymizeProxy', function () {
     // Need larger timeout for Travis CI
     this.timeout(5 * 1000);
     it('throws for invalid args', () => {
-        assert.throws(() => { anonymizeProxy(null); }, Error);
-        assert.throws(() => { anonymizeProxy(); }, Error);
-        assert.throws(() => { anonymizeProxy({}); }, Error);
+        expectThrowsAsync(async () => { await anonymizeProxy(null); });
+        expectThrowsAsync(async () => { await anonymizeProxy(); });
+        expectThrowsAsync(async () => { await anonymizeProxy({}); });
 
-        assert.throws(() => { closeAnonymizedProxy({}); }, Error);
-        assert.throws(() => { closeAnonymizedProxy(); }, Error);
-        assert.throws(() => { closeAnonymizedProxy(null); }, Error);
+        expectThrowsAsync(async () => { await closeAnonymizedProxy({}); });
+        expectThrowsAsync(async () => { await closeAnonymizedProxy(); });
+        expectThrowsAsync(async () => { await closeAnonymizedProxy(null); });
     });
 
     it('throws for unsupported https: protocol', () => {
-        assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ url: 'https://whatever.com' });
-        }, Error);
+        expectThrowsAsync(async () => { await anonymizeProxy('https://whatever.com'); });
+        expectThrowsAsync(async () => { await anonymizeProxy({ url: 'https://whatever.com' }); });
     });
 
     it('throws for invalid ports', () => {
-        assert.throws(() => {
-            anonymizeProxy({ url: 'http://whatever.com', port: -16 });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({
+        expectThrowsAsync(async () => { await anonymizeProxy({ url: 'http://whatever.com', port: -16 }); });
+        expectThrowsAsync(async () => {
+            await anonymizeProxy({
                 url: 'http://whatever.com',
                 port: 4324324324,
             });
-        }, Error);
+        });
     });
 
     it('throws for invalid URLs', () => {
-        assert.throws(() => { anonymizeProxy('://whatever.com'); }, Error);
-        assert.throws(() => { anonymizeProxy('https://whatever.com'); }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ url: '://whatever.com' });
-        }, Error);
-        assert.throws(() => {
-            anonymizeProxy({ url: 'https://whatever.com' });
-        }, Error);
+        expectThrowsAsync(async () => { await anonymizeProxy('://whatever.com'); });
+        expectThrowsAsync(async () => { await anonymizeProxy('https://whatever.com'); });
+        expectThrowsAsync(async () => { await anonymizeProxy({ url: '://whatever.com' }); });
+        expectThrowsAsync(async () => { await anonymizeProxy({ url: 'https://whatever.com' }); });
     });
 
     it('keeps already anonymous proxies (both with callbacks and promises)', () => {

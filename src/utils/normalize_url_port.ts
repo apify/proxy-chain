@@ -14,7 +14,7 @@ export const normalizeUrlPort = (url: URL): number => {
         return Number(url.port);
     }
 
-    if (mapping.hasOwnProperty(url.protocol)) {
+    if (url.protocol in mapping) {
         return mapping[url.protocol as keyof typeof mapping];
     }
 
