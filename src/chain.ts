@@ -88,6 +88,9 @@ export const chain = (
     client.on('connect', (response, targetSocket, clientHead) => {
         countTargetBytes(sourceSocket, targetSocket);
 
+        // There may be many .on('close') listeners, so we need to increase the limit.
+        targetSocket.setMaxListeners(Infinity);
+
         if (sourceSocket.readyState !== 'open') {
             // Sanity check, should never reach.
             targetSocket.destroy();

@@ -82,6 +82,8 @@ export const chainSocks = async ({
             destination,
         });
         targetSocket = client.socket;
+        // There may be many .on('close') listeners, so we need to increase the limit.
+        targetSocket.setMaxListeners(Infinity);
 
         sourceSocket.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
     } catch (error) {

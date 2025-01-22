@@ -69,6 +69,8 @@ export const direct = (
             sourceSocket.destroy(error as Error);
         }
     });
+    // There may be many .on('close') listeners, so we need to increase the limit.
+    targetSocket.setMaxListeners(Infinity);
 
     countTargetBytes(sourceSocket, targetSocket);
 
