@@ -184,7 +184,7 @@ export class Server extends EventEmitter {
 
     log(connectionId: unknown, str: string): void {
         if (this.verbose) {
-            const logPrefix = connectionId ? `${String(connectionId)} | ` : '';
+            const logPrefix = connectionId != null ? `${String(connectionId)} | ` : '';
             // eslint-disable-next-line no-console
             console.log(`ProxyServer[${this.port}]: ${logPrefix}${str}`);
         }
