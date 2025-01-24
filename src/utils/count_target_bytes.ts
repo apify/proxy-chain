@@ -7,17 +7,23 @@ const calculateTargetStats = Symbol('calculateTargetStats');
 
 type Stats = { bytesWritten: number | null, bytesRead: number | null };
 
+export type SocketPreviousStats = { previousBytesWritten?: number, previousBytesRead?: number };
+
 interface Extras {
     [targetBytesWritten]: number;
     [targetBytesRead]: number;
-    [targets]: Set<net.Socket>;
+    [targets]: Set<net.Socket & SocketPreviousStats>;
     [calculateTargetStats]: () => Stats;
 }
 
 // @ts-expect-error TS is not aware that `source` is used in the assertion.
 function typeSocket(source: unknown): asserts source is net.Socket & Extras {}
 
-export const countTargetBytes = (source: net.Socket, target: net.Socket): void => {
+export const countTargetBytes = (
+    source: net.Socket,
+    target: net.Socket & SocketPreviousStats,
+    finishRegister?: (handler: () => void) => void,
+): void => {
     typeSocket(source);
 
     source[targetBytesWritten] = source[targetBytesWritten] || 0;
@@ -26,12 +32,15 @@ export const countTargetBytes = (source: net.Socket, target: net.Socket): void =
 
     source[targets].add(target);
 
-    target.once('close', () => {
-        source[targetBytesWritten] += target.bytesWritten;
-        source[targetBytesRead] += target.bytesRead;
-
+    const finishHandler = () => {
+        source[targetBytesWritten] += (target.bytesWritten - (target.previousBytesWritten || 0));
+        source[targetBytesRead] += (target.bytesRead - (target.previousBytesRead || 0));
         source[targets].delete(target);
-    });
+    };
+    if (!finishRegister) {
+        finishRegister = (handler: () => void) => target.once('close', handler);
+    }
+    finishRegister(finishHandler);
 
     if (!source[calculateTargetStats]) {
         source[calculateTargetStats] = () => {
@@ -39,8 +48,8 @@ export const countTargetBytes = (source: net.Socket, target: net.Socket): void =
             let bytesRead = source[targetBytesRead];
 
             for (const socket of source[targets]) {
-                bytesWritten += socket.bytesWritten;
-                bytesRead += socket.bytesRead;
+                bytesWritten += (socket.bytesWritten - (socket.previousBytesWritten || 0));
+                bytesRead += (socket.bytesRead - (socket.previousBytesRead || 0));
             }
 
             return {

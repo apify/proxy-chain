@@ -5,8 +5,9 @@ import stream from 'stream';
 import type { URL } from 'url';
 import util from 'util';
 
+import { Socket } from './socket';
 import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
-import { countTargetBytes } from './utils/count_target_bytes';
+import { countTargetBytes, SocketPreviousStats } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { validHeadersOnly } from './utils/valid_headers_only';
 
@@ -114,8 +115,12 @@ export const forward = async (
         }
     });
 
-    client.once('socket', (socket) => {
-        countTargetBytes(request.socket, socket);
+    client.once('socket', (socket: Socket & SocketPreviousStats) => {
+        // socket can be re-used by multiple requests (HTTP keep alive)
+        // (even in multiple Server objects)
+        socket.previousBytesRead = socket.bytesRead;
+        socket.previousBytesWritten = socket.bytesWritten;
+        countTargetBytes(request.socket, socket, (handler) => response.once('close', handler));
     });
 
     // Can't use pipeline here as it automatically destroys the streams
