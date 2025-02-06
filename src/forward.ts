@@ -5,9 +5,10 @@ import stream from 'stream';
 import type { URL } from 'url';
 import util from 'util';
 
-import { Socket } from './socket';
+import type { Socket } from './socket';
 import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
-import { countTargetBytes, SocketPreviousStats } from './utils/count_target_bytes';
+import type { SocketPreviousStats } from './utils/count_target_bytes';
+import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 import { validHeadersOnly } from './utils/valid_headers_only';
 
