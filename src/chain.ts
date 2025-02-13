@@ -7,6 +7,7 @@ import type { URL } from 'url';
 
 import type { Socket } from './socket';
 import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses';
+import type { SocketPreviousStats } from './utils/count_target_bytes';
 import { countTargetBytes } from './utils/count_target_bytes';
 import { getBasicAuthorizationHeader } from './utils/get_basic';
 
@@ -85,9 +86,15 @@ export const chain = (
     const fn = proxy.protocol === 'https:' ? https.request : http.request;
     const client = fn(proxy.origin, options as unknown as http.ClientRequestArgs);
 
-    client.on('connect', (response, targetSocket, clientHead) => {
+    client.once('socket', (targetSocket: Socket & SocketPreviousStats) => {
+        // socket can be re-used by multiple requests (HTTP keep alive)
+        // (even in multiple Server objects)
+        targetSocket.previousBytesRead = targetSocket.bytesRead;
+        targetSocket.previousBytesWritten = targetSocket.bytesWritten;
         countTargetBytes(sourceSocket, targetSocket);
+    });
 
+    client.on('connect', (response, targetSocket, clientHead) => {
         if (sourceSocket.readyState !== 'open') {
             // Sanity check, should never reach.
             targetSocket.destroy();
