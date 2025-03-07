@@ -62,19 +62,13 @@ jobs:
                 uses: actions/setup-node@v1
                 with:
                     node-version: 18
-            # -
-            #     name: Load Cache
-            #     uses: actions/cache@v4
-            #     with:
-            #         path: |
-            #             node_modules
-            #             build
-            #         key: cache-${{ github.run_id }}-v18
             -
-                name: Check local directory
-                run: ls -la
-            -
-                name: Install Dependencies
-                run: npm install
+                name: Load Cache
+                uses: actions/cache@v4
+                with:
+                    path: |
+                        node_modules
+                        build
+                    key: cache-${{ github.run_id }}-v18
             -
                 run: npm run lint
