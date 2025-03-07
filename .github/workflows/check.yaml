@@ -71,6 +71,9 @@ jobs:
             #             build
             #         key: cache-${{ github.run_id }}-v18
             -
+                name: Check local directory
+                run: ls -la
+            -
                 name: Install Dependencies
                 run: npm install
             -
