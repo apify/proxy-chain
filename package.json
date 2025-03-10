@@ -37,8 +37,8 @@
     "prepublishOnly": "npm run build",
     "local-proxy": "node ./dist/run_locally.js",
     "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "engines": {
     "node": ">=14"

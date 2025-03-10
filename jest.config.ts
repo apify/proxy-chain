@@ -1,5 +1,6 @@
 import type { Config } from '@jest/types';
 
+// eslint-disable-next-line import/no-default-export
 export default (): Config.InitialOptions => ({
     verbose: true,
     preset: 'ts-jest',
