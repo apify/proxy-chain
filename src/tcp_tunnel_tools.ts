@@ -21,12 +21,13 @@ export async function createTunnel(
     targetHost: string,
     options: {
         verbose?: boolean;
+        ignoreProxyCertificate?: boolean;
     },
     callback?: (error: Error | null, result?: string) => void,
 ): Promise<string> {
     const parsedProxyUrl = new URL(proxyUrl);
-    if (parsedProxyUrl.protocol !== 'http:') {
-        throw new Error(`The proxy URL must have the "http" protocol (was "${proxyUrl}")`);
+    if (parsedProxyUrl.protocol !== 'http:' && parsedProxyUrl.protocol !== 'https:') {
+        throw new Error(`The proxy URL must have the "http" or "https" protocol (was "${proxyUrl}")`);
     }
 
     const url = new URL(`connect://${targetHost || ''}`);
@@ -67,7 +68,10 @@ export async function createTunnel(
         chain({
             request: { url: targetHost },
             sourceSocket,
-            handlerOpts: { upstreamProxyUrlParsed: parsedProxyUrl },
+            handlerOpts: {
+                upstreamProxyUrlParsed: parsedProxyUrl,
+                ignoreUpstreamProxyCertificate: options.ignoreProxyCertificate ?? false
+            },
             server: server as net.Server & { log: typeof log },
             isPlain: true,
         });

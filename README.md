@@ -68,13 +68,17 @@ const server = new ProxyChain.Server({
             // requiring Basic authentication. Here you can verify user credentials.
             requestAuthentication: username !== 'bob' || password !== 'TopSecret',
 
-            // Sets up an upstream HTTP/SOCKS proxy to which all the requests are forwarded.
+            // Sets up an upstream HTTP/HTTPS/SOCKS proxy to which all the requests are forwarded.
             // If null, the proxy works in direct mode, i.e. the connection is forwarded directly
             // to the target server. This field is ignored if "requestAuthentication" is true.
             // The username and password must be URI-encoded.
             upstreamProxyUrl: `http://username:password@proxy.example.com:3128`,
             // Or use SOCKS4/5 proxy, e.g.
             // upstreamProxyUrl: `socks://username:password@proxy.example.com:1080`,
+
+            // Applies to HTTPS upstream proxy. If set to true, requests made to the proxy will
+            // ignore certificate errors. Useful when upstream proxy uses self-signed certificate. By default "false".
+            ignoreUpstreamProxyCertificate: true
 
             // If "requestAuthentication" is true, you can use the following property
             // to define a custom error message to return to the client instead of the default "Proxy credentials required"
@@ -368,9 +372,12 @@ The package also provides several utility functions.
 
 ### `anonymizeProxy({ url, port }, callback)`
 
-Parses and validates a HTTP proxy URL. If the proxy requires authentication,
+Parses and validates a HTTP/HTTPS proxy URL. If the proxy requires authentication,
 then the function starts an open local proxy server that forwards to the proxy.
 The port (on which the local proxy server will start) can be set via the `port` property of the first argument, if not provided, it will be chosen randomly.
+
+For HTTPS proxy with self-signed certificate, set `ignoreProxyCertificate` property of the first argument to `true` to ignore certificate errors in
+proxy requests.
 
 The function takes an optional callback that receives the anonymous proxy URL.
 If no callback is supplied, the function returns a promise that resolves to a String with
@@ -420,13 +427,14 @@ If callback is not provided, the function returns a promise instead.
 
 ### `createTunnel(proxyUrl, targetHost, options, callback)`
 
-Creates a TCP tunnel to `targetHost` that goes through a HTTP proxy server
+Creates a TCP tunnel to `targetHost` that goes through a HTTP/HTTPS proxy server
 specified by the `proxyUrl` parameter.
 
 The optional `options` parameter is an object with the following properties:
 - `port: Number` - Enables specifying the local port to listen at. By default `0`,
    which means a random port will be selected.
 - `hostname: String` - Local hostname to listen at. By default `localhost`.
+- `ignoreProxyCertificate` - For HTTPS proxy, ignore certificate errors in proxy requests. Useful for proxy with self-signed certificate. By default `false`.
 - `verbose: Boolean` - If `true`, the functions logs a lot. By default `false`.
 
 The result of the function is a local endpoint in a form of `hostname:port`.

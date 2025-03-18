@@ -25,6 +25,7 @@ interface Options {
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
+    ignoreUpstreamProxyCertificate: boolean;
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
@@ -79,10 +80,7 @@ export const forward = async (
         }
     }
 
-    const fn = origin!.startsWith('https:') ? https.request : http.request;
-
-    // We have to force cast `options` because @types/node doesn't support an array.
-    const client = fn(origin!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
+    const requestCallback = async (clientResponse: http.IncomingMessage) => {
         try {
             // This is necessary to prevent Node.js throwing an error
             let statusCode = clientResponse.statusCode!;
@@ -113,7 +111,16 @@ export const forward = async (
             // Client error, pipeline already destroys the streams, ignore.
             resolve();
         }
-    });
+    };
+
+    // We have to force cast `options` because @types/node doesn't support an array.
+    const client = origin!.startsWith('https:') ?
+        https.request(origin!, {
+            ...options as unknown as https.RequestOptions,
+            rejectUnauthorized: handlerOpts.upstreamProxyUrlParsed ? !handlerOpts.ignoreUpstreamProxyCertificate : undefined
+        }, requestCallback)
+        
+        : http.request(origin!, options as unknown as http.RequestOptions, requestCallback);
 
     client.once('socket', (socket: SocketWithPreviousStats) => {
         // Socket can be re-used by multiple requests.
