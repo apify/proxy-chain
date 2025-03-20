@@ -19,7 +19,7 @@ const getAddress = (server: net.Server) => {
 export async function createTunnel(
     proxyUrl: string,
     targetHost: string,
-    options: {
+    options?: {
         verbose?: boolean;
         ignoreProxyCertificate?: boolean;
     },
@@ -70,7 +70,7 @@ export async function createTunnel(
             sourceSocket,
             handlerOpts: {
                 upstreamProxyUrlParsed: parsedProxyUrl,
-                ignoreUpstreamProxyCertificate: options.ignoreProxyCertificate ?? false
+                ignoreUpstreamProxyCertificate: options?.ignoreProxyCertificate ?? false
             },
             server: server as net.Server & { log: typeof log },
             isPlain: true,
