@@ -1,6 +1,6 @@
-import type http from 'http';
-import type net from 'net';
-import { promisify } from 'util';
+import type http from 'node:http';
+import type net from 'node:net';
+import { promisify } from 'node:util';
 
 export const customConnect = async (socket: net.Socket, server: http.Server): Promise<void> => {
     // `countTargetBytes(socket, socket)` is incorrect here since `socket` is not a target.

@@ -1,7 +1,7 @@
-import http from 'http';
-import stream from 'stream';
-import type { URL } from 'url';
-import util from 'util';
+import http from 'node:http';
+import stream from 'node:stream';
+import type { URL } from 'node:url';
+import util from 'node:util';
 
 import { SocksProxyAgent } from 'socks-proxy-agent';
 

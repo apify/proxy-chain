@@ -1,4 +1,4 @@
-import type { URL } from 'url';
+import type { URL } from 'node:url';
 
 import { decodeURIComponentSafe } from './decode_uri_component_safe';
 

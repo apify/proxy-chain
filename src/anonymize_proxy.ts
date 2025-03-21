@@ -1,7 +1,7 @@
-import type { Buffer } from 'buffer';
-import type http from 'http';
-import type net from 'net';
-import { URL } from 'url';
+import type { Buffer } from 'node:buffer';
+import type http from 'node:http';
+import type net from 'node:net';
+import { URL } from 'node:url';
 
 import { Server, SOCKS_PROTOCOLS } from './server';
 import { nodeify } from './utils/nodeify';
