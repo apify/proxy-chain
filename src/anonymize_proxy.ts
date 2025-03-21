@@ -12,10 +12,12 @@ const anonymizedProxyUrlToServer: Record<string, Server> = {};
 export interface AnonymizeProxyOptions {
     url: string;
     port: number;
+    ignoreProxyCertificate?: boolean;
 }
 
 /**
- * Parses and validates a HTTP proxy URL. If the proxy requires authentication, then the function
+ * Parses and validates a HTTP proxy URL. If the proxy requires authentication,
+ * or if it is an HTTPS proxy and `ignoreProxyCertificate` is `true`, then the function
  * starts an open local proxy server that forwards to the upstream proxy.
  */
 export const anonymizeProxy = async (
@@ -24,6 +26,7 @@ export const anonymizeProxy = async (
 ): Promise<string> => {
     let proxyUrl: string;
     let port = 0;
+    let ignoreProxyCertificate = false;
 
     if (typeof options === 'string') {
         proxyUrl = options;
@@ -36,15 +39,19 @@ export const anonymizeProxy = async (
                 'Invalid "port" option: only values equals or between 0-65535 are valid',
             );
         }
+
+        if (options.ignoreProxyCertificate !== undefined) {
+            ignoreProxyCertificate = options.ignoreProxyCertificate;
+        }
     }
 
     const parsedProxyUrl = new URL(proxyUrl);
-    if (!['http:', ...SOCKS_PROTOCOLS].includes(parsedProxyUrl.protocol)) {
-        throw new Error(`Invalid "proxyUrl" provided: URL must have one of the following protocols: "http", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${parsedProxyUrl}")`);
+    if (!['http:', 'https:', ...SOCKS_PROTOCOLS].includes(parsedProxyUrl.protocol)) {
+        throw new Error(`Invalid "proxyUrl" provided: URL must have one of the following protocols: "http", "https", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${parsedProxyUrl}")`);
     }
 
-    // If upstream proxy requires no password, return it directly
-    if (!parsedProxyUrl.username && !parsedProxyUrl.password) {
+    // If upstream proxy requires no password or if there is no need to ignore HTTPS proxy cert errors, return it directly
+    if (!parsedProxyUrl.username && !parsedProxyUrl.password && (!ignoreProxyCertificate || parsedProxyUrl.protocol !== 'https:')) {
         return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
@@ -60,6 +67,7 @@ export const anonymizeProxy = async (
                     return {
                         requestAuthentication: false,
                         upstreamProxyUrl: proxyUrl,
+                        ignoreUpstreamProxyCertificate: ignoreProxyCertificate
                     };
                 },
             }) as Server & { port: number };
