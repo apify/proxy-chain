@@ -1,4 +1,4 @@
-import { URL } from 'url';
+import { URL } from 'node:url';
 
 export const redactUrl = (url: string | URL, passwordReplacement = '<redacted>'): string => {
     if (typeof url !== 'object') {

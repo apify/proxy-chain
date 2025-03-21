@@ -1,4 +1,4 @@
-import { STATUS_CODES } from 'http';
+import { STATUS_CODES } from 'node:http';
 
 type HttpStatusCode = number;
 

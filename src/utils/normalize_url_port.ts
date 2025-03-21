@@ -1,4 +1,4 @@
-import type { URL } from 'url';
+import type { URL } from 'node:url';
 
 // https://url.spec.whatwg.org/#default-port
 const mapping = {
