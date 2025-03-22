@@ -1,4 +1,4 @@
-import type net from 'net';
+import type net from 'node:net';
 
 const targetBytesWritten = Symbol('targetBytesWritten');
 const targetBytesRead = Symbol('targetBytesRead');
@@ -21,6 +21,7 @@ interface Extras {
 }
 
 // @ts-expect-error TS is not aware that `source` is used in the assertion.
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 function typeSocket(source: unknown): asserts source is net.Socket & Extras {}
 
 export const countTargetBytes = (

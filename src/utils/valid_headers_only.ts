@@ -1,4 +1,4 @@
-import { validateHeaderName, validateHeaderValue } from 'http';
+import { validateHeaderName, validateHeaderValue } from 'node:http';
 
 import { isHopByHopHeader } from './is_hop_by_hop_header';
 

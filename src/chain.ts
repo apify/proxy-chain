@@ -1,9 +1,9 @@
-import type { Buffer } from 'buffer';
-import type dns from 'dns';
-import type { EventEmitter } from 'events';
-import http from 'http';
-import https from 'https';
-import type { URL } from 'url';
+import type { Buffer } from 'node:buffer';
+import type dns from 'node:dns';
+import type { EventEmitter } from 'node:events';
+import http from 'node:http';
+import https from 'node:https';
+import type { URL } from 'node:url';
 
 import type { Socket } from './socket';
 import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses';

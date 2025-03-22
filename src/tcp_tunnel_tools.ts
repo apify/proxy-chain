@@ -1,5 +1,5 @@
-import net from 'net';
-import { URL } from 'url';
+import net from 'node:net';
+import { URL } from 'node:url';
 
 import { chain } from './chain';
 import { nodeify } from './utils/nodeify';

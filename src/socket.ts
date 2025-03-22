@@ -1,5 +1,5 @@
-import type net from 'net';
-import type tls from 'tls';
+import type net from 'node:net';
+import type tls from 'node:tls';
 
 type AdditionalProps = { proxyChainId?: number };
 

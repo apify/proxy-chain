@@ -1,9 +1,9 @@
-import type dns from 'dns';
-import http from 'http';
-import https from 'https';
-import stream from 'stream';
-import type { URL } from 'url';
-import util from 'util';
+import type dns from 'node:dns';
+import http from 'node:http';
+import https from 'node:https';
+import stream from 'node:stream';
+import type { URL } from 'node:url';
+import util from 'node:util';
 
 import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes';

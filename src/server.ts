@@ -1,11 +1,11 @@
 /* eslint-disable no-use-before-define */
-import { Buffer } from 'buffer';
-import type dns from 'dns';
-import { EventEmitter } from 'events';
-import http from 'http';
-import type net from 'net';
-import { URL } from 'url';
-import util from 'util';
+import { Buffer } from 'node:buffer';
+import type dns from 'node:dns';
+import { EventEmitter } from 'node:events';
+import http from 'node:http';
+import type net from 'node:net';
+import { URL } from 'node:url';
+import util from 'node:util';
 
 import type { HandlerOpts as ChainOpts } from './chain';
 import { chain } from './chain';
