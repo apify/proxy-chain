@@ -84,10 +84,10 @@ export const chain = (
         options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
     }
 
-    const client = proxy.protocol === 'https:' ?
-        https.request(proxy.origin, {
+    const client = proxy.protocol === 'https:'
+        ? https.request(proxy.origin, {
             ...options as unknown as https.RequestOptions,
-            rejectUnauthorized: !handlerOpts.ignoreUpstreamProxyCertificate
+            rejectUnauthorized: !handlerOpts.ignoreUpstreamProxyCertificate,
         })
         : http.request(proxy.origin, options as unknown as http.RequestOptions);
 

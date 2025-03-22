@@ -114,12 +114,12 @@ export const forward = async (
     };
 
     // We have to force cast `options` because @types/node doesn't support an array.
-    const client = origin!.startsWith('https:') ?
-        https.request(origin!, {
+    const client = origin!.startsWith('https:')
+        ? https.request(origin!, {
             ...options as unknown as https.RequestOptions,
-            rejectUnauthorized: handlerOpts.upstreamProxyUrlParsed ? !handlerOpts.ignoreUpstreamProxyCertificate : undefined
+            rejectUnauthorized: handlerOpts.upstreamProxyUrlParsed ? !handlerOpts.ignoreUpstreamProxyCertificate : undefined,
         }, requestCallback)
-        
+
         : http.request(origin!, options as unknown as http.RequestOptions, requestCallback);
 
     client.once('socket', (socket: SocketWithPreviousStats) => {

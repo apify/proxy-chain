@@ -70,7 +70,7 @@ export async function createTunnel(
             sourceSocket,
             handlerOpts: {
                 upstreamProxyUrlParsed: parsedProxyUrl,
-                ignoreUpstreamProxyCertificate: options?.ignoreProxyCertificate ?? false
+                ignoreUpstreamProxyCertificate: options?.ignoreProxyCertificate ?? false,
             },
             server: server as net.Server & { log: typeof log },
             isPlain: true,

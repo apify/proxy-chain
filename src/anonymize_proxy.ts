@@ -67,7 +67,7 @@ export const anonymizeProxy = async (
                     return {
                         requestAuthentication: false,
                         upstreamProxyUrl: proxyUrl,
-                        ignoreUpstreamProxyCertificate: ignoreProxyCertificate
+                        ignoreUpstreamProxyCertificate: ignoreProxyCertificate,
                     };
                 },
             }) as Server & { port: number };
