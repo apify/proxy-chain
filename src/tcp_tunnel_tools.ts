@@ -26,7 +26,7 @@ export async function createTunnel(
     callback?: (error: Error | null, result?: string) => void,
 ): Promise<string> {
     const parsedProxyUrl = new URL(proxyUrl);
-    if (parsedProxyUrl.protocol !== 'http:' && parsedProxyUrl.protocol !== 'https:') {
+    if (!['http:', 'https:'].includes(parsedProxyUrl.protocol)) {
         throw new Error(`The proxy URL must have the "http" or "https" protocol (was "${proxyUrl}")`);
     }
 
