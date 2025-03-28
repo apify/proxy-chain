@@ -22,6 +22,7 @@ interface Options {
 
 export interface HandlerOpts {
     upstreamProxyUrlParsed: URL;
+    ignoreUpstreamProxyCertificate: boolean;
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
@@ -83,8 +84,12 @@ export const chain = (
         options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
     }
 
-    const fn = proxy.protocol === 'https:' ? https.request : http.request;
-    const client = fn(proxy.origin, options as unknown as http.ClientRequestArgs);
+    const client = proxy.protocol === 'https:'
+        ? https.request(proxy.origin, {
+            ...options as unknown as https.RequestOptions,
+            rejectUnauthorized: !handlerOpts.ignoreUpstreamProxyCertificate,
+        })
+        : http.request(proxy.origin, options as unknown as http.RequestOptions);
 
     client.once('socket', (targetSocket: SocketWithPreviousStats) => {
         // Socket can be re-used by multiple requests.

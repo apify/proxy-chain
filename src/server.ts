@@ -55,6 +55,7 @@ type HandlerOpts = {
     srcHead: Buffer | null;
     trgParsed: URL | null;
     upstreamProxyUrlParsed: URL | null;
+    ignoreUpstreamProxyCertificate: boolean;
     isHttp: boolean;
     customResponseFunction?: CustomResponseOpts['customResponseFunction'] | null;
     customConnectServer?: http.Server | null;
@@ -80,6 +81,7 @@ export type PrepareRequestFunctionResult = {
     requestAuthentication?: boolean;
     failMsg?: string;
     upstreamProxyUrl?: string | null;
+    ignoreUpstreamProxyCertificate?: boolean;
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
@@ -341,6 +343,7 @@ export class Server extends EventEmitter {
             srcHead: null,
             trgParsed: null,
             upstreamProxyUrlParsed: null,
+            ignoreUpstreamProxyCertificate: false,
             isHttp: false,
             srcResponse: null,
             customResponseFunction: null,
@@ -466,6 +469,10 @@ export class Server extends EventEmitter {
             if (!['http:', 'https:', ...SOCKS_PROTOCOLS].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
                 throw new Error(`Invalid "upstreamProxyUrl" provided: URL must have one of the following protocols: "http", "https", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${funcResult.upstreamProxyUrl}")`);
             }
+        }
+
+        if (funcResult.ignoreUpstreamProxyCertificate !== undefined) {
+            handlerOpts.ignoreUpstreamProxyCertificate = funcResult.ignoreUpstreamProxyCertificate;
         }
 
         const { proxyChainId } = request.socket as Socket;
