@@ -1481,7 +1481,7 @@ it('supports pre-response CONNECT payload', (done) => {
     });
 });
 
-describe('supports ignoreProxyCertificate', () => {
+describe('supports ignoreUpstreamProxyCertificate', () => {
     const serverOptions = {
         key: sslKey,
         cert: sslCrt,
