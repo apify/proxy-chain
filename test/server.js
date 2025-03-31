@@ -1481,6 +1481,93 @@ it('supports pre-response CONNECT payload', (done) => {
     });
 });
 
+describe('supports ignoreProxyCertificate', () => {
+    const serverOptions = {
+        key: sslKey,
+        cert: sslCrt,
+    };
+
+    const responseMessage = 'Hello World!';
+
+    it('fails on upstream error', async () => {
+        const target = https.createServer(serverOptions, (_req, res) => {
+            res.write(responseMessage);
+            res.end();
+        });
+
+        await util.promisify(target.listen.bind(target))(0);
+
+        const proxyServer = new ProxyChain.Server({
+            port: 6666,
+            prepareRequestFunction: () => {
+                return {
+                    upstreamProxyUrl: `https://localhost:${target.address().port}`,
+                };
+            },
+        });
+
+        let proxyServerError = false;
+        proxyServer.on('requestFailed', () => {
+            // requestFailed will be called if we pass an invalid proxy url
+            proxyServerError = true;
+        });
+
+        await proxyServer.listen();
+
+        const response = await requestPromised({
+            proxy: 'http://localhost:6666',
+            url: 'https://www.google.com',
+        });
+
+        expect(proxyServerError).to.be.equal(false);
+
+        expect(response.statusCode).to.be.equal(599);
+
+        proxyServer.close();
+        target.close();
+    });
+
+    it('bypass upstream error', async () => {
+        const target = https.createServer((_req, res) => {
+            res.write(responseMessage);
+            res.end();
+        });
+
+        await util.promisify(target.listen.bind(target))(0);
+
+        const proxyServer = new ProxyChain.Server({
+            port: 6666,
+            prepareRequestFunction: () => {
+                return {
+                    ignoreUpstreamProxyCertificate: true,
+                    upstreamProxyUrl: `https://localhost:${target.address().port}`,
+                };
+            },
+        });
+
+        let proxyServerError = false;
+        proxyServer.on('requestFailed', () => {
+            // requestFailed will be called if we pass an invalid proxy url
+            proxyServerError = true;
+        });
+
+        await proxyServer.listen();
+
+        const response = await requestPromised({
+            proxy: 'http://localhost:6666',
+            url: 'https://www.google.com',
+        });
+
+        expect(proxyServerError).to.be.equal(false);
+
+        expect(response.statusCode).to.be.equal(200);
+        expect(response.body).to.be.equal(responseMessage);
+
+        proxyServer.close();
+        target.close();
+    });
+});
+
 // Run all combinations of test parameters
 const useSslVariants = [
     false,
