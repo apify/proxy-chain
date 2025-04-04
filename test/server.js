@@ -1481,6 +1481,101 @@ it('supports pre-response CONNECT payload', (done) => {
     });
 });
 
+describe('supports ignoreUpstreamProxyCertificate', () => {
+    const serverOptions = {
+        key: sslKey,
+        cert: sslCrt,
+    };
+
+    const responseMessage = 'Hello World!';
+
+    it('fails on upstream error', async () => {
+        const target = https.createServer(serverOptions, (_req, res) => {
+            res.write(responseMessage);
+            res.end();
+        });
+
+        await util.promisify(target.listen.bind(target))(0);
+
+        const proxyServer = new ProxyChain.Server({
+            port: 6666,
+            prepareRequestFunction: () => {
+                return {
+                    upstreamProxyUrl: `https://localhost:${target.address().port}`,
+                };
+            },
+        });
+
+        let proxyServerError = false;
+        proxyServer.on('requestFailed', () => {
+            // requestFailed will be called if we pass an invalid proxy url
+            proxyServerError = true;
+        });
+
+        await proxyServer.listen();
+
+        /**
+         * request is sent with rejectUnauthorized: true
+         * so when the SSL certificate is not trusted (self-signed, expired, invalid), client will reject the connection
+         */
+        const response = await requestPromised({
+            proxy: 'http://localhost:6666',
+            url: 'http://httpbin.org/ip',
+        });
+
+        expect(proxyServerError).to.be.equal(false);
+
+        expect(response.statusCode).to.be.equal(599);
+
+        proxyServer.close();
+        target.close();
+    });
+
+    it('bypass upstream error', async () => {
+        const target = https.createServer(serverOptions, (_req, res) => {
+            res.write(responseMessage);
+            res.end();
+        });
+
+        await util.promisify(target.listen.bind(target))(0);
+
+        const proxyServer = new ProxyChain.Server({
+            port: 6666,
+            prepareRequestFunction: () => {
+                return {
+                    ignoreUpstreamProxyCertificate: true,
+                    upstreamProxyUrl: `https://localhost:${target.address().port}`,
+                };
+            },
+        });
+
+        let proxyServerError = false;
+        proxyServer.on('requestFailed', () => {
+            // requestFailed will be called if we pass an invalid proxy url
+            proxyServerError = true;
+        });
+
+        await proxyServer.listen();
+
+        /**
+         * request is sent with rejectUnauthorized: false
+         * so when the SSL certificate is not trusted (self-signed, expired, invalid), client won't reject the connection
+         */
+        const response = await requestPromised({
+            proxy: 'http://localhost:6666',
+            url: 'http://httpbin.org/ip',
+        });
+
+        expect(proxyServerError).to.be.equal(false);
+
+        expect(response.statusCode).to.be.equal(200);
+        expect(response.body).to.be.equal(responseMessage);
+
+        proxyServer.close();
+        target.close();
+    });
+});
+
 // Run all combinations of test parameters
 const useSslVariants = [
     false,
