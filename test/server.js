@@ -1514,6 +1514,10 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         await proxyServer.listen();
 
+        /**
+         * request is sent with rejectUnauthorized: true
+         * so when the SSL certificate is not trusted (self-signed, expired, invalid), client will reject the connection
+         */
         const response = await requestPromised({
             proxy: 'http://localhost:6666',
             url: 'http://httpbin.org/ip',
@@ -1553,6 +1557,10 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         await proxyServer.listen();
 
+        /**
+         * request is sent with rejectUnauthorized: false
+         * so when the SSL certificate is not trusted (self-signed, expired, invalid), client won't reject the connection
+         */
         const response = await requestPromised({
             proxy: 'http://localhost:6666',
             url: 'http://httpbin.org/ip',
