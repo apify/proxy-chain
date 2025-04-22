@@ -13,7 +13,7 @@ import { getBasicAuthorizationHeader } from './utils/get_basic';
 
 interface Options {
     method: string;
-    headers: string[];
+    headers: Record<string, string>;
     path?: string;
     localAddress?: string;
     family?: number;
@@ -71,25 +71,24 @@ export const chain = (
     const options: Options = {
         method: 'CONNECT',
         path: request.url,
-        headers: [
-            'host',
-            request.url!,
-        ],
+        headers: {
+            host: request.url!,
+        },
         localAddress: handlerOpts.localAddress,
         family: handlerOpts.ipFamily,
         lookup: handlerOpts.dnsLookup,
     };
 
     if (proxy.username || proxy.password) {
-        options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
+        options.headers['proxy-authorization'] = getBasicAuthorizationHeader(proxy);
     }
 
     const client = proxy.protocol === 'https:'
         ? https.request(proxy.origin, {
-            ...options as unknown as https.RequestOptions,
+            ...options,
             rejectUnauthorized: !handlerOpts.ignoreUpstreamProxyCertificate,
         })
-        : http.request(proxy.origin, options as unknown as http.RequestOptions);
+        : http.request(proxy.origin, options);
 
     client.once('socket', (targetSocket: SocketWithPreviousStats) => {
         // Socket can be re-used by multiple requests.
