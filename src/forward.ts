@@ -1,4 +1,5 @@
 import type dns from 'node:dns';
+import type { OutgoingHttpHeaders } from 'node:http';
 import http from 'node:http';
 import https from 'node:https';
 import stream from 'node:stream';
@@ -15,7 +16,7 @@ const pipeline = util.promisify(stream.pipeline);
 
 interface Options {
     method: string;
-    headers: string[];
+    headers: OutgoingHttpHeaders;
     insecureHTTPParser: boolean;
     path?: string;
     localAddress?: string;
@@ -59,7 +60,7 @@ export const forward = async (
 
     const options: Options = {
         method: request.method!,
-        headers: validHeadersOnly(request.rawHeaders),
+        headers: validHeadersOnly(request.headers),
         insecureHTTPParser: true,
         localAddress: handlerOpts.localAddress,
         family: handlerOpts.ipFamily,
@@ -72,7 +73,7 @@ export const forward = async (
 
         try {
             if (proxy.username || proxy.password) {
-                options.headers.push('proxy-authorization', getBasicAuthorizationHeader(proxy));
+                options.headers['proxy-authorization'] = getBasicAuthorizationHeader(proxy);
             }
         } catch (error) {
             reject(error);
@@ -97,7 +98,7 @@ export const forward = async (
             response.writeHead(
                 statusCode,
                 clientResponse.statusMessage,
-                validHeadersOnly(clientResponse.rawHeaders),
+                validHeadersOnly(clientResponse.headers),
             );
 
             // `pipeline` automatically handles all the events and data

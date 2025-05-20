@@ -1,3 +1,4 @@
+import type { OutgoingHttpHeaders } from 'node:http';
 import http from 'node:http';
 import stream from 'node:stream';
 import type { URL } from 'node:url';
@@ -13,7 +14,7 @@ const pipeline = util.promisify(stream.pipeline);
 
 interface Options {
     method: string;
-    headers: string[];
+    headers: OutgoingHttpHeaders;
     insecureHTTPParser: boolean;
     path?: string;
     localAddress?: string;
@@ -41,7 +42,7 @@ export const forwardSocks = async (
 
     const options: Options = {
         method: request.method!,
-        headers: validHeadersOnly(request.rawHeaders),
+        headers: validHeadersOnly(request.headers),
         insecureHTTPParser: true,
         localAddress: handlerOpts.localAddress,
         agent,
@@ -49,7 +50,7 @@ export const forwardSocks = async (
 
     // Only handling "http" here - since everything else is handeled by tunnelSocks.
     // We have to force cast `options` because @types/node doesn't support an array.
-    const client = http.request(request.url!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
+    const client = http.request(request.url!, options, async (clientResponse) => {
         try {
             // This is necessary to prevent Node.js throwing an error
             let statusCode = clientResponse.statusCode!;
@@ -66,7 +67,7 @@ export const forwardSocks = async (
             response.writeHead(
                 statusCode,
                 clientResponse.statusMessage,
-                validHeadersOnly(clientResponse.rawHeaders),
+                validHeadersOnly(clientResponse.headers),
             );
 
             // `pipeline` automatically handles all the events and data
