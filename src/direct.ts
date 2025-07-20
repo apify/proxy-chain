@@ -11,13 +11,19 @@ export interface HandlerOpts {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
+    customTag?: unknown;
+    requestId: string;
+    id: number;
 }
 
 interface DirectOpts {
-    request: { url?: string };
+    request: { url?: string, [key: string]: any };
     sourceSocket: Socket;
     head: Buffer;
-    server: EventEmitter & { log: (connectionId: unknown, str: string) => void };
+    server: EventEmitter & {
+        log: (connectionId: unknown, str:string) => void,
+        emit: (event: string, ...args: any[]) => boolean,
+    };
     handlerOpts: HandlerOpts;
 }
 
@@ -79,6 +85,15 @@ export const direct = (
     // We need to enable flowing, otherwise the socket would remain open indefinitely.
     // Nothing would consume the data, we just want to close the socket.
     targetSocket.on('close', () => {
+        const { requestId, customTag, id: connectionId } = handlerOpts;
+
+        server.emit('requestFinished', {
+            id: requestId,
+            request,
+            connectionId,
+            customTag,
+        });
+
         sourceSocket.resume();
 
         if (sourceSocket.writable) {

@@ -27,6 +27,8 @@ export interface HandlerOpts {
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
     customTag?: unknown;
+    requestId: string;
+    id: number;
 }
 
 interface ChainOpts {
@@ -34,7 +36,10 @@ interface ChainOpts {
     sourceSocket: Socket;
     head?: Buffer;
     handlerOpts: HandlerOpts;
-    server: EventEmitter & { log: (connectionId: unknown, str: string) => void };
+    server: EventEmitter & {
+        log: (connectionId: unknown, str: string) => void,
+        emit: (event: string, ...args: any[]) => boolean,
+    };
     isPlain: boolean;
 }
 
@@ -166,6 +171,14 @@ export const chain = (
         // We need to enable flowing, otherwise the socket would remain open indefinitely.
         // Nothing would consume the data, we just want to close the socket.
         targetSocket.on('close', () => {
+            const { requestId, id: connectionId } = handlerOpts;
+
+            server.emit('requestFinished', {
+                id: requestId,
+                request,
+                connectionId,
+                customTag,
+            });
             sourceSocket.resume();
 
             if (sourceSocket.writable) {
