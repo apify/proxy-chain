@@ -1,4 +1,5 @@
 import type dns from 'node:dns';
+import type { EventEmitter } from 'node:events';
 import http from 'node:http';
 import https from 'node:https';
 import stream from 'node:stream';
@@ -29,6 +30,10 @@ export interface HandlerOpts {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
+    requestId: string;
+    customTag?: unknown;
+    id: number;
+    server: EventEmitter;
 }
 
 /**
@@ -121,6 +126,22 @@ export const forward = async (
         }, requestCallback)
 
         : http.request(origin!, options as unknown as http.RequestOptions, requestCallback);
+
+    response.once('close', () => {
+        const {
+            requestId,
+            customTag,
+            id: connectionId,
+            server,
+        } = handlerOpts;
+
+        server.emit('requestFinished', {
+            id: requestId,
+            request,
+            connectionId,
+            customTag,
+        });
+    });
 
     client.once('socket', (socket: SocketWithPreviousStats) => {
         // Socket can be re-used by multiple requests.

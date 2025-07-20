@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import net from 'node:net';
 import { URL } from 'node:url';
 
@@ -71,6 +72,9 @@ export async function createTunnel(
             handlerOpts: {
                 upstreamProxyUrlParsed: parsedProxyUrl,
                 ignoreUpstreamProxyCertificate: options?.ignoreProxyCertificate ?? false,
+                requestId: randomUUID(),
+                customTag: undefined,
+                id: -1,
             },
             server: server as net.Server & { log: typeof log },
             isPlain: true,
