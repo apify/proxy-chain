@@ -156,6 +156,7 @@ const createTestSuite = ({
         const mainProxyServerConnectionIds = [];
         const mainProxyServerConnectionsClosed = [];
         const mainProxyServerConnectionId2Stats = {};
+        const mainProxyServerRequestsFinished = [];
 
         let upstreamProxyHostname = '127.0.0.1';
 
@@ -419,6 +420,10 @@ const createTestSuite = ({
                         const index = mainProxyServerConnectionIds.indexOf(connectionId);
                         mainProxyServerConnectionIds.splice(index, 1);
                         mainProxyServerConnectionId2Stats[connectionId] = stats;
+                    });
+
+                    mainProxyServer.on('requestFinished', ({ id, connectionId }) => {
+                        mainProxyServerRequestsFinished.push({ id, connectionId });
                     });
 
                     return mainProxyServer.listen();
@@ -834,6 +839,19 @@ const createTestSuite = ({
             });
         }
 
+        if (useMainProxy) {
+            _it('should emit requestFinished event', () => {
+                const opts = getRequestOpts('/hello-world');
+                opts.method = 'GET';
+                return requestPromised(opts)
+                    .then((response) => {
+                        expect(response.body).to.eql('Hello world!');
+                        expect(response.statusCode).to.eql(200);
+                        expect(mainProxyServerRequestsFinished.length).to.be.above(0);
+                    });
+            });
+        }
+
         if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
             it('handles GET request using puppeteer with invalid credentials', async () => {
                 const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
@@ -1180,6 +1198,7 @@ const createTestSuite = ({
                         expect(mainProxyServer.getConnectionIds()).to.be.deep.eql([]);
                     }
                     expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
+                    mainProxyServerRequestsFinished.splice(0, mainProxyServerRequestsFinished.length);
 
                     const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
                         .reduce((duplicateConnections, id, index) => {
