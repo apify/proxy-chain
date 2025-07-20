@@ -1,5 +1,6 @@
 /* eslint-disable no-use-before-define */
 import { Buffer } from 'node:buffer';
+import { randomUUID } from 'node:crypto';
 import type dns from 'node:dns';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
@@ -61,9 +62,22 @@ export type ConnectionStats = {
     trgRxBytes: number | null;
 };
 
+export type RequestStats = {
+    /** Total bytes received from the client. */
+    srcRxBytes: number,
+    /** Total bytes sent to the client. */
+    srcTxBytes: number,
+    /** Total bytes received from the target. */
+    trgRxBytes: number | null,
+    /** Total bytes sent to the target. */
+    trgTxBytes: number | null,
+};
+
 type HandlerOpts = {
     server: Server;
     id: number;
+    requestId: string;
+    startTime: number;
     srcRequest: http.IncomingMessage;
     srcResponse: http.ServerResponse | null;
     srcHead: Buffer | null;
@@ -89,6 +103,18 @@ export type PrepareRequestFunctionOpts = {
     hostname: string;
     port: number;
     isHttp: boolean;
+};
+
+export type RequestBypassedData = {
+    id: string;
+    request: http.IncomingMessage;
+    connectionId: number;
+    customTag?: unknown;
+};
+
+export type RequestFinishedData = RequestBypassedData & {
+    stats: RequestStats;
+    response?: http.IncomingMessage;
 };
 
 export type PrepareRequestFunctionResult = {
@@ -134,6 +160,8 @@ export type ServerOptions = HttpServerOptions | HttpsServerOptions;
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
  * It emits the 'tlsError' event on TLS handshake failures (HTTPS servers only), with parameter `{ error, socket }`.
  * with parameter `{ connectionId, reason, hasParent, parentType }`.
+ * It emits the `requestBypassed` event when a request is bypassed, with parameter `RequestBypassedData`.
+ * It emits the `requestFinished` event when a request is finished, with parameter `RequestFinishedData`.
  */
 export class Server extends EventEmitter {
     port: number;
@@ -364,6 +392,7 @@ export class Server extends EventEmitter {
     async onRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
         try {
             const handlerOpts = await this.prepareRequestHandling(request);
+
             handlerOpts.srcResponse = response;
 
             const { proxyChainId } = request.socket as Socket;
@@ -371,6 +400,12 @@ export class Server extends EventEmitter {
             if (handlerOpts.customResponseFunction) {
                 this.log(proxyChainId, 'Using handleCustomResponse()');
                 await handleCustomResponse(request, response, handlerOpts as CustomResponseOpts);
+                this.emit('requestBypassed', {
+                    id: handlerOpts.requestId,
+                    request,
+                    connectionId: handlerOpts.id,
+                    customTag: handlerOpts.customTag,
+                });
                 return;
             }
 
@@ -403,6 +438,12 @@ export class Server extends EventEmitter {
             if (handlerOpts.customConnectServer) {
                 socket.unshift(head); // See chain.ts for why we do this
                 await customConnect(socket, handlerOpts.customConnectServer);
+                this.emit('requestBypassed', {
+                    id: handlerOpts.requestId,
+                    request,
+                    connectionId: handlerOpts.id,
+                    customTag: handlerOpts.customTag,
+                });
                 return;
             }
 
@@ -429,9 +470,15 @@ export class Server extends EventEmitter {
      * @see {prepareRequestHandling}
      */
     getHandlerOpts(request: http.IncomingMessage): HandlerOpts {
+        const requestId = randomUUID();
+        // Casing does not matter, but we do it to avoid breaking changes.
+        request.headers['request-id'] = requestId;
+
         const handlerOpts: HandlerOpts = {
             server: this,
             id: (request.socket as Socket).proxyChainId!,
+            requestId,
+            startTime: Date.now(),
             srcRequest: request,
             srcHead: null,
             trgParsed: null,
@@ -599,20 +646,31 @@ export class Server extends EventEmitter {
      * @param error
      */
     failRequest(request: http.IncomingMessage, error: NodeJS.ErrnoException): void {
-        const { proxyChainId } = request.socket as Socket;
+        this.emit('requestFailed', {
+            request,
+            error,
+        });
 
-        if (error.name === 'RequestError') {
-            const typedError = error as RequestError;
+        const { srcResponse } = (request as any).handlerOpts as HandlerOpts;
 
-            this.log(proxyChainId, `Request failed (status ${typedError.statusCode}): ${error.message}`);
-            this.sendSocketResponse(request.socket, typedError.statusCode, typedError.headers, error.message);
-        } else {
-            this.log(proxyChainId, `Request failed with error: ${error.stack || error}`);
-            this.sendSocketResponse(request.socket, 500, {}, 'Internal error in proxy server');
-            this.emit('requestFailed', { error, request });
+        if (!request.socket) {
+            return;
         }
 
-        this.log(proxyChainId, 'Closing because request failed with error');
+        if (request.socket.destroyed) {
+            return;
+        }
+
+        // If the request was not handled yet, we need to close the socket.
+        // The client will get an empty response.
+        if (srcResponse && !srcResponse.headersSent) {
+            // We need to wait for the client to send the full request, otherwise it may get ECONNRESET.
+            // This is particularly important for HTTP CONNECT, because the client sends the first data packet
+            // along with the request headers.
+            request.on('end', () => request.socket.end());
+            // If the client never sends the full request, the socket will timeout and close.
+            request.resume();
+        }
     }
 
     /**
@@ -702,22 +760,23 @@ export class Server extends EventEmitter {
     }
 
     /**
-     * Gets data transfer statistics of a specific proxy connection.
+     * Returns the statistics of a specific connection.
+     * @param connectionId The ID of the connection.
+     * @returns The statistics object, or undefined if the connection does not exist.
      */
     getConnectionStats(connectionId: number): ConnectionStats | undefined {
         const socket = this.connections.get(connectionId);
-        if (!socket) return undefined;
 
-        const targetStats = getTargetStats(socket);
+        if (!socket) return;
 
-        const result = {
+        const { bytesWritten, bytesRead } = getTargetStats(socket);
+
+        return {
             srcTxBytes: socket.bytesWritten,
             srcRxBytes: socket.bytesRead,
-            trgTxBytes: targetStats.bytesWritten,
-            trgRxBytes: targetStats.bytesRead,
+            trgTxBytes: bytesWritten,
+            trgRxBytes: bytesRead,
         };
-
-        return result;
     }
 
     /**
