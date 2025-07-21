@@ -111,7 +111,7 @@ export class Server extends EventEmitter {
 
     lastHandlerId: number;
 
-    stats: { httpRequestCount: number; connectRequestCount: number; };
+    stats: { httpRequestCount: number; connectRequestCount: number; trafficUsedInBytes : number; };
 
     connections: Map<number, Socket>;
 
@@ -179,6 +179,7 @@ export class Server extends EventEmitter {
         this.stats = {
             httpRequestCount: 0,
             connectRequestCount: 0,
+            trafficUsedInBytes: 0
         };
 
         this.connections = new Map();
@@ -214,10 +215,16 @@ export class Server extends EventEmitter {
         this.connections.set(unique, socket);
 
         socket.on('close', () => {
+            const socketStats = this.getConnectionStats(unique);
             this.emit('connectionClosed', {
                 connectionId: unique,
-                stats: this.getConnectionStats(unique),
+                stats: socketStats,
             });
+
+
+            if (socketStats) {
+                this.stats.trafficUsedInBytes += socketStats.srcRxBytes + socketStats.srcTxBytes + (socketStats.trgRxBytes || 0) + (socketStats.trgTxBytes || 0)
+            }
 
             this.connections.delete(unique);
         });
@@ -227,6 +234,11 @@ export class Server extends EventEmitter {
             socket.destroy();
         });
     }
+
+    /**
+     * Registering total stats each server
+     */
+    
 
     /**
      * Handles incoming sockets, useful for error handling

@@ -1,10 +1,10 @@
-import type { Buffer } from 'node:buffer';
-import type http from 'node:http';
-import type net from 'node:net';
-import { URL } from 'node:url';
+import type { Buffer } from "node:buffer";
+import type http from "node:http";
+import type net from "node:net";
+import { URL } from "node:url";
 
-import { Server, SOCKS_PROTOCOLS } from './server';
-import { nodeify } from './utils/nodeify';
+import { Server, SOCKS_PROTOCOLS } from "./server";
+import { nodeify } from "./utils/nodeify";
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};
@@ -22,13 +22,13 @@ export interface AnonymizeProxyOptions {
  */
 export const anonymizeProxy = async (
     options: string | AnonymizeProxyOptions,
-    callback?: (error: Error | null) => void,
+    callback?: (error: Error | null) => void
 ): Promise<string> => {
     let proxyUrl: string;
     let port = 0;
     let ignoreProxyCertificate = false;
 
-    if (typeof options === 'string') {
+    if (typeof options === "string") {
         proxyUrl = options;
     } else {
         proxyUrl = options.url;
@@ -36,7 +36,7 @@ export const anonymizeProxy = async (
 
         if (port < 0 || port > 65535) {
             throw new Error(
-                'Invalid "port" option: only values equals or between 0-65535 are valid',
+                'Invalid "port" option: only values equals or between 0-65535 are valid'
             );
         }
 
@@ -46,12 +46,24 @@ export const anonymizeProxy = async (
     }
 
     const parsedProxyUrl = new URL(proxyUrl);
-    if (!['http:', 'https:', ...SOCKS_PROTOCOLS].includes(parsedProxyUrl.protocol)) {
-        throw new Error(`Invalid "proxyUrl" provided: URL must have one of the following protocols: "http", "https", ${SOCKS_PROTOCOLS.map((p) => `"${p.replace(':', '')}"`).join(', ')} (was "${parsedProxyUrl}")`);
+    if (
+        !["http:", "https:", ...SOCKS_PROTOCOLS].includes(
+            parsedProxyUrl.protocol
+        )
+    ) {
+        throw new Error(
+            `Invalid "proxyUrl" provided: URL must have one of the following protocols: "http", "https", ${SOCKS_PROTOCOLS.map(
+                (p) => `"${p.replace(":", "")}"`
+            ).join(", ")} (was "${parsedProxyUrl}")`
+        );
     }
 
     // If upstream proxy requires no password or if there is no need to ignore HTTPS proxy cert errors, return it directly
-    if (!parsedProxyUrl.username && !parsedProxyUrl.password && (!ignoreProxyCertificate || parsedProxyUrl.protocol !== 'https:')) {
+    if (
+        !parsedProxyUrl.username &&
+        !parsedProxyUrl.password &&
+        (!ignoreProxyCertificate || parsedProxyUrl.protocol !== "https:")
+    ) {
         return nodeify(Promise.resolve(proxyUrl), callback);
     }
 
@@ -62,7 +74,7 @@ export const anonymizeProxy = async (
             server = new Server({
                 // verbose: true,
                 port,
-                host: '127.0.0.1',
+                host: "127.0.0.1",
                 prepareRequestFunction: () => {
                     return {
                         requestAuthentication: false,
@@ -94,9 +106,9 @@ export const anonymizeProxy = async (
 export const closeAnonymizedProxy = async (
     anonymizedProxyUrl: string,
     closeConnections: boolean,
-    callback?: (error: Error | null, result?: boolean) => void,
+    callback?: (error: Error | null, result?: boolean) => void
 ): Promise<boolean> => {
-    if (typeof anonymizedProxyUrl !== 'string') {
+    if (typeof anonymizedProxyUrl !== "string") {
         throw new Error('The "anonymizedProxyUrl" parameter must be a string');
     }
 
@@ -131,14 +143,25 @@ type Callback = ({
  */
 export const listenConnectAnonymizedProxy = (
     anonymizedProxyUrl: string,
-    tunnelConnectRespondedCallback: Callback,
+    tunnelConnectRespondedCallback: Callback
 ): boolean => {
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
         return false;
     }
-    server.on('tunnelConnectResponded', ({ response, socket, head }) => {
+    server.on("tunnelConnectResponded", ({ response, socket, head }) => {
         tunnelConnectRespondedCallback({ response, socket, head });
     });
     return true;
+};
+
+export const statisticsAnonymizedProxy = (
+    anonymizedProxyUrl: string
+): number => {
+    const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
+    if (!server) {
+        return 0;
+    }
+    
+    return server.stats.trafficUsedInBytes;
 };
