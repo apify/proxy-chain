@@ -213,7 +213,7 @@ export class Server extends EventEmitter {
         socket.proxyChainId = unique;
         this.connections.set(unique, socket);
 
-        this.emit('connectionOpen', {
+        this.emit('connectionEstablished', {
             connectionId: unique,
         });
 
