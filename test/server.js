@@ -411,7 +411,7 @@ const createTestSuite = ({
 
                     mainProxyServer = new Server(opts);
 
-                    mainProxyServer.on('connectionEstablished', ({ connectionId }) => {
+                    mainProxyServer.on('connection', ({ connectionId }) => {
                         assert.include(mainProxyServer.getConnectionIds(), connectionId);
                     });
 
