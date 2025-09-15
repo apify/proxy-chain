@@ -73,6 +73,11 @@ export const forward = async (
         lookup: handlerOpts.dnsLookup,
     };
 
+    const commonOpts: http.RequestOptions = {
+        timeout: 200_000, // 200 seconds
+        ...options,
+    };
+
     // In case of proxy the path needs to be an absolute URL
     if (proxy) {
         options.path = request.url;
@@ -120,18 +125,15 @@ export const forward = async (
         }
     };
 
+    const httpsOpts = {
+        ...commonOpts,
+        rejectUnauthorized: handlerOpts.upstreamProxyUrlParsed ? !handlerOpts.ignoreUpstreamProxyCertificate : undefined,
+    };
+
     // We have to force cast `options` because @types/node doesn't support an array.
     const client = origin!.startsWith('https:')
-        ? https.request(origin!, {
-            ...options as unknown as https.RequestOptions,
-            rejectUnauthorized: handlerOpts.upstreamProxyUrlParsed ? !handlerOpts.ignoreUpstreamProxyCertificate : undefined,
-            agent: handlerOpts.httpsAgent,
-        }, requestCallback)
-
-        : http.request(origin!, {
-            ...options as unknown as http.RequestOptions,
-            agent: handlerOpts.httpAgent,
-        }, requestCallback);
+        ? https.request(origin!, httpsOpts, requestCallback)
+        : http.request(origin!, commonOpts, requestCallback);
 
     response.once('close', () => {
         const {
