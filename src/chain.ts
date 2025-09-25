@@ -137,6 +137,7 @@ export const chain = (
                 proxyChainId,
                 response,
                 customTag,
+                statusCode: response.statusCode,
                 socket: targetSocket,
                 head: clientHead,
             });
@@ -190,7 +191,7 @@ export const chain = (
         if (sourceSocket.readyState === 'open') {
             if (isPlain) {
                 sourceSocket.end();
-                
+
                 server.emit('tunnelError', {
                     error,
                     proxyChainId,
