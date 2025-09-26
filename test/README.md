@@ -1,20 +1,44 @@
 # Tests
 
-## Prerequisites
+## Docker (recommended)
 
-1. For MacOS with ARM CPUs install Rosetta (workaround for puppeteer)
+Since Linux and macOS handle sockets differently, please run tests in a Docker container
+to have a consistent Linux environment for running tests.
 
-    ```bash
-    softwareupdate --install-rosetta
-    ```
-
-3. Install nvm and use specific node version
+1. Build image
 
     ```bash
-    nvm use
+    docker build --tag proxy-chain-tests --file test/Dockerfile .
     ```
 
-4. Update `/etc/hosts`
+2. Run all tests
+
+    ```bash
+    docker run proxy-chain-tests
+    ```
+
+3. Run specific tests
+
+    ```bash
+    docker run proxy-chain-tests npm test test/socks.js
+    ```
+
+4. Interactive debugging
+
+    ```bash
+    docker run -it proxy-chain-tests bash
+    ```
+
+
+Note: for Docker no changes in `/etc/hosts` needed.
+
+## Local Machine
+
+### Prerequisites
+
+1. Node.js 18+ (see `.nvmrc` for exact version)
+2. For MacOS with ARM CPUs install Rosetta (workaround for puppeteer)
+3. Update `/etc/hosts`
 
     ```bash
     # Used by proxy-chain NPM package tests
@@ -23,12 +47,12 @@
     ```
 
     The `localhost` entry is for avoiding dual-stack issues, e.g. when the test server listens at ::1
-    (results of getaddrinfo have specifed order) and the client attempts to connect to 127.0.0.1 .
+    (results of getaddrinfo have specified order) and the client attempts to connect to 127.0.0.1 .
 
     The `localhost-test` entry is a workaround to PhantomJS' behavior where it skips proxy servers for
     localhost addresses.
 
-## Run tests
+### Run tests
 
 1. Run all tests
 
@@ -36,7 +60,7 @@
     npm run test
     ```
 
-2. Run specifc tests
+2. Run specific tests
 
     ```bash
     npm run test test/anonymize_proxy.js
