@@ -20,13 +20,15 @@ const { createTunnel, closeTunnel, redactUrl } = require('proxy-chain');
     // The "verbose" option causes a lot of logging
     const tunnelInfo = await createTunnel(PROXY_URL, TARGET_HOST, { port: 9999, verbose: true });
 
+    // eslint-disable-next-line no-console
     console.log(`Tunnel to ${TARGET_HOST} via ${redactUrl(PROXY_URL)} established at ${tunnelInfo}...`);
 
     // Here we assume por 443 from above, otherwise the service will not be accessible via HTTPS!
+    // eslint-disable-next-line no-console
     console.log(`To test it, you can run: curl --verbose https://${tunnelInfo}`);
 
     // Wait forever...
-    await new Promise(() => {});
+    await new Promise(() => { });
 
     // Normally, you'd also want to close the tunnel and all open connections
     await closeTunnel(tunnelInfo, true);
