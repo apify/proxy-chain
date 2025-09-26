@@ -80,6 +80,7 @@ const puppeteerGet = (url, proxyUrl) => {
                 HTTP_PROXY: parsed.origin,
             } : {},
             ignoreHTTPSErrors: true,
+            headless: "new"
         });
 
         try {
