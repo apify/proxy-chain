@@ -28,7 +28,7 @@ describe('SOCKS protocol', () => {
                     port: proxyPort,
                     prepareRequestFunction() {
                         return {
-                            upstreamProxyUrl: `socks://localhost:${socksPort}`,
+                            upstreamProxyUrl: `socks://127.0.0.1:${socksPort}`,
                         };
                     },
                 });
@@ -59,7 +59,7 @@ describe('SOCKS protocol', () => {
                     port: proxyPort,
                     prepareRequestFunction() {
                         return {
-                            upstreamProxyUrl: `socks://proxy-ch@in:rules!@localhost:${socksPort}`,
+                            upstreamProxyUrl: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}`,
                         };
                     },
                 });
@@ -86,7 +86,7 @@ describe('SOCKS protocol', () => {
                     cb(user === 'proxy-ch@in' && password === 'rules!');
                 }));
 
-                ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-ch@in:rules!@localhost:${socksPort}` }).then((anonymizedProxyUrl) => {
+                ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}` }).then((anonymizedProxyUrl) => {
                     anonymizeProxyUrl = anonymizedProxyUrl;
                     gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizedProxyUrl })
                         .then((response) => {
