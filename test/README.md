@@ -5,32 +5,11 @@
 Since Linux and macOS handle sockets differently, please run tests in a Docker container
 to have a consistent Linux environment for running tests.
 
-1. Build image
+```bash
+npm run test:docker
+```
 
-    ```bash
-    docker build --tag proxy-chain-tests --file test/Dockerfile .
-    ```
-
-2. Run all tests
-
-    ```bash
-    docker run proxy-chain-tests
-    ```
-
-3. Run specific tests
-
-    ```bash
-    docker run proxy-chain-tests npm test test/socks.js
-    ```
-
-4. Interactive debugging
-
-    ```bash
-    docker run -it proxy-chain-tests bash
-    ```
-
-
-Note: for Docker no changes in `/etc/hosts` needed.
+Note: for test in Docker no changes in `/etc/hosts` needed.
 
 ## Local Machine
 
