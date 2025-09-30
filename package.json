@@ -1,93 +1,94 @@
 {
-  "name": "proxy-chain",
-  "version": "2.5.9",
-  "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
-  "main": "dist/index.js",
-  "keywords": [
-    "proxy",
-    "squid",
-    "apify",
-    "tunnel",
-    "puppeteer"
-  ],
-  "author": {
-    "name": "Apify Technologies",
-    "email": "support@apify.com",
-    "url": "https://apify.com"
-  },
-  "contributors": [
-    "Jan Curn <jan@apify.com>"
-  ],
-  "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/apify/proxy-chain"
-  },
-  "bugs": {
-    "url": "https://github.com/apify/proxy-chain/issues"
-  },
-  "homepage": "https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build:watch": "tsc -w",
-    "build": "tsc",
-    "clean": "rimraf dist",
-    "prepublishOnly": "npm run build",
-    "local-proxy": "node ./dist/run_locally.js",
-    "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
-  },
-  "engines": {
-    "node": ">=14"
-  },
-  "devDependencies": {
-    "@apify/eslint-config": "^1.0.0",
-    "@apify/tsconfig": "^0.1.0",
-    "@types/jest": "^28.1.2",
-    "@types/node": "^18.8.3",
-    "basic-auth": "^2.0.1",
-    "basic-auth-parser": "^0.0.2",
-    "body-parser": "^1.19.0",
-    "chai": "^4.3.4",
-    "cross-env": "^7.0.3",
-    "eslint": "^9.18.0",
-    "express": "^4.17.1",
-    "faye-websocket": "^0.11.4",
-    "got-scraping": "^3.2.4-beta.0",
-    "isparta": "^4.1.1",
-    "mocha": "^10.0.0",
-    "nyc": "^15.1.0",
-    "portastic": "^1.0.1",
-    "proxy": "^1.0.2",
-    "puppeteer": "^19.6.3",
-    "request": "^2.88.2",
-    "rimraf": "^4.1.2",
-    "sinon": "^13.0.2",
-    "sinon-stub-promise": "^4.0.0",
-    "socksv5": "^0.0.6",
-    "through": "^2.3.8",
-    "ts-node": "^10.2.1",
-    "typescript": "^4.4.3",
-    "typescript-eslint": "^8.20.0",
-    "underscore": "^1.13.1",
-    "ws": "^8.2.2"
-  },
-  "nyc": {
-    "reporter": [
-      "text",
-      "html",
-      "lcov"
+    "name": "proxy-chain",
+    "version": "2.5.9",
+    "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
+    "main": "dist/index.js",
+    "keywords": [
+        "proxy",
+        "squid",
+        "apify",
+        "tunnel",
+        "puppeteer"
     ],
-    "exclude": [
-      "**/test/**"
-    ]
-  },
-  "dependencies": {
-    "socks": "^2.8.3",
-    "socks-proxy-agent": "^8.0.3",
-    "tslib": "^2.3.1"
-  }
+    "author": {
+        "name": "Apify Technologies",
+        "email": "support@apify.com",
+        "url": "https://apify.com"
+    },
+    "contributors": [
+        "Jan Curn <jan@apify.com>"
+    ],
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/apify/proxy-chain"
+    },
+    "bugs": {
+        "url": "https://github.com/apify/proxy-chain/issues"
+    },
+    "homepage": "https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build:watch": "tsc -w",
+        "build": "tsc",
+        "clean": "rimraf dist",
+        "prepublishOnly": "npm run build",
+        "local-proxy": "node ./dist/run_locally.js",
+        "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail",
+        "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . &&  docker run proxy-chain-tests",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix"
+    },
+    "engines": {
+        "node": ">=14"
+    },
+    "devDependencies": {
+        "@apify/eslint-config": "^1.0.0",
+        "@apify/tsconfig": "^0.1.0",
+        "@types/jest": "^28.1.2",
+        "@types/node": "^18.8.3",
+        "basic-auth": "^2.0.1",
+        "basic-auth-parser": "^0.0.2",
+        "body-parser": "^1.19.0",
+        "chai": "^4.3.4",
+        "cross-env": "^7.0.3",
+        "eslint": "^9.18.0",
+        "express": "^4.17.1",
+        "faye-websocket": "^0.11.4",
+        "got-scraping": "^3.2.4-beta.0",
+        "isparta": "^4.1.1",
+        "mocha": "^10.0.0",
+        "nyc": "^15.1.0",
+        "portastic": "^1.0.1",
+        "proxy": "^1.0.2",
+        "puppeteer": "^19.6.3",
+        "request": "^2.88.2",
+        "rimraf": "^4.1.2",
+        "sinon": "^13.0.2",
+        "sinon-stub-promise": "^4.0.0",
+        "socksv5": "^0.0.6",
+        "through": "^2.3.8",
+        "ts-node": "^10.2.1",
+        "typescript": "^4.4.3",
+        "typescript-eslint": "^8.20.0",
+        "underscore": "^1.13.1",
+        "ws": "^8.2.2"
+    },
+    "nyc": {
+        "reporter": [
+            "text",
+            "html",
+            "lcov"
+        ],
+        "exclude": [
+            "**/test/**"
+        ]
+    },
+    "dependencies": {
+        "socks": "^2.8.3",
+        "socks-proxy-agent": "^8.0.3",
+        "tslib": "^2.3.1"
+    }
 }

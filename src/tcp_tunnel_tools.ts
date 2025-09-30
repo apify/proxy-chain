@@ -45,6 +45,7 @@ export async function createTunnel(
     const server: net.Server & { log?: (...args: unknown[]) => void } = net.createServer();
 
     const log = (...args: unknown[]): void => {
+        // eslint-disable-next-line no-console
         if (verbose) console.log(...args);
     };
 

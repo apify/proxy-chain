@@ -21,27 +21,28 @@ describe('SOCKS protocol', () => {
             socksServer = socksv5.createServer((info, accept) => {
                 accept();
             });
-            socksServer.listen(socksPort, 'localhost');
-            socksServer.useAuth(socksv5.auth.None());
+            socksServer.listen(socksPort, '0.0.0.0', () => {
+                socksServer.useAuth(socksv5.auth.None());
 
-            proxyServer = new ProxyChain.Server({
-                port: proxyPort,
-                prepareRequestFunction() {
-                    return {
-                        upstreamProxyUrl: `socks://localhost:${socksPort}`,
-                    };
-                },
+                proxyServer = new ProxyChain.Server({
+                    port: proxyPort,
+                    prepareRequestFunction() {
+                        return {
+                            upstreamProxyUrl: `socks://127.0.0.1:${socksPort}`,
+                        };
+                    },
+                });
+                proxyServer.listen(() => {
+                    gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` })
+                        .then((response) => {
+                            expect(response.body).to.contain('Example Domain');
+                            done();
+                        })
+                        .catch(done);
+                });
             });
-            proxyServer.listen();
-
-            gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` })
-                .then((response) => {
-                    expect(response.body).to.contain('Example Domain');
-                    done();
-                })
-                .catch(done);
         });
-    }).timeout(5 * 1000);
+    }).timeout(10 * 1000);
 
     it('work with auth', (done) => {
         portastic.find({ min: 50250, max: 50500 }).then((ports) => {
@@ -49,29 +50,30 @@ describe('SOCKS protocol', () => {
             socksServer = socksv5.createServer((info, accept) => {
                 accept();
             });
-            socksServer.listen(socksPort, 'localhost');
-            socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
-                cb(user === 'proxy-ch@in' && password === 'rules!');
-            }));
+            socksServer.listen(socksPort, '0.0.0.0', () => {
+                socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+                    cb(user === 'proxy-ch@in' && password === 'rules!');
+                }));
 
-            proxyServer = new ProxyChain.Server({
-                port: proxyPort,
-                prepareRequestFunction() {
-                    return {
-                        upstreamProxyUrl: `socks://proxy-ch@in:rules!@localhost:${socksPort}`,
-                    };
-                },
+                proxyServer = new ProxyChain.Server({
+                    port: proxyPort,
+                    prepareRequestFunction() {
+                        return {
+                            upstreamProxyUrl: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}`,
+                        };
+                    },
+                });
+                proxyServer.listen(() => {
+                    gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` })
+                        .then((response) => {
+                            expect(response.body).to.contain('Example Domain');
+                            done();
+                        })
+                        .catch(done);
+                });
             });
-            proxyServer.listen();
-
-            gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` })
-                .then((response) => {
-                    expect(response.body).to.contain('Example Domain');
-                    done();
-                })
-                .catch(done);
         });
-    }).timeout(5 * 1000);
+    }).timeout(10 * 1000);
 
     it('works with anonymizeProxy', (done) => {
         portastic.find({ min: 50500, max: 50750 }).then((ports) => {
@@ -79,20 +81,21 @@ describe('SOCKS protocol', () => {
             socksServer = socksv5.createServer((info, accept) => {
                 accept();
             });
-            socksServer.listen(socksPort, 'localhost');
-            socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
-                cb(user === 'proxy-ch@in' && password === 'rules!');
-            }));
+            socksServer.listen(socksPort, '0.0.0.0', () => {
+                socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+                    cb(user === 'proxy-ch@in' && password === 'rules!');
+                }));
 
-            ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-ch@in:rules!@localhost:${socksPort}` }).then((anonymizedProxyUrl) => {
-                anonymizeProxyUrl = anonymizedProxyUrl;
-                gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizedProxyUrl })
-                    .then((response) => {
-                        expect(response.body).to.contain('Example Domain');
-                        done();
-                    })
-                    .catch(done);
+                ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}` }).then((anonymizedProxyUrl) => {
+                    anonymizeProxyUrl = anonymizedProxyUrl;
+                    gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizedProxyUrl })
+                        .then((response) => {
+                            expect(response.body).to.contain('Example Domain');
+                            done();
+                        })
+                        .catch(done);
+                });
             });
         });
-    }).timeout(5 * 1000);
+    }).timeout(10 * 1000);
 });

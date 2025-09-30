@@ -80,6 +80,8 @@ const puppeteerGet = (url, proxyUrl) => {
                 HTTP_PROXY: parsed.origin,
             } : {},
             ignoreHTTPSErrors: true,
+            headless: "new",
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
         });
 
         try {
