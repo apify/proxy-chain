@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import type dns from 'node:dns';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
+import https from 'node:https';
 import type net from 'node:net';
 import { URL } from 'node:url';
 import util from 'node:util';
@@ -91,6 +92,25 @@ export type PrepareRequestFunctionResult = {
 type Promisable<T> = T | Promise<T>;
 export type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promisable<undefined | PrepareRequestFunctionResult>;
 
+interface ServerOptionsBase {
+    port?: number;
+    host?: string;
+    prepareRequestFunction?: PrepareRequestFunction;
+    verbose?: boolean;
+    authRealm?: unknown;
+}
+
+interface HttpServerOptions extends ServerOptionsBase {
+    serverType?: 'http';
+}
+
+interface HttpsServerOptions extends ServerOptionsBase {
+    serverType: 'https';
+    httpsOptions: https.ServerOptions;
+}
+
+export type ServerOptions = HttpServerOptions | HttpsServerOptions;
+
 /**
  * Represents the proxy server.
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
@@ -107,7 +127,9 @@ export class Server extends EventEmitter {
 
     verbose: boolean;
 
-    server: http.Server;
+    server: http.Server | https.Server;
+
+    serverType: 'http' | 'https';
 
     lastHandlerId: number;
 
@@ -119,6 +141,9 @@ export class Server extends EventEmitter {
      * Initializes a new instance of Server class.
      * @param options
      * @param [options.port] Port where the server will listen. By default 8000.
+     * @param [options.serverType] Type of server to create: 'http' or 'https'. By default 'http'.
+     * @param [options.httpsOptions] HTTPS server options (required when serverType is 'https').
+     * Accepts standard Node.js https.ServerOptions including key, cert, ca, passphrase, etc.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests,
      * provide URL to upstream proxy or potentially provide a function that generates a custom response to HTTP requests.
      * It accepts a single parameter which is an object:
@@ -149,13 +174,7 @@ export class Server extends EventEmitter {
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server will output logs
      */
-    constructor(options: {
-        port?: number,
-        host?: string,
-        prepareRequestFunction?: PrepareRequestFunction,
-        verbose?: boolean,
-        authRealm?: unknown,
-    } = {}) {
+    constructor(options: ServerOptions = {}) {
         super();
 
         if (options.port === undefined || options.port === null) {
@@ -169,11 +188,29 @@ export class Server extends EventEmitter {
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
 
-        this.server = http.createServer();
+        // Create server based on type
+        if (options.serverType === 'https') {
+            if (!options.httpsOptions) {
+                throw new Error('httpsOptions is required when serverType is "https"');
+            }
+            this.server = https.createServer(options.httpsOptions);
+            this.serverType = 'https';
+        } else {
+            this.server = http.createServer();
+            this.serverType = 'http';
+        }
+
+        // Attach event handlers (same for both HTTP and HTTPS)
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
         this.server.on('connect', this.onConnect.bind(this));
         this.server.on('connection', this.onConnection.bind(this));
+
+        // For HTTPS servers, also listen to secureConnection for proper TLS socket handling
+        // This ensures connection tracking works correctly with TLS sockets
+        if (this.serverType === 'https') {
+            this.server.on('secureConnection', this.onConnection.bind(this));
+        }
 
         this.lastHandlerId = 0;
         this.stats = {
@@ -615,9 +652,11 @@ export class Server extends EventEmitter {
 
         const targetStats = getTargetStats(socket);
 
+        // For TLS sockets, bytesRead/bytesWritten might not be immediately available
+        // Use nullish coalescing to ensure we always have valid numeric values
         const result = {
-            srcTxBytes: socket.bytesWritten,
-            srcRxBytes: socket.bytesRead,
+            srcTxBytes: socket.bytesWritten ?? 0,
+            srcRxBytes: socket.bytesRead ?? 0,
             trgTxBytes: targetStats.bytesWritten,
             trgRxBytes: targetStats.bytesRead,
         };
