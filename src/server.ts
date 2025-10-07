@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import http from 'node:http';
 import https from 'node:https';
 import type net from 'node:net';
+import type tls from 'node:tls';
 import { URL } from 'node:url';
 import util from 'node:util';
 
@@ -19,7 +20,7 @@ import type { HandlerOpts as ForwardOpts } from './forward';
 import { forward } from './forward';
 import { forwardSocks } from './forward_socks';
 import { RequestError } from './request_error';
-import type { Socket } from './socket';
+import type { Socket, TLSSocket } from './socket';
 import { badGatewayStatusCodes } from './statuses';
 import { getTargetStats } from './utils/count_target_bytes';
 import { nodeify } from './utils/nodeify';
@@ -115,6 +116,7 @@ export type ServerOptions = HttpServerOptions | HttpsServerOptions;
  * Represents the proxy server.
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
+ * It emits the 'tlsError' event on TLS handshake failures (HTTPS servers only), with parameter `{ error, socket }`.
  */
 export class Server extends EventEmitter {
     port: number;
@@ -193,23 +195,49 @@ export class Server extends EventEmitter {
             if (!options.httpsOptions) {
                 throw new Error('httpsOptions is required when serverType is "https"');
             }
-            this.server = https.createServer(options.httpsOptions);
+
+            // Apply secure TLS defaults (user options can override)
+            // This prevents users from accidentally configuring insecure TLS settings
+            const secureDefaults: https.ServerOptions = {
+                minVersion: 'TLSv1.2', // Disable TLS 1.0 and 1.1 (deprecated, insecure)
+                maxVersion: 'TLSv1.3', // Enable modern TLS 1.3
+                // Strong cipher suites (TLS 1.3 and TLS 1.2)
+                ciphers: [
+                    // TLS 1.3 ciphers (always enabled with TLS 1.3)
+                    'TLS_AES_128_GCM_SHA256',
+                    'TLS_AES_256_GCM_SHA384',
+                    'TLS_CHACHA20_POLY1305_SHA256',
+                    // TLS 1.2 ciphers (strong only)
+                    'ECDHE-RSA-AES128-GCM-SHA256',
+                    'ECDHE-RSA-AES256-GCM-SHA384',
+                ].join(':'),
+                honorCipherOrder: true, // Server chooses cipher (prevents downgrade attacks)
+                ...options.httpsOptions, // User options override defaults
+            };
+
+            this.server = https.createServer(secureDefaults);
             this.serverType = 'https';
         } else {
             this.server = http.createServer();
             this.serverType = 'http';
         }
 
-        // Attach event handlers (same for both HTTP and HTTPS)
+        // Attach common event handlers (same for both HTTP and HTTPS)
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
         this.server.on('connect', this.onConnect.bind(this));
-        this.server.on('connection', this.onConnection.bind(this));
 
-        // For HTTPS servers, also listen to secureConnection for proper TLS socket handling
-        // This ensures connection tracking works correctly with TLS sockets
+        // Attach connection tracking based on server type
+        // CRITICAL: Only listen to ONE connection event to avoid double registration
         if (this.serverType === 'https') {
+            // For HTTPS: Track only post-TLS-handshake sockets (secureConnection)
+            // This ensures we track the TLS-wrapped socket with correct bytesRead/bytesWritten
             this.server.on('secureConnection', this.onConnection.bind(this));
+            // Handle TLS handshake errors to prevent server crashes
+            this.server.on('tlsClientError', this.onTLSClientError.bind(this));
+        } else {
+            // For HTTP: Track raw TCP sockets (connection)
+            this.server.on('connection', this.onConnection.bind(this));
         }
 
         this.lastHandlerId = 0;
@@ -232,12 +260,36 @@ export class Server extends EventEmitter {
     onClientError(err: NodeJS.ErrnoException, socket: Socket): void {
         this.log(socket.proxyChainId, `onClientError: ${err}`);
 
+        // HTTP protocol error occurred after TLS handshake succeeded (in case HTTPS server is used)
         // https://nodejs.org/api/http.html#http_event_clienterror
         if (err.code === 'ECONNRESET' || !socket.writable) {
             return;
         }
 
+        // Can send HTTP response because HTTP protocol layer is active
         this.sendSocketResponse(socket, 400, {}, 'Invalid request');
+    }
+
+    /**
+     * Handles TLS handshake errors for HTTPS servers.
+     * Without this handler, unhandled TLS errors can crash the server.
+     * Common errors: ECONNRESET, ERR_SSL_SSLV3_ALERT_CERTIFICATE_UNKNOWN,
+     * ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION, ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE
+     */
+    onTLSClientError(err: NodeJS.ErrnoException, tlsSocket: tls.TLSSocket): void {
+        const connectionId = (tlsSocket as TLSSocket).proxyChainId;
+        this.log(connectionId, `TLS handshake failed: ${err.message}`);
+
+        // If connection already reset or socket not writable, nothing to do
+        if (err.code === 'ECONNRESET' || !tlsSocket.writable) {
+            return;
+        }
+
+        // TLS handshake failed before HTTP, cannot send HTTP response
+        tlsSocket.destroy(err);
+
+        // Emit event for user monitoring/metrics
+        this.emit('tlsError', { error: err, socket: tlsSocket });
     }
 
     /**
@@ -280,8 +332,12 @@ export class Server extends EventEmitter {
         // We need to consume socket errors, because the handlers are attached asynchronously.
         // See https://github.com/apify/proxy-chain/issues/53
         socket.on('error', (err) => {
-            // Handle errors only if there's no other handler
-            if (this.listenerCount('error') === 1) {
+            // Prevent duplicate error handling for the same socket
+            if (socket.proxyChainErrorHandled) return;
+            socket.proxyChainErrorHandled = true;
+
+            // Log errors only if there are no user-provided error handlers
+            if (this.listenerCount('error') === 0) {
                 this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });
@@ -654,6 +710,7 @@ export class Server extends EventEmitter {
 
         // For TLS sockets, bytesRead/bytesWritten might not be immediately available
         // Use nullish coalescing to ensure we always have valid numeric values
+        // Note: Even destroyed sockets retain their byte count properties
         const result = {
             srcTxBytes: socket.bytesWritten ?? 0,
             srcRxBytes: socket.bytesRead ?? 0,
