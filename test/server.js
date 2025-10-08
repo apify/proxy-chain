@@ -4,6 +4,7 @@ const path = require('path');
 const stream = require('stream');
 const childProcess = require('child_process');
 const net = require('net');
+const tls = require('tls');
 const dns = require('dns');
 const util = require('util');
 const { expect, assert } = require('chai');
@@ -696,8 +697,8 @@ const createTestSuite = ({
                 });
         });
 
-        if (!useSsl && mainProxyServerType !== 'https') {
-            // TODO: Skip for HTTPS proxy as this test uses raw TCP sockets which don't work with TLS
+        if (!useSsl) {
+            // Note: Test handles both HTTP and HTTPS proxies (uses TLS wrapper for HTTPS)
             _it('handles double Host header', () => {
                 // This is a regression test, duplication of Host headers caused the proxy to throw
                 // "TypeError: hostHeader.startsWith is not a function"
@@ -722,10 +723,25 @@ const createTestSuite = ({
                             + 'Host: dummy2.example.com\r\n\r\n';
                     }
 
-                    const client = net.createConnection({ port }, () => {
-                        // console.log('connected to server! sending msg: ' + httpMsg);
-                        client.write(httpMsg);
-                    });
+                    // Create appropriate connection based on proxy type
+                    let client;
+                    if (mainProxyServerType === 'https') {
+                        // Use TLS connection for HTTPS proxy
+                        client = tls.connect({
+                            port,
+                            host: 'localhost',
+                            rejectUnauthorized: false, // Accept self-signed certs
+                        }, () => {
+                            // console.log('TLS connected to server! sending msg: ' + httpMsg);
+                            client.write(httpMsg);
+                        });
+                    } else {
+                        // Use raw TCP connection for HTTP proxy
+                        client = net.createConnection({ port }, () => {
+                            // console.log('connected to server! sending msg: ' + httpMsg);
+                            client.write(httpMsg);
+                        });
+                    }
                     client.on('data', (data) => {
                         // console.log('received data: ' + data.toString());
                         try {
@@ -1361,7 +1377,7 @@ describe('non-200 upstream connect response', () => {
     it('fails downstream with 590', (done) => {
         const server = http.createServer();
         server.on('connect', (_request, socket) => {
-            socket.once('error', () => {});
+            socket.once('error', () => { });
             socket.end('HTTP/1.1 403 Forbidden\r\ncontent-length: 1\r\n\r\na');
         });
         server.listen(() => {
