@@ -7,6 +7,14 @@ const tls = require('tls');
 const { TargetServer } = require('./utils/target_server');
 
 /**
+ * Check if Node.js version supports crypto.X509Certificate (added in v15.6.0)
+ */
+const supportsX509Certificate = (() => {
+    const [major, minor] = process.versions.node.split('.').map(Number);
+    return major > 15 || (major === 15 && minor >= 6);
+})();
+
+/**
  * Helper function to make HTTP requests through proxy
  */
 const requestPromised = (opts) => {
@@ -47,9 +55,11 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             const expiredCert = loadCertificate('expired');
             const proxyPort = freePorts.shift();
 
-            // Verify certificate is actually expired
-            const certInfo = verifyCertificate(expiredCert.cert);
-            expect(certInfo.isExpired).to.be.true;
+            // Verify certificate is actually expired (only on Node 15.6.0+)
+            if (supportsX509Certificate) {
+                const certInfo = verifyCertificate(expiredCert.cert);
+                expect(certInfo.isExpired).to.be.true;
+            }
 
             // Create HTTPS proxy with expired certificate
             proxyServer = new Server({
@@ -177,10 +187,12 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             const mismatchCert = loadCertificate('hostname-mismatch');
             const proxyPort = freePorts.shift();
 
-            // Verify certificate is for example.com, not localhost
-            expect(certificateMatchesHostname(mismatchCert.cert, 'example.com')).to.be.true;
-            expect(certificateMatchesHostname(mismatchCert.cert, '127.0.0.1')).to.be.false;
-            expect(certificateMatchesHostname(mismatchCert.cert, 'localhost')).to.be.false;
+            // Verify certificate is for example.com, not localhost (only on Node 15.6.0+)
+            if (supportsX509Certificate) {
+                expect(certificateMatchesHostname(mismatchCert.cert, 'example.com')).to.be.true;
+                expect(certificateMatchesHostname(mismatchCert.cert, '127.0.0.1')).to.be.false;
+                expect(certificateMatchesHostname(mismatchCert.cert, 'localhost')).to.be.false;
+            }
 
             // Create HTTPS proxy with hostname mismatch certificate
             proxyServer = new Server({
