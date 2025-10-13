@@ -1,4 +1,5 @@
-import { Server, generateCertificate } from '../src';
+/* eslint-disable no-console */
+const { Server, generateCertificate } = require('..');
 
 // This example demonstrates how to create an HTTPS proxy server with a self-signed certificate.
 // The HTTPS proxy server works identically to the HTTP version but with TLS encryption.
@@ -36,48 +37,30 @@ import { Server, generateCertificate } from '../src';
         prepareRequestFunction: ({ username, hostname, port }) => {
             console.log(`Request to ${hostname}:${port} from user: ${username || 'anonymous'}`);
 
-            // Example: Require authentication
-            // if (!username || !password) {
-            //     return {
-            //         requestAuthentication: true,
-            //         failMsg: 'Proxy credentials required',
-            //     };
-            // }
-
-            // Example: Use upstream proxy
-            // return {
-            //     upstreamProxyUrl: 'http://upstream-proxy.example.com:8000',
-            // };
-
             // Allow the request
             return {};
         },
     });
 
+    // Handle failed HTTP/HTTPS requests
+    server.on('requestFailed', ({ request, error }) => {
+        console.log(`Request ${request.url} failed`);
+        console.error(error);
+    });
+
+    // Handle TLS handshake errors
+    server.on('tlsError', ({ error, socket }) => {
+        console.error(`TLS error from ${socket.remoteAddress}: ${error.message}`);
+    });
+
+    // Emitted when HTTP/HTTPS connection is closed
+    server.on('connectionClosed', ({ connectionId, stats }) => {
+        console.log(`Connection ${connectionId} closed`);
+        console.dir(stats);
+    });
+
     // Start the server
     await server.listen();
-
-    console.log('\n======================================');
-    console.log(`HTTPS Proxy server is running on port ${server.port}`);
-    console.log('======================================\n');
-
-    console.log('To test the HTTPS proxy server, you can use:');
-    console.log('\n1. With curl (ignoring self-signed certificate):');
-    console.log(`   curl --proxy-insecure -x https://localhost:${server.port} -k http://example.com\n`);
-
-    console.log('2. Configure your browser to use HTTPS proxy:');
-    console.log(`   - Proxy: localhost`);
-    console.log(`   - Port: ${server.port}`);
-    console.log(`   - Type: HTTPS`);
-    console.log('   - Note: Browser may warn about self-signed certificate\n');
-
-    console.log('3. With Node.js https agent:');
-    console.log('   const agent = new HttpsProxyAgent(');
-    console.log(`     'https://localhost:${server.port}',`);
-    console.log('     { rejectUnauthorized: false } // for self-signed cert');
-    console.log('   );\n');
-
-    console.log('Press Ctrl+C to stop the server...\n');
 
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
@@ -88,5 +71,5 @@ import { Server, generateCertificate } from '../src';
     });
 
     // Keep the server running
-    await new Promise(() => {});
+    await new Promise(() => { });
 })();
