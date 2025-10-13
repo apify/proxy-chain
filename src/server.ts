@@ -42,6 +42,21 @@ export const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'soc
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 
+const HTTPS_DEFAULTS = {
+    minVersion: 'TLSv1.2', // Disable TLS 1.0 and 1.1 (deprecated, insecure)
+    maxVersion: 'TLSv1.3', // Enable modern TLS 1.3
+    // Strong cipher suites (TLS 1.3 and TLS 1.2)
+    ciphers: [
+        // TLS 1.3 ciphers (always enabled with TLS 1.3)
+        'TLS_AES_128_GCM_SHA256',
+        'TLS_AES_256_GCM_SHA384',
+        'TLS_CHACHA20_POLY1305_SHA256',
+        // TLS 1.2 ciphers (strong only)
+        'ECDHE-RSA-AES128-GCM-SHA256',
+        'ECDHE-RSA-AES256-GCM-SHA384',
+    ].join(':'),
+} as const;
+
 export type ConnectionStats = {
     srcTxBytes: number;
     srcRxBytes: number;
@@ -101,31 +116,16 @@ interface ServerOptionsBase {
     authRealm?: unknown;
 }
 
-interface HttpServerOptions extends ServerOptionsBase {
+export interface HttpServerOptions extends ServerOptionsBase {
     serverType?: 'http';
 }
 
-interface HttpsServerOptions extends ServerOptionsBase {
+export interface HttpsServerOptions extends ServerOptionsBase {
     serverType: 'https';
     httpsOptions: https.ServerOptions;
 }
 
 export type ServerOptions = HttpServerOptions | HttpsServerOptions;
-
-const HTTPS_DEFAULTS = {
-    minVersion: 'TLSv1.2', // Disable TLS 1.0 and 1.1 (deprecated, insecure)
-    maxVersion: 'TLSv1.3', // Enable modern TLS 1.3
-    // Strong cipher suites (TLS 1.3 and TLS 1.2)
-    ciphers: [
-        // TLS 1.3 ciphers (always enabled with TLS 1.3)
-        'TLS_AES_128_GCM_SHA256',
-        'TLS_AES_256_GCM_SHA384',
-        'TLS_CHACHA20_POLY1305_SHA256',
-        // TLS 1.2 ciphers (strong only)
-        'ECDHE-RSA-AES128-GCM-SHA256',
-        'ECDHE-RSA-AES256-GCM-SHA384',
-    ].join(':'),
-} as const;
 
 /**
  * Represents the proxy server.
