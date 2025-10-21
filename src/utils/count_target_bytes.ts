@@ -10,6 +10,7 @@ type Stats = { bytesWritten: number | null, bytesRead: number | null };
 /**
  * Socket object extended with previous read and written bytes.
  * Necessary due to target socket re-use.
+ * Works with both net.Socket and tls.TLSSocket (since TLSSocket extends net.Socket).
  */
 export type SocketWithPreviousStats = net.Socket & { previousBytesWritten?: number, previousBytesRead?: number };
 
@@ -22,7 +23,7 @@ interface Extras {
 
 // @ts-expect-error TS is not aware that `source` is used in the assertion.
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-function typeSocket(source: unknown): asserts source is net.Socket & Extras {}
+function typeSocket(source: unknown): asserts source is net.Socket & Extras { }
 
 export const countTargetBytes = (
     source: net.Socket,

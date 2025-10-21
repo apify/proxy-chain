@@ -57,10 +57,30 @@ const HTTPS_DEFAULTS = {
     ].join(':'),
 } as const;
 
+/**
+ * Connection statistics for bandwidth tracking and billing.
+ *
+ * Byte Semantics by Server Type:
+ *
+ * - HTTP servers: Source bytes represent application-layer traffic only
+ * - HTTPS servers: Source bytes include TLS handshake overhead and encryption overhead (total consumed bandwidth)
+ *   - Typical TLS overhead: 10-20% for TLS 1.2, 5-15% for TLS 1.3
+ *   - Higher overhead for short-lived connections (handshake-dominated)
+ *   - Lower overhead for long-lived connections (handshake amortized)
+ *
+ * Target bytes: Always represent application-layer traffic only (both HTTP and HTTPS)
+ *
+ * Failed handshakes: Only successful TLS connections are tracked here.
+ * Failed handshakes emit 'tlsError' event for monitoring.
+ */
 export type ConnectionStats = {
+    // Bytes sent to client (HTTP: app only, HTTPS: total including TLS overhead)
     srcTxBytes: number;
+    // Bytes received from client (HTTP: app only, HTTPS: total including TLS overhead)
     srcRxBytes: number;
+    // Bytes sent to target (always application-layer, null if no target connection)
     trgTxBytes: number | null;
+    // Bytes received from target (always application-layer, null if no target connection)
     trgRxBytes: number | null;
 };
 
@@ -132,6 +152,8 @@ export type ServerOptions = HttpServerOptions | HttpsServerOptions;
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
  * It emits the 'tlsError' event on TLS handshake failures (HTTPS servers only), with parameter `{ error, socket }`.
+ * It emits the 'tlsOverheadUnavailable' event when TLS overhead tracking is unavailable (HTTPS servers only),
+ * with parameter `{ connectionId, reason, hasParent, parentType }`.
  */
 export class Server extends EventEmitter {
     port: number;
@@ -345,6 +367,23 @@ export class Server extends EventEmitter {
                 this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });
+
+        // Check once per connection for socket._parent availability.
+        if (this.serverType === 'https') {
+            const rawSocket = socket._parent;
+            if (!rawSocket || typeof rawSocket.bytesWritten !== 'number' || typeof rawSocket.bytesRead !== 'number') {
+                // Emit event for observability purposes that TLS overhead for https is unavailable.
+                this.emit('tlsOverheadUnavailable', {
+                    connectionId: socket.proxyChainId,
+                    reason: 'raw_socket_missing',
+                    hasParent: !!rawSocket,
+                    parentType: rawSocket?.constructor?.name,
+                });
+                socket.tlsOverheadAvailable = false;
+            } else {
+                socket.tlsOverheadAvailable = true;
+            }
+        }
     }
 
     /**
@@ -710,19 +749,33 @@ export class Server extends EventEmitter {
         const socket = this.connections.get(connectionId);
         if (!socket) return undefined;
 
+        // Socket contains application bytes only.
+        let srcTxBytes = socket.bytesWritten ?? 0;
+        let srcRxBytes = socket.bytesRead ?? 0;
+
+        if (this.serverType === 'https' && socket.tlsOverheadAvailable) {
+            /* eslint no-underscore-dangle: ["error", { "allow": ["_parent"] }] */
+            // Access underlying raw socket to get total bytes (app + TLS overhead).
+            const rawSocket = socket._parent;
+            if (rawSocket && typeof rawSocket.bytesWritten === 'number' && typeof rawSocket.bytesRead === 'number') {
+                if (rawSocket.bytesWritten >= socket.bytesWritten && rawSocket.bytesRead >= socket.bytesRead) {
+                    srcTxBytes = rawSocket.bytesWritten;
+                    srcRxBytes = rawSocket.bytesRead;
+                } else {
+                    // This should never happen, log for debugging.
+                    this.log(connectionId, `Warning: Raw socket byte counters invalid (raw: ${rawSocket.bytesWritten}/${rawSocket.bytesRead}, tls: ${socket.bytesWritten}/${socket.bytesRead})`);
+                }
+            }
+        }
+
         const targetStats = getTargetStats(socket);
 
-        // For TLS sockets, bytesRead/bytesWritten might not be immediately available
-        // Use nullish coalescing to ensure we always have valid numeric values
-        // Note: Even destroyed sockets retain their byte count properties
-        const result = {
-            srcTxBytes: socket.bytesWritten ?? 0,
-            srcRxBytes: socket.bytesRead ?? 0,
-            trgTxBytes: targetStats.bytesWritten,
-            trgRxBytes: targetStats.bytesRead,
+        return {
+            srcTxBytes, // HTTP: app only, HTTPS: total (app + TLS overhead)
+            srcRxBytes, // HTTP: app only, HTTPS: total (app + TLS overhead)
+            trgTxBytes: targetStats?.bytesWritten,
+            trgRxBytes: targetStats?.bytesRead,
         };
-
-        return result;
     }
 
     /**
