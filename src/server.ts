@@ -763,7 +763,7 @@ export class Server extends EventEmitter {
                     srcRxBytes = rawSocket.bytesRead;
                 } else {
                     // This should never happen, log for debugging.
-                    this.log(connectionId, `Warning: Raw socket byte counters invalid (raw: ${rawSocket.bytesWritten}/${rawSocket.bytesRead}, tls: ${socket.bytesWritten}/${socket.bytesRead})`);
+                    this.log(connectionId, `Warning: TLS overhead count error.`);
                 }
             }
         }
