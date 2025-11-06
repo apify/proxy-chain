@@ -362,8 +362,9 @@ export class Server extends EventEmitter {
             if (socket.proxyChainErrorHandled) return;
             socket.proxyChainErrorHandled = true;
 
-            // Log errors only if there are no user-provided error handlers
-            if (this.listenerCount('error') === 0) {
+            // Log errors only if this is the only error handler on the socket
+            // If other handlers exist (from handler functions), they'll handle logging
+            if (socket.listenerCount('error') === 1) {
                 this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });
