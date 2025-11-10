@@ -64,7 +64,7 @@
         "nyc": "^15.1.0",
         "portastic": "^1.0.1",
         "proxy": "^1.0.2",
-        "puppeteer": "^19.6.3",
+        "puppeteer": "^24.29.1",
         "request": "^2.88.2",
         "rimraf": "^4.1.2",
         "sinon": "^13.0.2",
