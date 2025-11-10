@@ -18,7 +18,7 @@ the world's most popular web craling library for Node.js.
 
 The proxy-chain package currently supports HTTP/SOCKS forwarding and HTTP CONNECT tunneling to forward arbitrary protocols such as HTTPS or FTP ([learn more](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff)). The HTTP CONNECT tunneling also supports the SOCKS protocol. Also, proxy-chain only supports the Basic [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization).
 
-## Run a simple HTTP/HTTPS proxy server
+## Run a simple HTTP proxy server
 
 ```javascript
 const ProxyChain = require('proxy-chain');
@@ -30,7 +30,7 @@ server.listen(() => {
 });
 ```
 
-## Run a HTTP/HTTPS proxy server with credentials and upstream proxy
+## Run a HTTP proxy server with credentials and upstream proxy
 
 ```javascript
 const ProxyChain = require('proxy-chain');
@@ -110,10 +110,127 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
+## Run simple HTTPS proxy server
+
+This example demonstrates how to create an HTTPS proxy server with a self-signed certificate.
+The HTTPS proxy server works identically to the HTTP version but with TLS encryption.
+
+```javascript
+// examples/https_proxy_server.js
+const { Server, generateCertificate } = require('proxy-chain');
+
+(async () => {
+    // Generate a self-signed certificate for development/testing
+    // In production, you should use a proper certificate from a Certificate Authority
+    console.log('Generating self-signed certificate...');
+    const { key, cert } = generateCertificate({
+        commonName: 'localhost',
+        validityDays: 365,
+        organization: 'Development',
+    });
+
+    console.log('Certificate generated successfully!');
+
+    // Create an HTTPS proxy server
+    const server = new Server({
+        // Main difference between 'http' and 'https' is additional event listening:
+        //
+        // http
+        // -> listen for 'connection' events to track raw TCP sockets
+        //
+        // https:
+        // -> listen for 'securedConnection' events (insted of 'connection') to track only post-TLS-handshake sockets
+        // -> additionally listen for 'tlsClientError' events to handle TLS handshake errors
+        //
+        // Default value is 'http'
+        serverType: 'https',
+
+        // Provide the TLS certificate and private key
+        httpsOptions: {
+            key,
+            cert,
+        },
+
+        // Port where the server will listen
+        port: 8443,
+
+        // Enable verbose logging to see what's happening
+        verbose: true,
+
+        // Optional: Add authentication and upstream proxy configuration
+        prepareRequestFunction: ({ username, hostname, port }) => {
+            console.log(`Request to ${hostname}:${port} from user: ${username || 'anonymous'}`);
+
+            // Allow the request
+            return {};
+        },
+    });
+
+    // Handle failed HTTP/HTTPS requests
+    server.on('requestFailed', ({ request, error }) => {
+        console.log(`Request ${request.url} failed`);
+        console.error(error);
+    });
+
+    // Handle TLS handshake errors
+    server.on('tlsError', ({ error, socket }) => {
+        console.error(`TLS error from ${socket.remoteAddress}: ${error.message}`);
+    });
+
+    // Emitted when HTTP/HTTPS connection is closed
+    server.on('connectionClosed', ({ connectionId, stats }) => {
+        console.log(`Connection ${connectionId} closed`);
+        console.dir(stats);
+    });
+
+    // Start the server
+    await server.listen();
+
+    // Handle graceful shutdown
+    process.on('SIGINT', async () => {
+        console.log('\nShutting down server...');
+        await server.close(true);
+        console.log('Server closed.');
+        process.exit(0);
+    });
+
+    // Keep the server running
+    await new Promise(() => { });
+})();
+```
+
+Run server:
+
+```bash
+node examples/https_proxy_server.js
+```
+
+Send request via proxy:
+
+```bash
+curl --proxy-insecure -x https://localhost:8443 -k https://example.com
+```
+
+Note: flag `--proxy-insecure` is used since our certificate is self-signed.
+
 ## SOCKS support
 SOCKS protocol is supported for versions 4 and 5, specifically: `['socks', 'socks4', 'socks4a', 'socks5', 'socks5h']`, where `socks` will default to version 5.
 
 You can use an `upstreamProxyUrl` like `socks://username:password@proxy.example.com:1080`.
+
+## Emitted Events
+
+The `Server` class emits the following events that you can listen to for monitoring and debugging purposes:
+
+| Event Name | Description | Event Data |
+|------------|-------------|------------|
+| `connectionClosed` | Emitted when an HTTP/HTTPS connection to the proxy server is closed. Useful for monitoring traffic and cleaning up resources. | `{ connectionId: number, stats: ConnectionStats }` |
+| `requestFailed` | Emitted when an HTTP/HTTPS request fails with an unexpected error (not a `RequestError`). Useful for error monitoring and logging. | `{ error: Error, request: http.IncomingMessage }` |
+| `tlsError` | Emitted when TLS handshake fails (HTTPS servers only). Useful for monitoring SSL/TLS issues. The server handles the error internally. | `{ error: Error, socket: tls.TLSSocket }` |
+| `tunnelConnectResponded` | Emitted when a CONNECT tunnel to an upstream proxy is successfully established. Useful for accessing response headers from the upstream proxy. | `{ proxyChainId: number, response: http.IncomingMessage, socket: net.Socket, head: Buffer, customTag?: unknown }` |
+| `tunnelConnectFailed` | Emitted when a CONNECT tunnel to an upstream proxy fails (receives non-200 status code). Useful for monitoring upstream proxy issues. | `{ proxyChainId: number, response: http.IncomingMessage, socket: net.Socket, head: Buffer, customTag?: unknown }` |
+
+All events are optional to handle - the proxy server will function correctly without any event listeners.
 
 ## Error status codes
 

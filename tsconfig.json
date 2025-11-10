@@ -1,9 +1,9 @@
 {
-	"extends": "@apify/tsconfig",
-	"compilerOptions": {
-		"outDir": "dist"
-	},
-	"include": [
-		"src"
-	]
+    "extends": "@apify/tsconfig",
+    "compilerOptions": {
+        "outDir": "dist"
+    },
+    "include": [
+        "src"
+    ]
 }

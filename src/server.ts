@@ -3,7 +3,9 @@ import { Buffer } from 'node:buffer';
 import type dns from 'node:dns';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
+import https from 'node:https';
 import type net from 'node:net';
+import type tls from 'node:tls';
 import { URL } from 'node:url';
 import util from 'node:util';
 
@@ -18,7 +20,7 @@ import type { HandlerOpts as ForwardOpts } from './forward';
 import { forward } from './forward';
 import { forwardSocks } from './forward_socks';
 import { RequestError } from './request_error';
-import type { Socket } from './socket';
+import type { Socket, TLSSocket } from './socket';
 import { badGatewayStatusCodes } from './statuses';
 import { getTargetStats } from './utils/count_target_bytes';
 import { nodeify } from './utils/nodeify';
@@ -40,10 +42,45 @@ export const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'soc
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 
+const HTTPS_DEFAULTS = {
+    minVersion: 'TLSv1.2', // Disable TLS 1.0 and 1.1 (deprecated, insecure)
+    maxVersion: 'TLSv1.3', // Enable modern TLS 1.3
+    // Strong cipher suites (TLS 1.3 and TLS 1.2)
+    ciphers: [
+        // TLS 1.3 ciphers (always enabled with TLS 1.3)
+        'TLS_AES_128_GCM_SHA256',
+        'TLS_AES_256_GCM_SHA384',
+        'TLS_CHACHA20_POLY1305_SHA256',
+        // TLS 1.2 ciphers (strong only)
+        'ECDHE-RSA-AES128-GCM-SHA256',
+        'ECDHE-RSA-AES256-GCM-SHA384',
+    ].join(':'),
+} as const;
+
+/**
+ * Connection statistics for bandwidth tracking and billing.
+ *
+ * Byte Semantics by Server Type:
+ *
+ * - HTTP servers: Source bytes represent application-layer traffic only
+ * - HTTPS servers: Source bytes include TLS handshake overhead and encryption overhead (total consumed bandwidth)
+ *   - Typical TLS overhead: 10-20% for TLS 1.2, 5-15% for TLS 1.3
+ *   - Higher overhead for short-lived connections (handshake-dominated)
+ *   - Lower overhead for long-lived connections (handshake amortized)
+ *
+ * Target bytes: Always represent application-layer traffic only (both HTTP and HTTPS)
+ *
+ * Failed handshakes: Only successful TLS connections are tracked here.
+ * Failed handshakes emit 'tlsError' event for monitoring.
+ */
 export type ConnectionStats = {
+    // Bytes sent to client (HTTP: app only, HTTPS: total including TLS overhead)
     srcTxBytes: number;
+    // Bytes received from client (HTTP: app only, HTTPS: total including TLS overhead)
     srcRxBytes: number;
+    // Bytes sent to target (always application-layer, null if no target connection)
     trgTxBytes: number | null;
+    // Bytes received from target (always application-layer, null if no target connection)
     trgRxBytes: number | null;
 };
 
@@ -91,10 +128,32 @@ export type PrepareRequestFunctionResult = {
 type Promisable<T> = T | Promise<T>;
 export type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promisable<undefined | PrepareRequestFunctionResult>;
 
+interface ServerOptionsBase {
+    port?: number;
+    host?: string;
+    prepareRequestFunction?: PrepareRequestFunction;
+    verbose?: boolean;
+    authRealm?: unknown;
+}
+
+export interface HttpServerOptions extends ServerOptionsBase {
+    serverType?: 'http';
+}
+
+export interface HttpsServerOptions extends ServerOptionsBase {
+    serverType: 'https';
+    httpsOptions: https.ServerOptions;
+}
+
+export type ServerOptions = HttpServerOptions | HttpsServerOptions;
+
 /**
  * Represents the proxy server.
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
+ * It emits the 'tlsError' event on TLS handshake failures (HTTPS servers only), with parameter `{ error, socket }`.
+ * It emits the 'tlsOverheadUnavailable' event when TLS overhead tracking is unavailable (HTTPS servers only),
+ * with parameter `{ connectionId, reason, hasParent, parentType }`.
  */
 export class Server extends EventEmitter {
     port: number;
@@ -107,7 +166,9 @@ export class Server extends EventEmitter {
 
     verbose: boolean;
 
-    server: http.Server;
+    server: http.Server | https.Server;
+
+    serverType: 'http' | 'https';
 
     lastHandlerId: number;
 
@@ -119,6 +180,9 @@ export class Server extends EventEmitter {
      * Initializes a new instance of Server class.
      * @param options
      * @param [options.port] Port where the server will listen. By default 8000.
+     * @param [options.serverType] Type of server to create: 'http' or 'https'. By default 'http'.
+     * @param [options.httpsOptions] HTTPS server options (required when serverType is 'https').
+     * Accepts standard Node.js https.ServerOptions including key, cert, ca, passphrase, etc.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests,
      * provide URL to upstream proxy or potentially provide a function that generates a custom response to HTTP requests.
      * It accepts a single parameter which is an object:
@@ -149,13 +213,7 @@ export class Server extends EventEmitter {
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server will output logs
      */
-    constructor(options: {
-        port?: number,
-        host?: string,
-        prepareRequestFunction?: PrepareRequestFunction,
-        verbose?: boolean,
-        authRealm?: unknown,
-    } = {}) {
+    constructor(options: ServerOptions = {}) {
         super();
 
         if (options.port === undefined || options.port === null) {
@@ -169,11 +227,44 @@ export class Server extends EventEmitter {
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
 
-        this.server = http.createServer();
+        // Create server based on type
+        if (options.serverType === 'https') {
+            if (!options.httpsOptions) {
+                throw new Error('httpsOptions is required when serverType is "https"');
+            }
+
+            // Apply secure TLS defaults (user options can override)
+            // This prevents users from accidentally configuring insecure TLS settings
+            const secureDefaults: https.ServerOptions = {
+                ...HTTPS_DEFAULTS,
+                honorCipherOrder: true, // Server chooses cipher (prevents downgrade attacks)
+                ...options.httpsOptions, // User options override defaults
+            };
+
+            this.server = https.createServer(secureDefaults);
+            this.serverType = 'https';
+        } else {
+            this.server = http.createServer();
+            this.serverType = 'http';
+        }
+
+        // Attach common event handlers (same for both HTTP and HTTPS)
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
         this.server.on('connect', this.onConnect.bind(this));
-        this.server.on('connection', this.onConnection.bind(this));
+
+        // Attach connection tracking based on server type
+        // CRITICAL: Only listen to ONE connection event to avoid double registration
+        if (this.serverType === 'https') {
+            // For HTTPS: Track only post-TLS-handshake sockets (secureConnection)
+            // This ensures we track the TLS-wrapped socket with correct bytesRead/bytesWritten
+            this.server.on('secureConnection', this.onConnection.bind(this));
+            // Handle TLS handshake errors to prevent server crashes
+            this.server.on('tlsClientError', this.onTLSClientError.bind(this));
+        } else {
+            // For HTTP: Track raw TCP sockets (connection)
+            this.server.on('connection', this.onConnection.bind(this));
+        }
 
         this.lastHandlerId = 0;
         this.stats = {
@@ -195,12 +286,36 @@ export class Server extends EventEmitter {
     onClientError(err: NodeJS.ErrnoException, socket: Socket): void {
         this.log(socket.proxyChainId, `onClientError: ${err}`);
 
+        // HTTP protocol error occurred after TLS handshake succeeded (in case HTTPS server is used)
         // https://nodejs.org/api/http.html#http_event_clienterror
         if (err.code === 'ECONNRESET' || !socket.writable) {
             return;
         }
 
+        // Can send HTTP response because HTTP protocol layer is active
         this.sendSocketResponse(socket, 400, {}, 'Invalid request');
+    }
+
+    /**
+     * Handles TLS handshake errors for HTTPS servers.
+     * Without this handler, unhandled TLS errors can crash the server.
+     * Common errors: ECONNRESET, ERR_SSL_SSLV3_ALERT_CERTIFICATE_UNKNOWN,
+     * ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION, ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE
+     */
+    onTLSClientError(err: NodeJS.ErrnoException, tlsSocket: tls.TLSSocket): void {
+        const connectionId = (tlsSocket as TLSSocket).proxyChainId;
+        this.log(connectionId, `TLS handshake failed: ${err.message}`);
+
+        // If connection already reset or socket not writable, nothing to do
+        if (err.code === 'ECONNRESET' || !tlsSocket.writable) {
+            return;
+        }
+
+        // TLS handshake failed before HTTP, cannot send HTTP response
+        tlsSocket.destroy(err);
+
+        // Emit event for user monitoring/metrics
+        this.emit('tlsError', { error: err, socket: tlsSocket });
     }
 
     /**
@@ -243,11 +358,33 @@ export class Server extends EventEmitter {
         // We need to consume socket errors, because the handlers are attached asynchronously.
         // See https://github.com/apify/proxy-chain/issues/53
         socket.on('error', (err) => {
-            // Handle errors only if there's no other handler
-            if (this.listenerCount('error') === 1) {
+            // Prevent duplicate error handling for the same socket
+            if (socket.proxyChainErrorHandled) return;
+            socket.proxyChainErrorHandled = true;
+
+            // Log errors only if this is the only error handler on the socket
+            // If other handlers exist (from handler functions), they'll handle logging
+            if (socket.listenerCount('error') === 1) {
                 this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });
+
+        // Check once per connection for socket._parent availability.
+        if (this.serverType === 'https') {
+            const rawSocket = socket._parent;
+            if (!rawSocket || typeof rawSocket.bytesWritten !== 'number' || typeof rawSocket.bytesRead !== 'number') {
+                // Emit event for observability purposes that TLS overhead for https is unavailable.
+                this.emit('tlsOverheadUnavailable', {
+                    connectionId: socket.proxyChainId,
+                    reason: 'raw_socket_missing',
+                    hasParent: !!rawSocket,
+                    parentType: rawSocket?.constructor?.name,
+                });
+                socket.tlsOverheadAvailable = false;
+            } else {
+                socket.tlsOverheadAvailable = true;
+            }
+        }
     }
 
     /**
@@ -613,16 +750,33 @@ export class Server extends EventEmitter {
         const socket = this.connections.get(connectionId);
         if (!socket) return undefined;
 
+        // Socket contains application bytes only.
+        let srcTxBytes = socket.bytesWritten ?? 0;
+        let srcRxBytes = socket.bytesRead ?? 0;
+
+        if (this.serverType === 'https' && socket.tlsOverheadAvailable) {
+            /* eslint no-underscore-dangle: ["error", { "allow": ["_parent"] }] */
+            // Access underlying raw socket to get total bytes (app + TLS overhead).
+            const rawSocket = socket._parent;
+            if (rawSocket && typeof rawSocket.bytesWritten === 'number' && typeof rawSocket.bytesRead === 'number') {
+                if (rawSocket.bytesWritten >= socket.bytesWritten && rawSocket.bytesRead >= socket.bytesRead) {
+                    srcTxBytes = rawSocket.bytesWritten;
+                    srcRxBytes = rawSocket.bytesRead;
+                } else {
+                    // This should never happen, log for debugging.
+                    this.log(connectionId, `Warning: TLS overhead count error.`);
+                }
+            }
+        }
+
         const targetStats = getTargetStats(socket);
 
-        const result = {
-            srcTxBytes: socket.bytesWritten,
-            srcRxBytes: socket.bytesRead,
-            trgTxBytes: targetStats.bytesWritten,
-            trgRxBytes: targetStats.bytesRead,
+        return {
+            srcTxBytes, // HTTP: app only, HTTPS: total (app + TLS overhead)
+            srcRxBytes, // HTTP: app only, HTTPS: total (app + TLS overhead)
+            trgTxBytes: targetStats?.bytesWritten,
+            trgRxBytes: targetStats?.bytesRead,
         };
-
-        return result;
     }
 
     /**
