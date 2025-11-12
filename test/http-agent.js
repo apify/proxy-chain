@@ -199,14 +199,18 @@ describe('HTTP Agent Support', () => {
             request({
                 url: `${targetServerUrl}/hello-world`,
                 proxy: `http://localhost:${mainProxyServerPort}`,
+                forever: true, // Keep socket alive
             }, (error, response) => {
                 if (error) return reject(error);
                 expect(response.statusCode).to.eql(200);
-                resolve();
+
+                // Keep the connection alive briefly to check stats
+                setImmediate(() => resolve());
             });
         });
 
-        // Verify getConnectionStats still works
+        // Verify getConnectionStats works while connection may still be open
+        expect(connectionId).to.not.be.undefined;
         const stats = mainProxyServer.getConnectionStats(connectionId);
         expect(stats).to.be.an('object');
         expect(stats.srcTxBytes).to.be.a('number');
