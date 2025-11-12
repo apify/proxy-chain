@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import type dns from 'node:dns';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
+import https from 'node:https';
 import type net from 'node:net';
 import { URL } from 'node:url';
 import util from 'node:util';
@@ -63,6 +64,8 @@ type HandlerOpts = {
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
     customTag?: unknown;
+    httpAgent?: http.Agent;
+    httpsAgent?: https.Agent;
 };
 
 export type PrepareRequestFunctionOpts = {
@@ -86,6 +89,8 @@ export type PrepareRequestFunctionResult = {
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
     customTag?: unknown;
+    httpAgent?: http.Agent;
+    httpsAgent?: https.Agent;
 };
 
 type Promisable<T> = T | Promise<T>;
@@ -453,6 +458,8 @@ export class Server extends EventEmitter {
         handlerOpts.dnsLookup = funcResult.dnsLookup;
         handlerOpts.customConnectServer = funcResult.customConnectServer;
         handlerOpts.customTag = funcResult.customTag;
+        handlerOpts.httpAgent = funcResult.httpAgent;
+        handlerOpts.httpsAgent = funcResult.httpsAgent;
 
         // If not authenticated, request client to authenticate
         if (funcResult.requestAuthentication) {

@@ -27,6 +27,8 @@ export interface HandlerOpts {
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
     customTag?: unknown;
+    httpAgent?: http.Agent;
+    httpsAgent?: https.Agent;
 }
 
 interface ChainOpts {
@@ -87,8 +89,12 @@ export const chain = (
         ? https.request(proxy.origin, {
             ...options,
             rejectUnauthorized: !handlerOpts.ignoreUpstreamProxyCertificate,
+            agent: handlerOpts.httpsAgent,
         })
-        : http.request(proxy.origin, options);
+        : http.request(proxy.origin, {
+            ...options,
+            agent: handlerOpts.httpAgent,
+        });
 
     client.once('socket', (targetSocket: SocketWithPreviousStats) => {
         // Socket can be re-used by multiple requests.
