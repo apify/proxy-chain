@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const http = require('http');
 const https = require('https');
 const { expect } = require('chai');
@@ -7,6 +9,9 @@ const request = require('request');
 
 const { Server } = require('../src/index');
 const { TargetServer } = require('./utils/target_server');
+
+const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 
 describe('HTTP Agent Support', () => {
     let mainProxyServer;
@@ -261,6 +266,130 @@ describe('HTTP Agent Support', () => {
         });
 
         expect(httpAgentUsed).to.be.true;
+
+        httpAgent.destroy();
+        httpsAgent.destroy();
+    });
+
+    it('works with HTTPS targets using CONNECT tunneling', async () => {
+        if (mainProxyServer) await mainProxyServer.close(true);
+
+        // Close existing HTTP target server
+        const originalTargetServer = targetServer;
+        const originalTargetServerUrl = targetServerUrl;
+        await targetServer.close();
+
+        // Setup HTTPS target server on new port. Use different range to avoid conflicts with http server
+        const httpsFreePorts = await portastic.find({ min: 50100, max: 50200 });
+        const httpsTargetPort = httpsFreePorts.shift();
+
+        targetServer = new TargetServer({
+            port: httpsTargetPort,
+            useSsl: true,
+            sslKey,
+            sslCrt,
+        });
+        await targetServer.listen();
+        const httpsTargetUrl = `https://localhost:${httpsTargetPort}`;
+
+        const httpAgent = new http.Agent({
+            keepAlive: true,
+            maxSockets: 1,
+        });
+
+        let requestCount = 0;
+
+        mainProxyServer = new Server({
+            port: mainProxyServerPort,
+            prepareRequestFunction: () => {
+                requestCount++;
+                return {
+                    upstreamProxyUrl: `http://localhost:${upstreamProxyPort}`,
+                    httpAgent,
+                };
+            },
+        });
+
+        await mainProxyServer.listen();
+
+        // Make multiple HTTPS requests through CONNECT tunnel
+        for (let i = 0; i < 2; i++) {
+            await new Promise((resolve, reject) => {
+                request({
+                    url: `${httpsTargetUrl}/hello-world`,
+                    proxy: `http://localhost:${mainProxyServerPort}`,
+                    strictSSL: false, // Allow self-signed cert
+                }, (error, response) => {
+                    if (error) return reject(error);
+                    expect(response.statusCode).to.eql(200);
+                    resolve();
+                });
+            });
+        }
+
+        // Verify both requests were handled
+        expect(requestCount).to.eql(2);
+
+        httpAgent.destroy();
+
+        // Restore original HTTP target server
+        await targetServer.close();
+        targetServer = originalTargetServer;
+        targetServerUrl = originalTargetServerUrl;
+        await targetServer.listen();
+    });
+
+    it('uses httpsAgent with HTTPS upstream proxy', async () => {
+        if (mainProxyServer) await mainProxyServer.close(true);
+
+        const httpAgent = new http.Agent({ keepAlive: true });
+        const httpsAgent = new https.Agent({ keepAlive: true });
+
+        let httpsAgentUsed = false;
+
+        // Track httpsAgent usage by monitoring its getName method which is called during agent selection
+        const originalGetName = httpsAgent.getName;
+        httpsAgent.getName = function(...args) {
+            httpsAgentUsed = true;
+            return originalGetName.apply(this, args);
+        };
+
+        mainProxyServer = new Server({
+            port: mainProxyServerPort,
+            prepareRequestFunction: () => {
+                return {
+                    // Use HTTPS upstream proxy URL
+                    upstreamProxyUrl: `https://localhost:${upstreamProxyPort}`,
+                    ignoreUpstreamProxyCertificate: true,
+                    httpAgent,
+                    httpsAgent,
+                };
+            },
+        });
+
+        await mainProxyServer.listen();
+
+        // Make HTTP request - will fail but that's expected (upstream isn't HTTPS)
+        // We're just verifying httpsAgent gets selected for https:// upstream URLs
+        await new Promise((resolve) => {
+            request({
+                url: `${targetServerUrl}/hello-world`,
+                proxy: `http://localhost:${mainProxyServerPort}`,
+                timeout: 2000,
+            }, () => {
+                // Ignore result, we're testing agent selection
+                resolve();
+            });
+        });
+
+        // Wait for agent selection to occur
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Restore original method
+        httpsAgent.getName = originalGetName;
+
+        // Verify httpsAgent was selected for https:// upstream proxy URL
+        expect(httpsAgentUsed).to.be.true;
 
         httpAgent.destroy();
         httpsAgent.destroy();
