@@ -1,6 +1,6 @@
 FROM node:18.20.8-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783
 
-RUN apt-get update && apt-get install -y --no-install-recommends chromium=140.0.7339.185-1~deb12u1 \
+RUN apt-get update && apt-get install -y --no-install-recommends chromium \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
