@@ -97,6 +97,24 @@ describe('HTTP Agent Support', () => {
 
     it('reuses connections with keepAlive agents (sticky IP simulation)', async () => {
         if (mainProxyServer) await mainProxyServer.close(true);
+        if (upstreamProxyServer) upstreamProxyServer.close();
+
+        // Track connections at upstream proxy to verify pooling behavior
+        let upstreamConnectionCount = 0;
+
+        // Recreate upstream proxy with connection tracking
+        await new Promise((resolve, reject) => {
+            const httpServer = http.createServer();
+            httpServer.on('connection', () => {
+                upstreamConnectionCount++;
+            });
+
+            upstreamProxyServer = proxy(httpServer);
+            upstreamProxyServer.listen(upstreamProxyPort, (err) => {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
 
         const httpAgent = new http.Agent({
             keepAlive: true,
@@ -104,13 +122,6 @@ describe('HTTP Agent Support', () => {
         });
 
         let requestCount = 0;
-        const socketIds = [];
-
-        // Track sockets to verify reuse
-        httpAgent.on('free', (socket) => {
-            const socketId = `${socket.remoteAddress}:${socket.remotePort}`;
-            socketIds.push(socketId);
-        });
 
         mainProxyServer = new Server({
             port: mainProxyServerPort,
@@ -140,14 +151,8 @@ describe('HTTP Agent Support', () => {
         }
 
         expect(requestCount).to.eql(3);
-
-        // Verify sockets were reused (all should have same remote address:port)
-        if (socketIds.length > 1) {
-            const firstSocketId = socketIds[0];
-            socketIds.forEach((socketId) => {
-                expect(socketId).to.eql(firstSocketId, 'Socket was reused for connection pooling');
-            });
-        }
+        // Verify connection pooling: fewer connections than requests
+        expect(upstreamConnectionCount).to.be.eql(1, 'Connection pooling should reuse connections');
 
         httpAgent.destroy();
     });
@@ -215,11 +220,17 @@ describe('HTTP Agent Support', () => {
         });
 
         // Verify getConnectionStats works while connection may still be open
-        expect(connectionId).to.not.be.undefined;
+        expect(connectionId).to.be.a('number');
         const stats = mainProxyServer.getConnectionStats(connectionId);
         expect(stats).to.be.an('object');
         expect(stats.srcTxBytes).to.be.a('number');
+        expect(stats.srcTxBytes).to.be.greaterThan(0);
         expect(stats.srcRxBytes).to.be.a('number');
+        expect(stats.srcRxBytes).to.be.greaterThan(0);
+        expect(stats.trgTxBytes).to.be.a('number');
+        expect(stats.trgTxBytes).to.be.greaterThan(0);
+        expect(stats.trgRxBytes).to.be.a('number');
+        expect(stats.trgRxBytes).to.be.greaterThan(0);
 
         httpAgent.destroy();
     });
@@ -345,20 +356,28 @@ describe('HTTP Agent Support', () => {
         const httpAgent = new http.Agent({ keepAlive: true });
         const httpsAgent = new https.Agent({ keepAlive: true });
 
+        let httpAgentUsed = false;
         let httpsAgentUsed = false;
 
-        // Track httpsAgent usage by monitoring its getName method which is called during agent selection
-        const originalGetName = httpsAgent.getName;
-        httpsAgent.getName = function(...args) {
+        // Track which agent's createConnection is called
+        const originalHttpCreateConnection = httpAgent.createConnection;
+        httpAgent.createConnection = function(...args) {
+            httpAgentUsed = true;
+            return originalHttpCreateConnection.apply(this, args);
+        };
+
+        const originalHttpsCreateConnection = httpsAgent.createConnection;
+        httpsAgent.createConnection = function(...args) {
             httpsAgentUsed = true;
-            return originalGetName.apply(this, args);
+            return originalHttpsCreateConnection.apply(this, args);
         };
 
         mainProxyServer = new Server({
             port: mainProxyServerPort,
             prepareRequestFunction: () => {
                 return {
-                    // Use HTTPS upstream proxy URL
+                    // Use HTTP upstream but pretend it's HTTPS to test agent selection
+                    // The protocol in the URL determines which agent is used
                     upstreamProxyUrl: `https://localhost:${upstreamProxyPort}`,
                     ignoreUpstreamProxyCertificate: true,
                     httpAgent,
@@ -369,27 +388,24 @@ describe('HTTP Agent Support', () => {
 
         await mainProxyServer.listen();
 
-        // Make HTTP request - will fail but that's expected (upstream isn't HTTPS)
-        // We're just verifying httpsAgent gets selected for https:// upstream URLs
+        // Make HTTP request - will likely fail due to protocol mismatch, but agent selection will occur
         await new Promise((resolve) => {
             request({
                 url: `${targetServerUrl}/hello-world`,
                 proxy: `http://localhost:${mainProxyServerPort}`,
-                timeout: 2000,
+                timeout: 1000,
             }, () => {
-                // Ignore result, we're testing agent selection
+                // Ignore result - we're verifying agent selection behavior
                 resolve();
             });
         });
 
-        // Wait for agent selection to occur
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Wait for agent usage
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Restore original method
-        httpsAgent.getName = originalGetName;
-
-        // Verify httpsAgent was selected for https:// upstream proxy URL
+        // Verify httpsAgent was used (not httpAgent) because upstream URL uses https://
         expect(httpsAgentUsed).to.be.true;
+        expect(httpAgentUsed).to.be.false;
 
         httpAgent.destroy();
         httpsAgent.destroy();
