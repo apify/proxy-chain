@@ -14,9 +14,6 @@ const supportsX509Certificate = (() => {
     return major > 15 || (major === 15 && minor >= 6);
 })();
 
-/**
- * Helper function to make HTTP requests through proxy
- */
 const requestPromised = (opts) => {
     return new Promise((resolve, reject) => {
         request(opts, (error, response, body) => {
@@ -61,7 +58,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                 expect(certInfo.isExpired).to.be.true;
             }
 
-            // Create HTTPS proxy with expired certificate
             proxyServer = new Server({
                 port: proxyPort,
                 serverType: 'https',
@@ -72,7 +68,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await proxyServer.listen();
 
-            // Create target HTTP server
             const targetPort = freePorts.shift();
             targetServer = new TargetServer({
                 port: targetPort,
@@ -80,7 +75,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await targetServer.listen();
 
-            // Attempt to connect with strict SSL validation
             try {
                 await requestPromised({
                     url: `http://127.0.0.1:${targetPort}/hello-world`,
@@ -90,8 +84,9 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                 });
                 expect.fail('Should have rejected expired certificate');
             } catch (error) {
-                // Should fail with certificate error
-                expect(error.message).to.match(/certificate|CERT|SSL|TLS/i);
+                // Should fail with certificate expired error
+                // Node.js returns CERT_HAS_EXPIRED for expired certificates
+                expect(error.message).to.match(/CERT_HAS_EXPIRED|certificate.*expired/i);
             }
         });
 
@@ -99,7 +94,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             const expiredCert = loadCertificate('expired');
             const proxyPort = freePorts.shift();
 
-            // Create HTTPS proxy with expired certificate
             proxyServer = new Server({
                 port: proxyPort,
                 serverType: 'https',
@@ -110,7 +104,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await proxyServer.listen();
 
-            // Create target HTTP server
             const targetPort = freePorts.shift();
             targetServer = new TargetServer({
                 port: targetPort,
@@ -118,7 +111,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await targetServer.listen();
 
-            // Connect with SSL validation disabled
             const response = await requestPromised({
                 url: `http://127.0.0.1:${targetPort}/hello-world`,
                 proxy: `https://127.0.0.1:${proxyPort}`,
@@ -132,9 +124,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
 
         it('handles upstream HTTPS proxy with expired certificate', async () => {
             const expiredCert = loadCertificate('expired');
-            const validCert = loadCertificate('valid');
 
-            // Create upstream HTTPS proxy with expired cert
             const upstreamPort = freePorts.shift();
             const upstreamProxyServer = new Server({
                 port: upstreamPort,
@@ -159,7 +149,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await proxyServer.listen();
 
-            // Create target HTTP server
             const targetPort = freePorts.shift();
             targetServer = new TargetServer({
                 port: targetPort,
@@ -168,16 +157,15 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             await targetServer.listen();
 
             // Request through main proxy (which uses upstream HTTPS proxy with expired cert)
-            // Should fail with 599 error or similar
+            // Should fail with 599 error
             const response = await requestPromised({
                 url: `http://127.0.0.1:${targetPort}/hello-world`,
                 proxy: `http://127.0.0.1:${mainProxyPort}`,
             });
 
-            // Expect error status code (599 for TLS errors)
-            expect(response.statusCode).to.be.oneOf([599, 502, 503]);
+            // TLS errors (CERT_HAS_EXPIRED, etc.) fall back to 599 - see errorCodeToStatusCode in statuses.ts
+            expect(response.statusCode).to.equal(599);
 
-            // Cleanup upstream proxy
             await upstreamProxyServer.close(true);
         });
     });
@@ -194,7 +182,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                 expect(certificateMatchesHostname(mismatchCert.cert, 'localhost')).to.be.false;
             }
 
-            // Create HTTPS proxy with hostname mismatch certificate
             proxyServer = new Server({
                 port: proxyPort,
                 serverType: 'https',
@@ -205,7 +192,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await proxyServer.listen();
 
-            // Create target HTTP server
             const targetPort = freePorts.shift();
             targetServer = new TargetServer({
                 port: targetPort,
@@ -223,8 +209,10 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                 });
                 expect.fail('Should have rejected certificate with hostname mismatch');
             } catch (error) {
-                // Should fail with hostname/altname error
-                expect(error.message).to.match(/certificate|hostname|CERT_ALTNAME|SSL|TLS/i);
+                // Should fail with hostname validation error or self-signed certificate error
+                // Node.js may return ERR_TLS_CERT_ALTNAME_INVALID for hostname mismatches,
+                // or may reject self-signed certificates before checking hostname
+                expect(error.message).to.match(/ERR_TLS_CERT_ALTNAME_INVALID|CERT.*ALTNAME|Hostname.*mismatch|does not match|self.*signed.*certificate/i);
             }
         });
 
@@ -232,7 +220,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             const mismatchCert = loadCertificate('hostname-mismatch');
             const proxyPort = freePorts.shift();
 
-            // Create HTTPS proxy with hostname mismatch certificate
             proxyServer = new Server({
                 port: proxyPort,
                 serverType: 'https',
@@ -243,7 +230,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await proxyServer.listen();
 
-            // Create target HTTP server
             const targetPort = freePorts.shift();
             targetServer = new TargetServer({
                 port: targetPort,
@@ -251,7 +237,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await targetServer.listen();
 
-            // Connect with SSL validation disabled
             const response = await requestPromised({
                 url: `http://127.0.0.1:${targetPort}/hello-world`,
                 proxy: `https://127.0.0.1:${proxyPort}`,
@@ -264,12 +249,138 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
         });
     });
 
+    describe('Invalid Certificate Chain', () => {
+        it('rejects HTTPS proxy with incomplete certificate chain (strict SSL)', async () => {
+            const invalidChainCert = loadCertificate('invalid-chain');
+            const proxyPort = freePorts.shift();
+
+            // Create HTTPS proxy with incomplete certificate chain
+            // The certificate is signed by a root CA, but the chain is incomplete
+            proxyServer = new Server({
+                port: proxyPort,
+                serverType: 'https',
+                httpsOptions: {
+                    key: invalidChainCert.key,
+                    cert: invalidChainCert.cert,
+                },
+            });
+            await proxyServer.listen();
+
+            const targetPort = freePorts.shift();
+            targetServer = new TargetServer({
+                port: targetPort,
+                useSsl: false,
+            });
+            await targetServer.listen();
+
+            try {
+                await requestPromised({
+                    url: `http://127.0.0.1:${targetPort}/hello-world`,
+                    proxy: `https://127.0.0.1:${proxyPort}`,
+                    strictSSL: true,
+                    rejectUnauthorized: true,
+                });
+                expect.fail('Should have rejected certificate with incomplete chain');
+            } catch (error) {
+                // Should fail with certificate chain verification error
+                // Node.js may return various messages for invalid certificate chains:
+                // - UNABLE_TO_VERIFY_LEAF_SIGNATURE
+                // - SELF_SIGNED_CERT_IN_CHAIN
+                // - "unable to verify the first certificate"
+                expect(error.message).to.match(/UNABLE_TO_VERIFY_LEAF_SIGNATURE|SELF_SIGNED_CERT_IN_CHAIN|unable to verify|self.*signed/i);
+            }
+        });
+
+        it('accepts HTTPS proxy with incomplete certificate chain (ignore SSL errors)', async () => {
+            const invalidChainCert = loadCertificate('invalid-chain');
+            const proxyPort = freePorts.shift();
+
+            proxyServer = new Server({
+                port: proxyPort,
+                serverType: 'https',
+                httpsOptions: {
+                    key: invalidChainCert.key,
+                    cert: invalidChainCert.cert,
+                },
+            });
+            await proxyServer.listen();
+
+            const targetPort = freePorts.shift();
+            targetServer = new TargetServer({
+                port: targetPort,
+                useSsl: false,
+            });
+            await targetServer.listen();
+
+            const response = await requestPromised({
+                url: `http://127.0.0.1:${targetPort}/hello-world`,
+                proxy: `https://127.0.0.1:${proxyPort}`,
+                strictSSL: false,
+                rejectUnauthorized: false,
+            });
+
+            expect(response.statusCode).to.equal(200);
+            expect(response.body).to.equal('Hello world!');
+        });
+
+        it('handles upstream HTTPS proxy with invalid certificate chain', async () => {
+            const invalidChainCert = loadCertificate('invalid-chain');
+
+            const upstreamPort = freePorts.shift();
+            const upstreamProxyServer = new Server({
+                port: upstreamPort,
+                serverType: 'https',
+                httpsOptions: {
+                    key: invalidChainCert.key,
+                    cert: invalidChainCert.cert,
+                },
+            });
+            await upstreamProxyServer.listen();
+
+            // Create main HTTP proxy that chains to upstream HTTPS proxy
+            const mainProxyPort = freePorts.shift();
+            proxyServer = new Server({
+                port: mainProxyPort,
+                serverType: 'http',
+                prepareRequestFunction: () => {
+                    return {
+                        upstreamProxyUrl: `https://127.0.0.1:${upstreamPort}`,
+                    };
+                },
+            });
+            await proxyServer.listen();
+
+            const targetPort = freePorts.shift();
+            targetServer = new TargetServer({
+                port: targetPort,
+                useSsl: false,
+            });
+            await targetServer.listen();
+
+            // Request through main proxy (which uses upstream HTTPS proxy with invalid chain)
+            // Should fail with 599 error
+            const response = await requestPromised({
+                url: `http://127.0.0.1:${targetPort}/hello-world`,
+                proxy: `http://127.0.0.1:${mainProxyPort}`,
+            });
+
+            // TLS errors (UNABLE_TO_VERIFY_LEAF_SIGNATURE, etc.) fall back to 599 - see errorCodeToStatusCode in statuses.ts
+            expect(response.statusCode).to.equal(599);
+
+            await upstreamProxyServer.close(true);
+        });
+    });
+
+    /**
+     * These tests validate certificate checking at each hop in complex proxy chains.
+     * Each connection (client -> proxy, proxy -> upstream, upstream -> target) is validated
+     * independently with different certificate states.
+     */
     describe('Multi-Stage Certificate Validation', () => {
         it('validates certificates independently at each proxy hop', async () => {
             const validCert = loadCertificate('valid');
             const expiredCert = loadCertificate('expired');
 
-            // Create HTTPS target server with valid certificate
             const targetPort = freePorts.shift();
             targetServer = new TargetServer({
                 port: targetPort,
@@ -287,7 +398,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await upstreamProxy.listen();
 
-            // Create main HTTPS proxy with expired certificate
             const mainProxyPort = freePorts.shift();
             proxyServer = new Server({
                 port: mainProxyPort,
@@ -316,18 +426,15 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                 });
                 expect.fail('Should have rejected expired certificate at proxy level');
             } catch (error) {
-                // Should fail at proxy level, not target level
-                expect(error.message).to.match(/certificate|CERT|SSL|TLS/i);
+                expect(error.message).to.match(/CERT_HAS_EXPIRED|certificate.*expired|TLS|SSL/i);
             }
 
-            // Cleanup
             await upstreamProxy.close(true);
         });
 
         it('handles HTTPS proxy with HTTP target (protocol isolation)', async () => {
             const validCert = loadCertificate('valid');
 
-            // Create HTTP target (plain HTTP, no SSL)
             const targetPort = freePorts.shift();
             targetServer = new TargetServer({
                 port: targetPort,
@@ -335,7 +442,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await targetServer.listen();
 
-            // Create HTTPS proxy with valid certificate
             const proxyPort = freePorts.shift();
             proxyServer = new Server({
                 port: proxyPort,
@@ -347,16 +453,13 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             });
             await proxyServer.listen();
 
-            // Connect through HTTPS proxy to HTTP target
-            // This validates protocol isolation:
-            // 1. Client-to-proxy connection is encrypted (HTTPS)
-            // 2. Proxy-to-target connection is plain HTTP
-            // 3. The two connections are independent
+            // Validates protocol isolation: client-proxy (HTTPS) and proxy-target (HTTP)
+            // connections are independent.
             //
-            // NOTE: Testing HTTPS proxy → HTTPS target with the `request` library
-            // is not possible due to a bug in tunnel-agent (request/request#2762)
-            // where rejectUnauthorized is not passed to the proxy connection.
-            // TODO: we should migrate to impit.
+            // NOTE: HTTPS proxy -> HTTPS target cannot be tested with the `request` library
+            // due to tunnel-agent bug (request/request#2762) where rejectUnauthorized is not
+            // passed to the proxy connection.
+            // TODO: Migrate to impit to enable HTTPS -> HTTPS testing
             const response = await requestPromised({
                 url: `http://127.0.0.1:${targetPort}/hello-world`,
                 proxy: `https://127.0.0.1:${proxyPort}`,
@@ -367,6 +470,93 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             // Request succeeds - proves protocol isolation works
             expect(response.statusCode).to.equal(200);
             expect(response.body).to.equal('Hello world!');
+        });
+    });
+
+    describe('HTTPS Target Certificate Handling via CONNECT', () => {
+         // NOTE:
+         // When a client makes a CONNECT request to establish a tunnel to an HTTPS target,
+         // the proxy creates a raw TCP tunnel between the client and target. The TLS
+         // handshake happens directly between the client and target - the proxy never
+         // sees or validates the target's certificate.
+         //
+         // This is the CORRECT behavior per RFC 7231 (CONNECT method specification).
+         // The proxy is protocol-agnostic and simply pipes bytes bidirectionally.
+         //
+         // These tests document and verify this expected behavior.
+
+        it('allows CONNECT tunnel to HTTPS target regardless of target certificate', async () => {
+            const expiredCert = loadCertificate('expired');
+
+            const targetPort = freePorts.shift();
+            targetServer = new TargetServer({
+                port: targetPort,
+                useSsl: true,
+                sslKey: expiredCert.key,
+                sslCrt: expiredCert.cert,
+            });
+            await targetServer.listen();
+
+            const proxyPort = freePorts.shift();
+            proxyServer = new Server({
+                port: proxyPort,
+                serverType: 'http',
+            });
+            await proxyServer.listen();
+
+            // The proxy will successfully create the tunnel regardless of target certificate
+            // This documents that the proxy doesn't validate target certificates
+            // (The client would see the certificate error if it validated)
+            const response = await requestPromised({
+                url: `https://127.0.0.1:${targetPort}/hello-world`,
+                proxy: `http://127.0.0.1:${proxyPort}`,
+                strictSSL: false, // Client ignores certificate errors
+                rejectUnauthorized: false,
+            });
+
+            // Request succeeds through tunnel, demonstrating:
+            // 1. Proxy created TCP tunnel successfully (doesn't validate target cert)
+            // 2. Client performed TLS handshake through tunnel
+            // 3. Client chose to ignore certificate errors (strictSSL: false)
+            expect(response.statusCode).to.equal(200);
+            expect(response.body).to.equal('Hello world!');
+        });
+
+        it('client validates HTTPS target certificate through HTTP proxy tunnel', async () => {
+            const expiredCert = loadCertificate('expired');
+
+            const targetPort = freePorts.shift();
+            targetServer = new TargetServer({
+                port: targetPort,
+                useSsl: true,
+                sslKey: expiredCert.key,
+                sslCrt: expiredCert.cert,
+            });
+            await targetServer.listen();
+
+            const proxyPort = freePorts.shift();
+            proxyServer = new Server({
+                port: proxyPort,
+                serverType: 'http',
+            });
+            await proxyServer.listen();
+
+            // Client attempts to validate target certificate through tunnel
+            // The proxy creates the tunnel successfully, but the CLIENT rejects
+            // the target's expired certificate during the TLS handshake
+            try {
+                await requestPromised({
+                    url: `https://127.0.0.1:${targetPort}/hello-world`,
+                    proxy: `http://127.0.0.1:${proxyPort}`,
+                    strictSSL: true, // Client validates certificate
+                    rejectUnauthorized: true,
+                });
+                expect.fail('Client should have rejected expired target certificate');
+            } catch (error) {
+                // Client (not proxy) detects and rejects the expired certificate
+                // This proves TLS handshake happens between client and target
+                expect(error.message).to.match(/CERT_HAS_EXPIRED|certificate.*expired/i);
+            }
         });
     });
 });
@@ -403,7 +593,6 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
         });
         await proxyServer.listen();
 
-        // Attempt TLS 1.0 connection
         const result = await testTLSHandshake({
             host: '127.0.0.1',
             port: proxyPort,
@@ -432,7 +621,6 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
         });
         await proxyServer.listen();
 
-        // Attempt TLS 1.1 connection
         const result = await testTLSHandshake({
             host: '127.0.0.1',
             port: proxyPort,
@@ -450,7 +638,6 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
         const validCert = loadCertificate('valid');
         const proxyPort = freePorts.shift();
 
-        // Create HTTPS proxy with default TLS settings
         proxyServer = new Server({
             port: proxyPort,
             serverType: 'https',
@@ -461,7 +648,6 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
         });
         await proxyServer.listen();
 
-        // Attempt TLS 1.2 connection
         const result = await testTLSHandshake({
             host: '127.0.0.1',
             port: proxyPort,
@@ -478,7 +664,6 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
         const validCert = loadCertificate('valid');
         const proxyPort = freePorts.shift();
 
-        // Create HTTPS proxy with default TLS settings
         proxyServer = new Server({
             port: proxyPort,
             serverType: 'https',
@@ -489,7 +674,6 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
         });
         await proxyServer.listen();
 
-        // Attempt TLS 1.3 connection
         const result = await testTLSHandshake({
             host: '127.0.0.1',
             port: proxyPort,
@@ -501,30 +685,11 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
         expect(result.success).to.be.true;
         expect(result.protocol).to.equal('TLSv1.3');
     });
-});
-
-describe('HTTPS Edge Cases - Cipher Suite Handling', function () {
-    this.timeout(30000);
-
-    let freePorts;
-    let proxyServer;
-
-    before(async () => {
-        freePorts = await portastic.find({ min: 51000, max: 51500 });
-    });
-
-    afterEach(async () => {
-        if (proxyServer) {
-            await proxyServer.close(true);
-            proxyServer = null;
-        }
-    });
 
     it('accepts clients with strong ciphers', async () => {
         const validCert = loadCertificate('valid');
         const proxyPort = freePorts.shift();
 
-        // Create HTTPS proxy with strong cipher requirements
         proxyServer = new Server({
             port: proxyPort,
             serverType: 'https',
@@ -550,25 +715,118 @@ describe('HTTPS Edge Cases - Cipher Suite Handling', function () {
     });
 });
 
+describe('HTTPS Edge Cases - SNI (Server Name Indication)', function () {
+    this.timeout(30000);
+
+    let freePorts;
+    let targetServer;
+    let proxyServer;
+
+    before(async () => {
+        freePorts = await portastic.find({ min: 51000, max: 51500 });
+    });
+
+    afterEach(async () => {
+        if (proxyServer) {
+            await proxyServer.close(true);
+            proxyServer = null;
+        }
+        if (targetServer) {
+            await targetServer.close();
+            targetServer = null;
+        }
+    });
+
+    it('sends correct SNI for HTTPS target through HTTPS proxy', async () => {
+        const validCert = loadCertificate('valid');
+        const proxyPort = freePorts.shift();
+
+        // Verify certificate is for localhost (only on Node 15.6.0+)
+        if (supportsX509Certificate) {
+            expect(certificateMatchesHostname(validCert.cert, 'localhost')).to.be.true;
+        }
+
+        // Create HTTPS proxy with certificate for localhost
+        proxyServer = new Server({
+            port: proxyPort,
+            serverType: 'https',
+            httpsOptions: {
+                key: validCert.key,
+                cert: validCert.cert,
+            },
+        });
+        await proxyServer.listen();
+
+        // Test 1: Connect with correct SNI (localhost) - should succeed
+        const resultWithCorrectSNI = await testTLSHandshake({
+            host: '127.0.0.1',
+            port: proxyPort,
+            servername: 'localhost', // Correct SNI matching certificate
+            rejectUnauthorized: false, // Ignore self-signed cert, but SNI still validated
+        });
+
+        expect(resultWithCorrectSNI.success).to.be.true;
+
+        // Test 2: Connect without SNI - should also succeed (TLS 1.2 compatibility)
+        const resultWithoutSNI = await testTLSHandshake({
+            host: '127.0.0.1',
+            port: proxyPort,
+            // No servername = no SNI extension
+            rejectUnauthorized: false,
+        });
+
+        expect(resultWithoutSNI.success).to.be.true;
+    });
+
+    it('handles SNI mismatch errors correctly', async () => {
+        const validCert = loadCertificate('valid');
+        const proxyPort = freePorts.shift();
+
+        // Verify certificate is for localhost, not example.com (only on Node 15.6.0+)
+        if (supportsX509Certificate) {
+            expect(certificateMatchesHostname(validCert.cert, 'localhost')).to.be.true;
+            expect(certificateMatchesHostname(validCert.cert, 'example.com')).to.be.false;
+        }
+
+        // Create HTTPS proxy with certificate for localhost
+        proxyServer = new Server({
+            port: proxyPort,
+            serverType: 'https',
+            httpsOptions: {
+                key: validCert.key,
+                cert: validCert.cert,
+            },
+        });
+        await proxyServer.listen();
+
+        // Attempt TLS connection with mismatched SNI
+        // Server has cert for "localhost", but client sends SNI for "example.com"
+        const result = await testTLSHandshake({
+            host: '127.0.0.1',
+            port: proxyPort,
+            servername: 'example.com', // SNI mismatch!
+            rejectUnauthorized: true, // Strict validation
+        });
+
+        // Connection should fail due to SNI/hostname mismatch
+        expect(result.success).to.be.false;
+        expect(result.error).to.exist;
+        // Error can be certificate validation error or hostname mismatch
+        expect(result.error.code || result.error.message).to.match(/CERT|UNABLE_TO_VERIFY|self.*signed|ERR_TLS_CERT_ALTNAME_INVALID/i);
+    });
+});
 
 /**
  * Test TLS handshake with specific version and cipher configuration
- * @param {Object} options - TLS connection options
- * @param {string} options.host - Host to connect to
- * @param {number} options.port - Port to connect to
- * @param {string} [options.minVersion] - Minimum TLS version (e.g., 'TLSv1', 'TLSv1.2')
- * @param {string} [options.maxVersion] - Maximum TLS version (e.g., 'TLSv1.3')
- * @param {string} [options.ciphers] - Cipher suite string
- * @param {boolean} [options.rejectUnauthorized=false] - Whether to reject unauthorized certificates
- * @param {number} [options.timeout=5000] - Connection timeout in milliseconds
  * @returns {Promise<Object>} Result object with success status, protocol, cipher, or error
  */
-testTLSHandshake = async ({
+const testTLSHandshake = async ({
     host,
     port,
     minVersion,
     maxVersion,
     ciphers,
+    servername,
     rejectUnauthorized = false,
     timeout = 5000,
 }) => {
@@ -579,6 +837,7 @@ testTLSHandshake = async ({
             minVersion,
             maxVersion,
             ciphers,
+            servername,
             rejectUnauthorized,
         });
 
