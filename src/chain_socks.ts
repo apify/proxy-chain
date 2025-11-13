@@ -34,6 +34,12 @@ const socksProtocolToVersionNumber = (protocol: string): 4 | 5 => {
 };
 
 /**
+ * Tunnels CONNECT requests through a SOCKS upstream proxy.
+ *
+ * **Note:** Custom HTTP/HTTPS agents (`httpAgent`, `httpsAgent`) from `prepareRequestFunction`
+ * are not supported with SOCKS upstream proxies. SOCKS establishes direct TCP socket connections
+ * using the SocksClient, which bypasses HTTP agent connection pooling.
+ *
  * Client -> Apify (CONNECT) -> Upstream (SOCKS) -> Web
  * Client <- Apify (CONNECT) <- Upstream (SOCKS) <- Web
  */

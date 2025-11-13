@@ -110,6 +110,47 @@ server.on('requestFailed', ({ request, error }) => {
 });
 ```
 
+## Use custom HTTP agents for connection pooling
+
+You can provide custom HTTP/HTTPS agents to enable connection pooling and reuse with upstream proxies. This is particularly useful for maintaining sticky IP addresses or reducing connection overhead:
+
+```javascript
+const http = require('http');
+const https = require('https');
+const ProxyChain = require('proxy-chain');
+
+// Create agents with keepAlive to enable connection pooling
+const httpAgent = new http.Agent({
+    keepAlive: true,
+    maxSockets: 10,
+});
+
+const httpsAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 10,
+});
+
+const server = new ProxyChain.Server({
+    port: 8000,
+    prepareRequestFunction: ({ request }) => {
+        return {
+            upstreamProxyUrl: 'http://proxy.example.com:8080',
+            // Or for HTTPS upstream proxy: 'https://proxy.example.com:8080'
+
+            // Agents enable connection pooling to upstream proxy
+            httpAgent,    // Used for HTTP upstream proxies
+            httpsAgent,   // Used for HTTPS upstream proxies
+        };
+    },
+});
+
+server.listen(() => {
+    console.log(`Proxy server is listening on port ${server.port}`);
+});
+```
+
+**Note:** Custom agents are only supported for HTTP and HTTPS upstream proxies. SOCKS upstream proxies use direct socket connections and do not support custom agents.
+
 ## SOCKS support
 SOCKS protocol is supported for versions 4 and 5, specifically: `['socks', 'socks4', 'socks4a', 'socks5', 'socks5h']`, where `socks` will default to version 5.
 

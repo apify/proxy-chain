@@ -29,6 +29,8 @@ export interface HandlerOpts {
     localAddress?: string;
     ipFamily?: number;
     dnsLookup?: typeof dns['lookup'];
+    httpAgent?: http.Agent;
+    httpsAgent?: https.Agent;
 }
 
 /**
@@ -118,9 +120,13 @@ export const forward = async (
         ? https.request(origin!, {
             ...options as unknown as https.RequestOptions,
             rejectUnauthorized: handlerOpts.upstreamProxyUrlParsed ? !handlerOpts.ignoreUpstreamProxyCertificate : undefined,
+            agent: handlerOpts.httpsAgent,
         }, requestCallback)
 
-        : http.request(origin!, options as unknown as http.RequestOptions, requestCallback);
+        : http.request(origin!, {
+            ...options as unknown as http.RequestOptions,
+            agent: handlerOpts.httpAgent,
+        }, requestCallback);
 
     client.once('socket', (socket: SocketWithPreviousStats) => {
         // Socket can be re-used by multiple requests.
