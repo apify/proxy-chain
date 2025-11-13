@@ -2,7 +2,7 @@
 import { Buffer } from 'node:buffer';
 import type dns from 'node:dns';
 import { EventEmitter } from 'node:events';
-import type http from 'node:http';
+import http from 'node:http';
 import type https from 'node:https';
 import type net from 'node:net';
 import { URL } from 'node:url';
