@@ -137,6 +137,7 @@ export const chain = (
                 proxyChainId,
                 response,
                 customTag,
+                statusCode: response.statusCode,
                 socket: targetSocket,
                 head: clientHead,
             });
@@ -190,11 +191,31 @@ export const chain = (
         if (sourceSocket.readyState === 'open') {
             if (isPlain) {
                 sourceSocket.end();
+
+                server.emit('tunnelError', {
+                    error,
+                    proxyChainId,
+                    customTag,
+                });
             } else {
                 const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
                 const response = createCustomStatusHttpResponse(statusCode, error.code ?? 'Upstream Closed Early');
                 sourceSocket.end(response);
+
+                server.emit('tunnelError', {
+                    error,
+                    proxyChainId,
+                    statusCode,
+                    response,
+                    customTag,
+                });
             }
+        } else {
+            server.emit('tunnelError', {
+                error,
+                proxyChainId,
+                customTag,
+            });
         }
     });
 
