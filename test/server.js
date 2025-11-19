@@ -76,14 +76,34 @@ const puppeteerGet = (url, proxyUrl) => {
     return (async () => {
         const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
 
-        const browser = await puppeteer.launch({
-            env: parsed ? {
-                HTTP_PROXY: parsed.origin,
-            } : {},
+        const args = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage'
+        ];
+
+        const launchOptions = {
             ignoreHTTPSErrors: true,
             headless: "new",
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        });
+            args
+        };
+
+        // For HTTPS proxies, use --proxy-server flag (HTTP_PROXY doesn't support https:// URLs)
+        // For HTTP proxies, use HTTP_PROXY env var
+        if (parsed) {
+            if (parsed.protocol === 'https:') {
+                args.push(`--proxy-server=${parsed.origin}`);
+                // For HTTPS proxies with self-signed certificates,
+                // ignore certificate errors on the proxy connection itself
+                args.push('--ignore-certificate-errors');
+            } else {
+                launchOptions.env = {
+                    HTTP_PROXY: parsed.origin,
+                };
+            }
+        }
+
+        const browser = await puppeteer.launch(launchOptions);
 
         try {
             const page = await browser.newPage();
@@ -866,6 +886,8 @@ const createTestSuite = ({
                         // Stats should be non-negative
                         expect(stats.srcTxBytes).to.be.at.least(0);
                         expect(stats.srcRxBytes).to.be.at.least(0);
+                        expect(stats.trgRxBytes).to.be.at.least(0);
+                        expect(stats.trgRxBytes).to.be.at.least(0);
                     }
                 });
         });
@@ -916,8 +938,7 @@ const createTestSuite = ({
                 });
         });
 
-        // TODO: Skip puppeteer tests for HTTPS proxy as Puppeteer doesn't support HTTPS proxies well
-        if (mainProxyServerType !== 'https' && (!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password))) {
+        if (!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) {
             it('handles GET request using puppeteer', async () => {
                 const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const response = await puppeteerGet(phantomUrl, mainProxyUrl);
@@ -925,11 +946,11 @@ const createTestSuite = ({
             });
         }
 
-        // TODO: same here
-        if (mainProxyServerType !== 'https' && !useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
+        if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
             it('handles GET request using puppeteer with invalid credentials', async () => {
                 const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const response = await puppeteerGet(phantomUrl, `http://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                const proxyScheme = mainProxyServerType === 'https' ? 'https' : 'http';
+                const response = await puppeteerGet(phantomUrl, `${proxyScheme}://bad:password@127.0.0.1:${mainProxyServerPort}`);
                 expect(response).to.contain('Proxy credentials required');
             });
         }
