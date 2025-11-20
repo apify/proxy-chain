@@ -1349,6 +1349,36 @@ const createTestSuite = ({
     };
 };
 
+describe('Server constructor - serverType', () => {
+    it('should default to "http" when serverType is not specified', async () => {
+        const server = new Server({ port: 0 });
+        await server.listen();
+        expect(server.serverType).to.equal('http');
+        expect(server.server).to.be.instanceOf(http.Server);
+        await server.close(true);
+    });
+
+    it('should use "http" when explicitly specified', async () => {
+        const server = new Server({ port: 0, serverType: 'http' });
+        await server.listen();
+        expect(server.serverType).to.equal('http');
+        expect(server.server).to.be.instanceOf(http.Server);
+        await server.close(true);
+    });
+
+    it('should use "https" when explicitly specified with httpsOptions', async () => {
+        const server = new Server({
+            port: 0,
+            serverType: 'https',
+            httpsOptions: { key: sslKey, cert: sslCrt }
+        });
+        await server.listen();
+        expect(server.serverType).to.equal('https');
+        expect(server.server).to.be.instanceOf(https.Server);
+        await server.close(true);
+    });
+});
+
 describe('Test 0 port option', async () => {
     it('Port inherits net port', async () => {
         for (let i = 0; i < 10; i++) {

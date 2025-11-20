@@ -227,25 +227,24 @@ export class Server extends EventEmitter {
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
 
-        // Create server based on type
+        // Keep legacy behavior (http) as default behavior
+        this.serverType = options.serverType === 'https' ? 'https' : 'http';
+
         if (options.serverType === 'https') {
             if (!options.httpsOptions) {
                 throw new Error('httpsOptions is required when serverType is "https"');
             }
 
             // Apply secure TLS defaults (user options can override)
-            // This prevents users from accidentally configuring insecure TLS settings
             const secureDefaults: https.ServerOptions = {
                 ...HTTPS_DEFAULTS,
-                honorCipherOrder: true, // Server chooses cipher (prevents downgrade attacks)
-                ...options.httpsOptions, // User options override defaults
+                honorCipherOrder: true,
+                ...options.httpsOptions,
             };
 
             this.server = https.createServer(secureDefaults);
-            this.serverType = 'https';
         } else {
             this.server = http.createServer();
-            this.serverType = 'http';
         }
 
         // Attach common event handlers (same for both HTTP and HTTPS)
