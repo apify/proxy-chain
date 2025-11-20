@@ -26,6 +26,12 @@ export interface HandlerOpts {
 }
 
 /**
+ * Forwards HTTP requests through a SOCKS upstream proxy.
+ *
+ * **Note:** Custom HTTP/HTTPS agents (`httpAgent`, `httpsAgent`) from `prepareRequestFunction`
+ * are not supported with SOCKS upstream proxies. SOCKS uses direct socket connections
+ * managed by the SocksProxyAgent, which does not utilize HTTP agents.
+ *
  * ```
  * Client -> Apify (HTTP) -> Upstream (SOCKS) -> Web
  * Client <- Apify (HTTP) <- Upstream (SOCKS) <- Web

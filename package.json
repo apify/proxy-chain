@@ -28,7 +28,8 @@
     },
     "homepage": "https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212",
     "files": [
-        "dist"
+        "dist",
+        "!**/*.tsbuildinfo"
     ],
     "scripts": {
         "build:watch": "tsc -w",
