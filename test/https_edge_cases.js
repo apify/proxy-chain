@@ -31,12 +31,17 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
     let freePorts;
     let targetServer;
     let proxyServer;
+    let upstreamProxy;
 
     before(async () => {
-        freePorts = await portastic.find({ min: 50000, max: 50500 });
+        freePorts = await portastic.find({ min: 51000, max: 52000 });
     });
 
     afterEach(async () => {
+        if (upstreamProxy) {
+            await upstreamProxy.close(true);
+            upstreamProxy = null;
+        }
         if (proxyServer) {
             await proxyServer.close(true);
             proxyServer = null;
@@ -81,6 +86,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                     proxy: `https://127.0.0.1:${proxyPort}`,
                     strictSSL: true,
                     rejectUnauthorized: true,
+                    agent: false, // Disable connection pooling for test isolation
                 });
                 expect.fail('Should have rejected expired certificate');
             } catch (error) {
@@ -126,7 +132,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             const expiredCert = loadCertificate('expired');
 
             const upstreamPort = freePorts.shift();
-            const upstreamProxyServer = new Server({
+            upstreamProxy = new Server({
                 port: upstreamPort,
                 serverType: 'https',
                 httpsOptions: {
@@ -134,7 +140,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                     cert: expiredCert.cert,
                 },
             });
-            await upstreamProxyServer.listen();
+            await upstreamProxy.listen();
 
             // Create main HTTP proxy that chains to upstream HTTPS proxy
             const mainProxyPort = freePorts.shift();
@@ -165,8 +171,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
 
             // TLS errors (CERT_HAS_EXPIRED, etc.) fall back to 599 - see errorCodeToStatusCode in statuses.ts
             expect(response.statusCode).to.equal(599);
-
-            await upstreamProxyServer.close(true);
         });
     });
 
@@ -206,6 +210,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                     proxy: `https://127.0.0.1:${proxyPort}`,
                     strictSSL: true,
                     rejectUnauthorized: true,
+                    agent: false, // Disable connection pooling for test isolation
                 });
                 expect.fail('Should have rejected certificate with hostname mismatch');
             } catch (error) {
@@ -279,6 +284,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                     proxy: `https://127.0.0.1:${proxyPort}`,
                     strictSSL: true,
                     rejectUnauthorized: true,
+                    agent: false, // Disable connection pooling for test isolation
                 });
                 expect.fail('Should have rejected certificate with incomplete chain');
             } catch (error) {
@@ -327,7 +333,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
             const invalidChainCert = loadCertificate('invalid-chain');
 
             const upstreamPort = freePorts.shift();
-            const upstreamProxyServer = new Server({
+            upstreamProxy = new Server({
                 port: upstreamPort,
                 serverType: 'https',
                 httpsOptions: {
@@ -335,7 +341,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                     cert: invalidChainCert.cert,
                 },
             });
-            await upstreamProxyServer.listen();
+            await upstreamProxy.listen();
 
             // Create main HTTP proxy that chains to upstream HTTPS proxy
             const mainProxyPort = freePorts.shift();
@@ -366,8 +372,6 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
 
             // TLS errors (UNABLE_TO_VERIFY_LEAF_SIGNATURE, etc.) fall back to 599 - see errorCodeToStatusCode in statuses.ts
             expect(response.statusCode).to.equal(599);
-
-            await upstreamProxyServer.close(true);
         });
     });
 
@@ -392,7 +396,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
 
             // Create upstream HTTP proxy (no cert issues)
             const upstreamPort = freePorts.shift();
-            const upstreamProxy = new Server({
+            upstreamProxy = new Server({
                 port: upstreamPort,
                 serverType: 'http',
             });
@@ -423,13 +427,16 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                     proxy: `https://127.0.0.1:${mainProxyPort}`,
                     strictSSL: true,
                     rejectUnauthorized: true,
+                    agent: false, // Disable connection pooling for test isolation
                 });
                 expect.fail('Should have rejected expired certificate at proxy level');
             } catch (error) {
-                expect(error.message).to.match(/CERT_HAS_EXPIRED|certificate.*expired|TLS|SSL/i);
+                // The expired certificate is also self-signed. Node.js may check either:
+                // 1. Certificate expiration first (CERT_HAS_EXPIRED)
+                // 2. Certificate chain first (self-signed certificate)
+                // Both indicate certificate validation failure
+                expect(error.message).to.match(/CERT_HAS_EXPIRED|certificate.*expired|self.*signed|TLS|SSL/i);
             }
-
-            await upstreamProxy.close(true);
         });
 
         it('handles HTTPS proxy with HTTP target (protocol isolation)', async () => {
@@ -550,6 +557,7 @@ describe('HTTPS Edge Cases - Certificate Validation', function () {
                     proxy: `http://127.0.0.1:${proxyPort}`,
                     strictSSL: true, // Client validates certificate
                     rejectUnauthorized: true,
+                    agent: false, // Disable connection pooling for test isolation
                 });
                 expect.fail('Client should have rejected expired target certificate');
             } catch (error) {
@@ -568,7 +576,7 @@ describe('HTTPS Edge Cases - TLS Version Negotiation', function () {
     let proxyServer;
 
     before(async () => {
-        freePorts = await portastic.find({ min: 50500, max: 51000 });
+        freePorts = await portastic.find({ min: 52000, max: 52500 });
     });
 
     afterEach(async () => {
@@ -723,7 +731,7 @@ describe('HTTPS Edge Cases - SNI (Server Name Indication)', function () {
     let proxyServer;
 
     before(async () => {
-        freePorts = await portastic.find({ min: 51000, max: 51500 });
+        freePorts = await portastic.find({ min: 52500, max: 53000 });
     });
 
     afterEach(async () => {
