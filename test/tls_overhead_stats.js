@@ -1,10 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const https = require('https');
+const tls = require('tls');
 const { expect } = require('chai');
 const portastic = require('portastic');
 const request = require('request');
 const sinon = require('sinon');
+const WebSocket = require('ws');
 
 const { Server } = require('../src/index');
 const { TargetServer } = require('./utils/target_server');
@@ -2130,14 +2133,218 @@ describe('TLS Overhead Statistics', function() {
     });
 });
 
+describe('WebSocket TLS Overhead Tracking', function () {
+    this.timeout(30000);
+
+    it('websocket connection through HTTPS proxy tracks TLS overhead correctly for single message', async () => {
+        const [targetServerPort, httpsProxyPort] = await portastic.find({ min: 49000, max: 50000, retrieve: 2 });
+
+        const targetServer = new TargetServer({ port: targetServerPort, useSsl: false });
+        await targetServer.listen();
+
+        const httpsProxyServer = new Server({
+            port: httpsProxyPort,
+            serverType: 'https',
+            httpsOptions: { key: sslKey, cert: sslCrt },
+            verbose: false,
+        });
+        await httpsProxyServer.listen();
+
+        try {
+            const statsPromise = awaitConnectionStats(httpsProxyServer);
+
+            // Manual CONNECT tunneling for accurate byte counting
+            // (Native wss:// would hide sockets needed for Symbol-based tracking)
+            const response = await new Promise((resolve, reject) => {
+                const targetHostPort = `127.0.0.1:${targetServerPort}`;
+
+                const connectRequest = https.request({
+                    host: '127.0.0.1',
+                    port: httpsProxyPort,
+                    method: 'CONNECT',
+                    path: targetHostPort,
+                    headers: { 'Host': targetHostPort },
+                    rejectUnauthorized: false,
+                });
+
+                connectRequest.on('connect', (res, socket) => {
+                    if (res.statusCode !== 200) {
+                        socket.destroy();
+                        reject(new Error(`CONNECT failed: ${res.statusCode}`));
+                        return;
+                    }
+
+                    const ws = new WebSocket(`ws://${targetHostPort}`, {
+                        createConnection: () => socket,
+                    });
+
+                    ws.on('error', (err) => {
+                        ws.close();
+                        reject(err);
+                    });
+
+                    ws.on('open', () => ws.send('hello world'));
+
+                    ws.on('message', (data) => {
+                        ws.close();
+                        resolve(data.toString());
+                    });
+                });
+
+                connectRequest.on('error', reject);
+                connectRequest.end();
+            });
+
+            expect(response).to.equal('I received: hello world');
+
+            const stats = await statsPromise;
+
+            // TLS overhead validation: client->proxy has TLS, proxy->target does not
+            expect(stats.srcTxBytes).to.be.greaterThan(stats.trgRxBytes);
+            expect(stats.srcRxBytes).to.be.greaterThan(stats.trgTxBytes);
+
+            // Target bytes should be non-null (connection established)
+            expect(stats.trgTxBytes).to.be.a('number').and.to.be.greaterThan(0);
+            expect(stats.trgRxBytes).to.be.a('number').and.to.be.greaterThan(0);
+
+            const EXPECTED_WS_STATS = {
+                srcTxBytes: 2342,
+                srcRxBytes: 850,
+                trgTxBytes: 247,
+                trgRxBytes: 156,
+            };
+
+            expect(stats).to.deep.include(EXPECTED_WS_STATS);
+        } finally {
+            await targetServer.close();
+            await httpsProxyServer.close();
+        }
+    });
+
+    it('websocket connection through HTTPS proxy tracks TLS overhead correctly for multiple message', async () => {
+        const [targetServerPort, httpsProxyPort] = await portastic.find({ min: 49000, max: 50000, retrieve: 2 });
+
+        const targetServer = new TargetServer({ port: targetServerPort, useSsl: false });
+        await targetServer.listen();
+
+        const httpsProxyServer = new Server({
+            port: httpsProxyPort,
+            serverType: 'https',
+            httpsOptions: { key: sslKey, cert: sslCrt },
+            verbose: false,
+        });
+        await httpsProxyServer.listen();
+
+        try {
+            let connectionId = null;
+            const statsSnapshots = [];
+
+            // Capture connection ID when connection opens
+            httpsProxyServer.once('connectionClosed', ({ connectionId: id, stats }) => {
+                connectionId = id;
+                statsSnapshots.push({ label: 'final', ...stats });
+            });
+
+            // Create WebSocket connection and send multiple messages
+            const targetHost = '127.0.0.1';
+            const targetHostPort = `${targetHost}:${targetServerPort}`;
+            const wsUrl = `ws://${targetHostPort}`;
+            const proxyUrl = `https://127.0.0.1:${httpsProxyPort}`;
+            const messagesToSend = 5;
+
+            await new Promise((resolve, reject) => {
+                const proxyParsed = new URL(proxyUrl);
+
+                // Create CONNECT request to proxy
+                const connectRequest = https.request({
+                    host: proxyParsed.hostname,
+                    port: proxyParsed.port,
+                    method: 'CONNECT',
+                    path: targetHostPort,
+                    headers: { 'Host': targetHostPort },
+                    rejectUnauthorized: false,
+                });
+
+                connectRequest.on('connect', (res, socket) => {
+                    if (res.statusCode !== 200) {
+                        socket.destroy();
+                        reject(new Error(`Proxy CONNECT failed: ${res.statusCode}`));
+                        return;
+                    }
+
+                    const ws = new WebSocket(wsUrl, {
+                        createConnection: () => socket,
+                    });
+
+                    let messagesSent = 0;
+                    let messagesReceived = 0;
+
+                    ws.on('error', (err) => {
+                        ws.close();
+                        reject(err);
+                    });
+
+                    ws.on('open', () => {
+                        // Send first message
+                        ws.send(`message-${messagesSent++}`);
+                    });
+
+                    ws.on('message', (data) => {
+                        messagesReceived++;
+                        expect(data.toString()).to.match(/^I received: message-\d+$/);
+
+                        if (messagesSent < messagesToSend) {
+                            // Send next message
+                            ws.send(`message-${messagesSent++}`);
+                        } else if (messagesReceived === messagesToSend) {
+                            // All messages sent and received
+                            ws.close();
+                            resolve();
+                        }
+                    });
+                });
+
+                connectRequest.on('error', reject);
+                connectRequest.end();
+            });
+
+            // Wait for connection to close
+            await wait(100);
+
+            // Verify we captured stats
+            expect(statsSnapshots.length).to.equal(1);
+            const finalStats = statsSnapshots[0];
+
+            // Verify stats tracked all messages
+            expect(finalStats.srcTxBytes).to.be.greaterThan(0);
+            expect(finalStats.srcRxBytes).to.be.greaterThan(0);
+            expect(finalStats.trgTxBytes).to.be.greaterThan(0);
+            expect(finalStats.trgRxBytes).to.be.greaterThan(0);
+
+            // TLS overhead should still be present
+            expect(finalStats.srcTxBytes).to.be.greaterThan(finalStats.trgRxBytes);
+            expect(finalStats.srcRxBytes).to.be.greaterThan(finalStats.trgTxBytes);
+
+            const EXPECTED_MULTI_MSG_STATS = {
+                srcTxBytes: 2520,
+                srcRxBytes: 1267,
+                trgTxBytes: 305,
+                trgRxBytes: 246,
+            };
+
+            const { label, ...statsWithoutLabel } = finalStats;
+            expect(statsWithoutLabel).to.deep.equal(EXPECTED_MULTI_MSG_STATS);
+        } finally {
+            await targetServer.close();
+            await httpsProxyServer.close();
+        }
+    });
+});
+
  // TODO: consider to add in future
- // 1. Performance Benchmarks
- // - Measure _parent access overhead (<1ms expected)
- // - Compare HTTP vs HTTPS proxy throughput
- // - Useful for optimization, not required for correctness
- // 2. Upstream Combinations
+ // 1. Upstream Combinations
  // - HTTPS proxy -> HTTPS upstream
  // - HTTPS proxy -> SOCKS upstream
- // 3. Very Large Transfers
+ // 2. Very Large Transfers
  // - Transfer >100MB, validate byte counters don't overflow
 
