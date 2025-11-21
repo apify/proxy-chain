@@ -105,21 +105,6 @@ function captureStatsSnapshot(server, connectionId, label) {
 
 /**
  * Creates HTTPS agent with TLS session caching disabled.
- *
- * Why disable session caching?
- * Node.js TLS session resumption reduces overhead by ~80% (e.g., 2255 bytes -> 445 bytes
- * for TLS 1.3). This makes tests non-deterministic: the 3rd request may reuse a session
- * from the 1st, causing unpredictable byte counts.
- *
- * Disabling caching forces full TLS handshakes on every connection, ensuring:
- * - Consistent overhead across test runs
- * - Predictable byte counts for assertions
- * - No interference between sequential tests
- *
- * Production note: Session resumption is DESIRABLE in production. This is test-only.
- *
- * @param {Object} [extraOptions={}] - Additional agent options to merge
- * @returns {https.Agent} Agent configured for deterministic testing
  */
 function createNonCachingAgent(extraOptions = {}) {
     return new https.Agent({
@@ -130,12 +115,6 @@ function createNonCachingAgent(extraOptions = {}) {
 
 /**
  * Captures connection statistics when connection closes.
- *
- * Listens for the `connectionClosed` event once and returns the stats object.
- * This is the standard pattern for validating byte counts after request completion.
- *
- * @param {Server} server - Proxy server instance to monitor
- * @returns {Promise<ConnectionStats>} Resolves with stats from connectionClosed event
  */
 function awaitConnectionStats(server) {
     return new Promise((resolve) => {
@@ -145,17 +124,6 @@ function awaitConnectionStats(server) {
 
 /**
  * Creates socket manipulator that corrupts _parent socket byte properties.
- *
- * Used to test fallback behavior when TLS overhead tracking fails due to:
- * - Node.js breaking changes (e.g., removing _parent property)
- * - Invalid property values (undefined, null, wrong types)
- * - Sanity check failures (rawSocket.bytes < tlsSocket.bytes)
- *
- * The proxy should gracefully fall back to TLS socket bytes (application-layer only)
- * and emit a `tlsOverheadUnavailable` event.
- *
- * @param {'undefined'|'null'|'string'|'invalid-getter'} corruptionType - How to corrupt properties
- * @returns {Function} Manipulator function for use with installSocketManipulator()
  */
 function createParentCorruptor(corruptionType) {
     const staticValues = {
@@ -1362,7 +1330,6 @@ describe('TLS Overhead Statistics', function() {
         let lifecycleTestProxy;
 
         beforeEach(async () => {
-            // Setup HTTPS proxy server for lifecycle tests
             lifecycleTestProxy = new Server({
                 port: freePorts.shift(),
                 serverType: 'https',
@@ -1752,7 +1719,6 @@ describe('TLS Overhead Statistics', function() {
         let keepAliveTestProxy;
 
         beforeEach(async () => {
-            // Create a fresh HTTPS proxy server for each test
             const testPort = freePorts.shift();
             keepAliveTestProxy = new Server({
                 port: testPort,
@@ -1843,7 +1809,7 @@ describe('TLS Overhead Statistics', function() {
 
         it('separate connections have higher TLS overhead than keep-alive', async function() {
             // Scenario: 10 requests over 10 separate connections (Connection: close)
-            // Expected: TEN TLS handshakes (~25KB) + 100KB data + ~5% encryption overhead
+            // Expected: 10 TLS handshakes (~25KB) + 100KB data + ~5% encryption overhead
             // Total: ~130KB (handshake cost NOT amortized)
 
             this.timeout(20000); // 10 separate connections take longer

@@ -29,7 +29,7 @@ describe('SOCKS protocol', () => {
             it('works without auth', (done) => {
                 portastic.find({ min: 50000, max: 50250 }).then((ports) => {
                     const [socksPort, proxyPort] = ports;
-                    socksServer = socksv5.createServer((info, accept) => {
+                    socksServer = socksv5.createServer((_, accept) => {
                         accept();
                     });
                     socksServer.listen(socksPort, '0.0.0.0', () => {
@@ -82,7 +82,7 @@ describe('SOCKS protocol', () => {
             it('work with auth', (done) => {
                 portastic.find({ min: 50250, max: 50500 }).then((ports) => {
                     const [socksPort, proxyPort] = ports;
-                    socksServer = socksv5.createServer((info, accept) => {
+                    socksServer = socksv5.createServer((_, accept) => {
                         accept();
                     });
                     socksServer.listen(socksPort, '0.0.0.0', () => {
@@ -137,7 +137,7 @@ describe('SOCKS protocol', () => {
             it('works with anonymizeProxy', (done) => {
                 portastic.find({ min: 50500, max: 50750 }).then((ports) => {
                     const [socksPort, proxyPort] = ports;
-                    socksServer = socksv5.createServer((info, accept) => {
+                    socksServer = socksv5.createServer((_, accept) => {
                         accept();
                     });
                     socksServer.listen(socksPort, '0.0.0.0', () => {
