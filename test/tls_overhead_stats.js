@@ -8,6 +8,7 @@ const portastic = require('portastic');
 const request = require('request');
 const sinon = require('sinon');
 const WebSocket = require('ws');
+const socksv5 = require('socksv5');
 
 const { Server } = require('../src/index');
 const { TargetServer } = require('./utils/target_server');
@@ -231,6 +232,23 @@ const EXPECTED_TLS_HANDSHAKE_ONLY_STATS = { srcTxBytes: 1641, srcRxBytes: 337, t
  */
 const EXPECTED_KEEPALIVE_10REQ_STATS = { srcTxBytes: 103799, srcRxBytes: 1503, trgTxBytes: 600, trgRxBytes: 101240 };
 const EXPECTED_SEPARATE_10REQ_TOTAL = { srcTxBytes: 122050, srcRxBytes: 5170, trgTxBytes: 600, trgRxBytes: 101240 };
+
+/**
+ * Expected stats for SOCKS5 upstream scenarios - HTTPS proxy -> SOCKS5 -> HTTP target
+ *
+ * Source side (client<->proxy): Includes TLS overhead (handshake + encryption)
+ * Target side (proxy<->SOCKS<->target): Application-layer + SOCKS protocol overhead
+ *
+ * SOCKS5 protocol overhead (measured from Docker tests):
+ * - No auth: +2 bytes in trgTxBytes, +0 bytes in trgRxBytes (73 vs 71 base HTTP)
+ * - With auth: +23 bytes in trgTxBytes, +2 bytes in trgRxBytes (94 vs 71 base HTTP)
+ *   Auth adds username/password exchange overhead
+ *
+ * Values captured from Docker test run on Node.js 18.20.8
+ */
+const EXPECTED_SOCKS5_GET_NOAUTH_STATS = { srcTxBytes: 2252, srcRxBytes: 517, trgTxBytes: 73, trgRxBytes: 183 };
+const EXPECTED_SOCKS5_CONNECT_NOAUTH_STATS = { srcTxBytes: 2313, srcRxBytes: 595, trgTxBytes: 73, trgRxBytes: 183 };
+const EXPECTED_SOCKS5_GET_AUTH_STATS = { srcTxBytes: 2252, srcRxBytes: 517, trgTxBytes: 94, trgRxBytes: 185 };
 
 describe('TLS Overhead Statistics', function() {
     this.timeout(30000);
@@ -2341,10 +2359,278 @@ describe('WebSocket TLS Overhead Tracking', function () {
     });
 });
 
+describe('TLS Overhead with SOCKS5 Upstream', function () {
+    this.timeout(20000);
+
+    it('GET request via SOCKS5 without authentication and without TLS overhead', async () => {
+        const [socksPort, httpProxyPort, targetPort] = await portastic.find({ min: 51000, max: 51500, retrieve: 3 });
+
+        const socksServer = socksv5.createServer((_, accept) => {
+            accept();
+        });
+
+        await new Promise((resolve) => {
+            socksServer.listen(socksPort, '127.0.0.1', () => {
+                socksServer.useAuth(socksv5.auth.None());
+                resolve();
+            });
+        });
+
+        const targetServer = new TargetServer({ port: targetPort, useSsl: false });
+        await targetServer.listen();
+
+        // Setup HTTP proxy with SOCKS5 upstream (no auth)
+        const httpProxyServer = new Server({
+            port: httpProxyPort,
+            serverType: 'http',
+            prepareRequestFunction: () => ({
+                upstreamProxyUrl: `socks5://127.0.0.1:${socksPort}`,
+            }),
+            verbose: false,
+        });
+        await httpProxyServer.listen();
+
+        try {
+            const statsPromise = awaitConnectionStats(httpProxyServer);
+
+            const { response, body } = await requestPromised({
+                url: `http://127.0.0.1:${targetPort}`,
+                proxy: `http://127.0.0.1:${httpProxyPort}`,
+            });
+
+            expect(response.statusCode).to.equal(200);
+            expect(body).to.equal('It works!');
+
+            const stats = await statsPromise;
+
+            // Validate HTTP proxy has no TLS overhead
+            expect(stats).to.deep.include({ srcTxBytes: 171, srcRxBytes: 82, trgTxBytes: 73, trgRxBytes: 183 });
+        } finally {
+            await new Promise((resolve) => socksServer.close(resolve));
+            await targetServer.close();
+            await httpProxyServer.close();
+        }
+    });
+
+    it('GET request via SOCKS5 without authentication tracks TLS overhead correctly', async () => {
+        const [socksPort, httpsProxyPort, targetPort] = await portastic.find({ min: 51000, max: 51500, retrieve: 3 });
+
+        const socksServer = socksv5.createServer((_, accept) => {
+            accept();
+        });
+
+        await new Promise((resolve) => {
+            socksServer.listen(socksPort, '127.0.0.1', () => {
+                socksServer.useAuth(socksv5.auth.None());
+                resolve();
+            });
+        });
+
+        const targetServer = new TargetServer({ port: targetPort, useSsl: false });
+        await targetServer.listen();
+
+        // Setup HTTPS proxy with SOCKS5 upstream (no auth)
+        const httpsProxyServer = new Server({
+            port: httpsProxyPort,
+            serverType: 'https',
+            httpsOptions: {
+                key: sslKey,
+                cert: sslCrt,
+                maxCachedSessions: 0,  // Critical for determinism
+            },
+            prepareRequestFunction: () => ({
+                upstreamProxyUrl: `socks5://127.0.0.1:${socksPort}`,
+            }),
+            verbose: false,
+        });
+        await httpsProxyServer.listen();
+
+        try {
+            const statsPromise = awaitConnectionStats(httpsProxyServer);
+
+            // Make GET request through HTTPS proxy (which routes via SOCKS5)
+            const agent = createNonCachingAgent({ rejectUnauthorized: false });
+            const { response, body } = await requestPromised({
+                url: `http://127.0.0.1:${targetPort}`,
+                proxy: `https://127.0.0.1:${httpsProxyPort}`,
+                agent,
+            });
+
+            expect(response.statusCode).to.equal(200);
+            expect(body).to.equal('It works!');
+
+            const stats = await statsPromise;
+
+            expect(stats).to.deep.include(EXPECTED_SOCKS5_GET_NOAUTH_STATS);
+
+            agent.destroy();
+        } finally {
+            await new Promise((resolve) => socksServer.close(resolve));
+            await targetServer.close();
+            await httpsProxyServer.close();
+        }
+    });
+
+    it('CONNECT request via SOCKS5 without authentication tracks TLS overhead correctly', async () => {
+        const [socksPort, httpsProxyPort, targetPort] = await portastic.find({ min: 51000, max: 51500, retrieve: 3 });
+
+        const socksServer = socksv5.createServer((_, accept) => {
+            accept();
+        });
+
+        await new Promise((resolve) => {
+            socksServer.listen(socksPort, '127.0.0.1', () => {
+                socksServer.useAuth(socksv5.auth.None());
+                resolve();
+            });
+        });
+
+        const targetServer = new TargetServer({ port: targetPort, useSsl: false });
+        await targetServer.listen();
+
+        // Setup HTTPS proxy with SOCKS5 upstream (no auth)
+        const httpsProxyServer = new Server({
+            port: httpsProxyPort,
+            serverType: 'https',
+            httpsOptions: {
+                key: sslKey,
+                cert: sslCrt,
+                maxCachedSessions: 0,  // Critical for determinism
+            },
+            prepareRequestFunction: () => ({
+                upstreamProxyUrl: `socks5://127.0.0.1:${socksPort}`,
+            }),
+            verbose: false,
+        });
+        await httpsProxyServer.listen();
+
+        try {
+            const statsPromise = awaitConnectionStats(httpsProxyServer);
+
+            // Manual CONNECT tunneling
+            const response = await new Promise((resolve, reject) => {
+                const targetHostPort = `127.0.0.1:${targetPort}`;
+
+                const connectRequest = https.request({
+                    host: '127.0.0.1',
+                    port: httpsProxyPort,
+                    method: 'CONNECT',
+                    path: targetHostPort,
+                    headers: { 'Host': targetHostPort },
+                    rejectUnauthorized: false,
+                });
+
+                connectRequest.on('connect', (res, socket) => {
+                    if (res.statusCode !== 200) {
+                        socket.destroy();
+                        reject(new Error(`CONNECT failed: ${res.statusCode}`));
+                        return;
+                    }
+
+                    // Make HTTP request through the tunnel
+                    const requestData = `GET / HTTP/1.1\r\nHost: ${targetHostPort}\r\nConnection: close\r\n\r\n`;
+                    socket.write(requestData);
+
+                    let responseData = '';
+                    socket.on('data', (chunk) => {
+                        responseData += chunk.toString();
+                    });
+
+                    socket.on('end', () => {
+                        socket.destroy();
+                        resolve(responseData);
+                    });
+
+                    socket.on('error', reject);
+                });
+
+                connectRequest.on('error', reject);
+                connectRequest.end();
+            });
+
+            expect(response).to.contain('It works!');
+
+            const stats = await statsPromise;
+
+            expect(stats).to.deep.include(EXPECTED_SOCKS5_CONNECT_NOAUTH_STATS);
+        } finally {
+            await new Promise((resolve) => socksServer.close(resolve));
+            await targetServer.close();
+            await httpsProxyServer.close();
+        }
+    });
+
+    it('GET request via SOCKS5 with authentication shows SOCKS overhead in target bytes', async () => {
+        const [socksPort, httpsProxyPort, targetPort] = await portastic.find({ min: 51000, max: 51500, retrieve: 3 });
+
+        const socksServer = socksv5.createServer((_, accept) => {
+            accept();
+        });
+
+        await new Promise((resolve) => {
+            socksServer.listen(socksPort, '127.0.0.1', () => {
+                socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+                    // Accept credentials: username 'proxy-ch@in', password 'rules!'
+                    cb(user === 'proxy-ch@in' && password === 'rules!');
+                }));
+                resolve();
+            });
+        });
+
+        const targetServer = new TargetServer({ port: targetPort, useSsl: false });
+        await targetServer.listen();
+
+        // Setup HTTPS proxy with SOCKS5 upstream (with auth)
+        // Note: URL-encode '@' in username: proxy-ch@in -> proxy-ch%40in
+        const httpsProxyServer = new Server({
+            port: httpsProxyPort,
+            serverType: 'https',
+            httpsOptions: {
+                key: sslKey,
+                cert: sslCrt,
+                maxCachedSessions: 0,  // Critical for determinism
+            },
+            prepareRequestFunction: () => ({
+                upstreamProxyUrl: `socks5://proxy-ch%40in:rules!@127.0.0.1:${socksPort}`,
+            }),
+            verbose: false,
+        });
+        await httpsProxyServer.listen();
+
+        try {
+            const statsPromise = awaitConnectionStats(httpsProxyServer);
+
+            // Make GET request through HTTPS proxy (which routes via SOCKS5 with auth)
+            const agent = createNonCachingAgent({ rejectUnauthorized: false });
+            const { response, body } = await requestPromised({
+                url: `http://127.0.0.1:${targetPort}`,
+                proxy: `https://127.0.0.1:${httpsProxyPort}`,
+                agent,
+            });
+
+            expect(response.statusCode).to.equal(200);
+            expect(body).to.equal('It works!');
+
+            const stats = await statsPromise;
+
+            // Note: SOCKS5 authentication adds ~21 bytes to target bytes vs no-auth test
+            // This overhead is visible in trgTxBytes (94 vs 73) and trgRxBytes (185 vs 183)
+            // Auth bytes: username/password exchange during SOCKS5 handshake
+
+            expect(stats).to.deep.include(EXPECTED_SOCKS5_GET_AUTH_STATS);
+
+            agent.destroy();
+        } finally {
+            await new Promise((resolve) => socksServer.close(resolve));
+            await targetServer.close();
+            await httpsProxyServer.close();
+        }
+    });
+});
+
  // TODO: consider to add in future
  // 1. Upstream Combinations
  // - HTTPS proxy -> HTTPS upstream
- // - HTTPS proxy -> SOCKS upstream
  // 2. Very Large Transfers
  // - Transfer >100MB, validate byte counters don't overflow
 
