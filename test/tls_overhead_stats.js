@@ -2154,6 +2154,80 @@ describe('TLS Overhead Statistics', function() {
 describe('WebSocket TLS Overhead Tracking', function () {
     this.timeout(30000);
 
+    it('websocket connection through HTTP proxy without TLS overhead for single message', async () => {
+        const [targetServerPort, httpProxyPort] = await portastic.find({ min: 49000, max: 50000, retrieve: 2 });
+
+        const targetServer = new TargetServer({ port: targetServerPort, useSsl: false });
+        await targetServer.listen();
+
+        const httpProxyServer = new Server({
+            port: httpProxyPort,
+            serverType: 'http',
+            verbose: false,
+        });
+        await httpProxyServer.listen();
+
+        try {
+            const statsPromise = awaitConnectionStats(httpProxyServer);
+
+            // Manual CONNECT tunneling for accurate byte counting
+            const response = await new Promise((resolve, reject) => {
+                const targetHostPort = `127.0.0.1:${targetServerPort}`;
+
+                const connectRequest = http.request({
+                    host: '127.0.0.1',
+                    port: httpProxyPort,
+                    method: 'CONNECT',
+                    path: targetHostPort,
+                    headers: { 'Host': targetHostPort },
+                });
+
+                connectRequest.on('connect', (res, socket) => {
+                    if (res.statusCode !== 200) {
+                        socket.destroy();
+                        reject(new Error(`CONNECT failed: ${res.statusCode}`));
+                        return;
+                    }
+
+                    const ws = new WebSocket(`ws://${targetHostPort}`, {
+                        createConnection: () => socket,
+                    });
+
+                    ws.on('error', (err) => {
+                        ws.close();
+                        reject(err);
+                    });
+
+                    ws.on('open', () => ws.send('hello world'));
+
+                    ws.on('message', (data) => {
+                        ws.close();
+                        resolve(data.toString());
+                    });
+                });
+
+                connectRequest.on('error', reject);
+                connectRequest.end();
+            });
+
+            expect(response).to.equal('I received: hello world');
+
+            const stats = await statsPromise;
+
+            const EXPECTED_WS_STATS = {
+                srcTxBytes: 195,
+                srcRxBytes: 325,
+                trgTxBytes: 247,
+                trgRxBytes: 156,
+            };
+
+            expect(stats).to.deep.include(EXPECTED_WS_STATS);
+        } finally {
+            await targetServer.close();
+            await httpProxyServer.close();
+        }
+    });
+
     it('websocket connection through HTTPS proxy tracks TLS overhead correctly for single message', async () => {
         const [targetServerPort, httpsProxyPort] = await portastic.find({ min: 49000, max: 50000, retrieve: 2 });
 
@@ -2172,7 +2246,6 @@ describe('WebSocket TLS Overhead Tracking', function () {
             const statsPromise = awaitConnectionStats(httpsProxyServer);
 
             // Manual CONNECT tunneling for accurate byte counting
-            // (Native wss:// would hide sockets needed for Symbol-based tracking)
             const response = await new Promise((resolve, reject) => {
                 const targetHostPort = `127.0.0.1:${targetServerPort}`;
 
@@ -2216,14 +2289,6 @@ describe('WebSocket TLS Overhead Tracking', function () {
             expect(response).to.equal('I received: hello world');
 
             const stats = await statsPromise;
-
-            // TLS overhead validation: client->proxy has TLS, proxy->target does not
-            expect(stats.srcTxBytes).to.be.greaterThan(stats.trgRxBytes);
-            expect(stats.srcRxBytes).to.be.greaterThan(stats.trgTxBytes);
-
-            // Target bytes should be non-null (connection established)
-            expect(stats.trgTxBytes).to.be.a('number').and.to.be.greaterThan(0);
-            expect(stats.trgRxBytes).to.be.a('number').and.to.be.greaterThan(0);
 
             const EXPECTED_WS_STATS = {
                 srcTxBytes: 2342,
@@ -2332,16 +2397,6 @@ describe('WebSocket TLS Overhead Tracking', function () {
             // Verify we captured stats
             expect(statsSnapshots.length).to.equal(1);
             const finalStats = statsSnapshots[0];
-
-            // Verify stats tracked all messages
-            expect(finalStats.srcTxBytes).to.be.greaterThan(0);
-            expect(finalStats.srcRxBytes).to.be.greaterThan(0);
-            expect(finalStats.trgTxBytes).to.be.greaterThan(0);
-            expect(finalStats.trgRxBytes).to.be.greaterThan(0);
-
-            // TLS overhead should still be present
-            expect(finalStats.srcTxBytes).to.be.greaterThan(finalStats.trgRxBytes);
-            expect(finalStats.srcRxBytes).to.be.greaterThan(finalStats.trgTxBytes);
 
             const EXPECTED_MULTI_MSG_STATS = {
                 srcTxBytes: 2520,
