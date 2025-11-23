@@ -218,6 +218,47 @@ const EXPECTED_SOCKS5_GET_NOAUTH_STATS = { srcTxBytes: 2252, srcRxBytes: 517, tr
 const EXPECTED_SOCKS5_CONNECT_NOAUTH_STATS = { srcTxBytes: 2313, srcRxBytes: 595, trgTxBytes: 73, trgRxBytes: 183 };
 const EXPECTED_SOCKS5_GET_AUTH_STATS = { srcTxBytes: 2252, srcRxBytes: 517, trgTxBytes: 94, trgRxBytes: 185 };
 
+/**
+ * POST 100KB - HTTPS proxy -> HTTP target
+ * Source side (client<->proxy): Includes TLS overhead (handshake + encryption)
+ * Target side (proxy<->target): Application-layer only
+ *
+ * Request direction overhead: 103,112 - 102,523 = 589 bytes (~0.57%)
+ * Response direction overhead: 104,808 - 102,566 = 2,242 bytes (~2.14%)
+ * Total TLS overhead: 2,831 bytes for 204,800 bytes of payload (request + response)
+ *
+ * Values captured from Docker test run on Node.js 18.20.8
+ */
+const EXPECTED_POST_100KB_STATS = { srcTxBytes: 104808, srcRxBytes: 103112, trgTxBytes: 102523, trgRxBytes: 102566 };
+
+/**
+ * HEAD request - HTTPS proxy -> HTTP target
+ * Source side (client<->proxy): Includes TLS overhead (handshake + encryption)
+ * Target side (proxy<->target): Application-layer only (minimal headers, no body)
+ *
+ * Request direction overhead: 548 - 91 = 457 bytes (~83.4%)
+ * Response direction overhead: 2,205 - 124 = 2,081 bytes (~94.4%)
+ * TLS overhead dominates when response body is empty (HEAD request characteristic)
+ *
+ * Values captured from Docker test run on Node.js 18.20.8
+ */
+const EXPECTED_HEAD_STATS = { srcTxBytes: 2205, srcRxBytes: 548, trgTxBytes: 91, trgRxBytes: 124 };
+
+/**
+ * POST 204 No Content - HTTPS proxy -> HTTP target
+ * Source side (client<->proxy): Includes TLS overhead (handshake + encryption)
+ * Target side (proxy<->target): Application-layer only
+ *
+ * Asymmetric traffic pattern: Large request (50KB POST), zero response body (204 No Content)
+ *
+ * Request direction overhead: 51,848 - 51,325 = 523 bytes (~1.01%)
+ * Response direction overhead: 2,187 - 106 = 2,081 bytes (~95.2%)
+ * TLS overhead dominates in response direction when body is empty (similar to HEAD)
+ *
+ * Values captured from Docker test run on Node.js 18.20.8
+ */
+const EXPECTED_POST_204_STATS = { srcTxBytes: 2187, srcRxBytes: 51848, trgTxBytes: 51325, trgRxBytes: 106 };
+
 describe('TLS Overhead Statistics', function() {
     this.timeout(30000);
 
@@ -2113,6 +2154,131 @@ describe('TLS Overhead Statistics', function() {
 
             keepAliveTestProxy.removeListener('connectionClosed', statsListener);
             agent.destroy();
+        });
+    });
+
+    describe('HTTP Methods with Different Payload Sizes (POST, HEAD)', () => {
+        // Validates TLS overhead consistency across different HTTP methods and payload sizes.
+        // This gap prevents validation of TLS overhead behavior across different traffic patterns.
+
+        it('POST request with 100KB body maintains proportional TLS overhead', async () => {
+            // Validates:
+            // 1. TLS overhead scales appropriately with large request bodies
+            // 2. Request direction TLS overhead (srcRxBytes > trgTxBytes)
+            // 3. Response direction TLS overhead (srcTxBytes > trgRxBytes)
+            // 4. forward.ts handler correctly tracks large POST requests
+            //
+            // Traffic flow:
+            // REQUEST:  Client ──[srcRxBytes]──> Proxy ──[trgTxBytes]──> Target
+            // RESPONSE: Client <──[srcTxBytes]── Proxy <──[trgRxBytes]── Target
+
+            const targetUrl = `http://127.0.0.1:${targetServer.httpServer.address().port}/echo-payload`;
+            const postBody = 'X'.repeat(100 * 1024);  // 100KB
+
+            const statsPromise = awaitConnectionStats(httpsProxyServer);
+            const agent = createNonCachingAgent();
+
+            const { body } = await requestPromised({
+                url: targetUrl,
+                method: 'POST',
+                body: postBody,
+                headers: {
+                    'Content-Type': 'text/plain',
+                },
+                proxy: `https://127.0.0.1:${httpsProxyServer.port}`,
+                strictSSL: false,
+                rejectUnauthorized: false,
+                agent,
+            });
+
+            const stats = await statsPromise;
+
+            // Exact byte equality validates TLS overhead in both directions
+            // srcTxBytes (104808) > trgRxBytes (102566) - Response direction overhead
+            // srcRxBytes (103112) > trgTxBytes (102523) - Request direction overhead
+            expect(stats).to.deep.include(EXPECTED_POST_100KB_STATS);
+
+            // Validate response echoes request body correctly
+            expect(body).to.equal(postBody);
+        });
+
+        it('HEAD request validates TLS handshake overhead dominates minimal response body', async () => {
+            // Validates:
+            // 1. TLS overhead dominates when response body is empty (HEAD request)
+            // 2. trgRxBytes is minimal (headers only, no body)
+            // 3. TLS handshake overhead (~2.5KB) is majority of srcTxBytes (94.4% overhead)
+            // 4. forward.ts handler correctly processes HEAD requests
+            //
+            // Traffic flow:
+            // REQUEST:  Client ──[srcRxBytes]──> Proxy ──[trgTxBytes]──> Target
+            // RESPONSE: Client <──[srcTxBytes]── Proxy <──[trgRxBytes]── Target
+
+            const targetUrl = `http://127.0.0.1:${targetServer.httpServer.address().port}/hello-world`;
+
+            const statsPromise = awaitConnectionStats(httpsProxyServer);
+            const agent = createNonCachingAgent();
+
+            const { body } = await requestPromised({
+                url: targetUrl,
+                method: 'HEAD',
+                proxy: `https://127.0.0.1:${httpsProxyServer.port}`,
+                strictSSL: false,
+                rejectUnauthorized: false,
+                agent,
+            });
+
+            const stats = await statsPromise;
+
+            // Exact byte equality validates TLS overhead dominates minimal response
+            // srcTxBytes (2205) > trgRxBytes (124) - TLS overhead is 2081 bytes (94.4%)
+            // trgRxBytes (124) < 500 - Response is headers only
+            expect(stats).to.deep.include(EXPECTED_HEAD_STATS);
+
+            // Validate HEAD response has no body (HTTP spec compliance)
+            expect(!body || body.length === 0, 'HEAD response body should be empty').to.be.true;
+        });
+
+        it('POST 204 No Content validates asymmetric traffic pattern (large request, zero response body)', async () => {
+            // Validates:
+            // 1. TLS overhead tracking for asymmetric traffic (large request, minimal response)
+            // 2. Request direction TLS overhead with large payload (srcRxBytes > trgTxBytes)
+            // 3. Response direction TLS overhead dominates when body is empty (srcTxBytes > trgRxBytes)
+            // 4. forward.ts handler correctly processes 204 No Content responses
+            //
+            // Traffic flow (asymmetric pattern):
+            // REQUEST:  Client ──[srcRxBytes: 51,848]──> Proxy ──[trgTxBytes: 51,325]──> Target (50KB POST)
+            // RESPONSE: Client <──[srcTxBytes: 2,187]── Proxy <──[trgRxBytes: 106]── Target (204 No Content, empty body)
+
+            const targetUrl = `http://127.0.0.1:${targetServer.httpServer.address().port}/echo-no-content`;
+            const postBody = 'X'.repeat(50 * 1024);  // 50KB
+
+            const statsPromise = awaitConnectionStats(httpsProxyServer);
+            const agent = createNonCachingAgent();
+
+            const { response, body } = await requestPromised({
+                url: targetUrl,
+                method: 'POST',
+                body: postBody,
+                headers: {
+                    'Content-Type': 'text/plain',
+                },
+                proxy: `https://127.0.0.1:${httpsProxyServer.port}`,
+                strictSSL: false,
+                rejectUnauthorized: false,
+                agent,
+            });
+
+            const stats = await statsPromise;
+
+            // Exact byte equality validates TLS overhead in asymmetric traffic
+            // Response: srcTxBytes (2187) > trgRxBytes (106) - TLS overhead dominates (95.2%)
+            // Request: srcRxBytes (51848) > trgTxBytes (51325) - Minimal TLS overhead (1.01%)
+            // Asymmetric: trgTxBytes (51325) >> trgRxBytes (106) - Request 485x larger than response
+            expect(stats).to.deep.include(EXPECTED_POST_204_STATS);
+
+            // Validate 204 No Content response (HTTP spec compliance)
+            expect(response.statusCode).to.equal(204);
+            expect(!body || body.length === 0, '204 response body should be empty').to.be.true;
         });
     });
 });

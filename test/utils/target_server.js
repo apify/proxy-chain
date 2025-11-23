@@ -26,6 +26,7 @@ class TargetServer {
         this.app.all('/echo-request-info', this.allEchoRequestInfo.bind(this));
         this.app.all('/echo-raw-headers', this.allEchoRawHeaders.bind(this));
         this.app.all('/echo-payload', this.allEchoPayload.bind(this));
+        this.app.all('/echo-no-content', this.allEchoNoContent.bind(this));
         this.app.get('/redirect-to-hello-world', this.getRedirectToHelloWorld.bind(this));
         this.app.get('/get-1m-a-chars-together', this.get1MACharsTogether.bind(this));
         this.app.get('/get-1m-a-chars-streamed', this.get1MACharsStreamed.bind(this));
@@ -71,6 +72,12 @@ class TargetServer {
         response.writeHead(200, { 'Content-Type': request.headers['content-type'] || 'dummy' });
         // console.log('allEchoPayload: ' + request.body.length);
         response.end(request.body);
+    }
+
+    allEchoNoContent(request, response) {
+        // 204 No Content - per HTTP spec, MUST NOT include a message body
+        response.writeHead(204);
+        response.end();
     }
 
     get1MACharsTogether(request, response) {
