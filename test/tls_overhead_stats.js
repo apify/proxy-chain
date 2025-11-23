@@ -259,6 +259,50 @@ const EXPECTED_HEAD_STATS = { srcTxBytes: 2205, srcRxBytes: 548, trgTxBytes: 91,
  */
 const EXPECTED_POST_204_STATS = { srcTxBytes: 2187, srcRxBytes: 51848, trgTxBytes: 51325, trgRxBytes: 106 };
 
+/**
+ * Expected stats for HTTPS target via CONNECT (nested TLS scenario)
+ * Architecture: Client ←[TLS #1]→ HTTPS Proxy ←[TLS #2]→ HTTPS Target
+ *
+ * Handle: direct.ts (CONNECT tunnel established by HTTP client)
+ *
+ * CRITICAL: Target bytes include nested TLS handshake as opaque encrypted data
+ *
+ * Target bytes semantics:
+ * - trgTxBytes (540): Nested TLS ClientHello + encrypted HTTP request (opaque)
+ * - trgRxBytes (2303): Nested TLS ServerHello + certificates + encrypted response (opaque)
+ *
+ * Values captured from Docker test run on Node.js 18.20.8
+ */
+const EXPECTED_HTTPS_TARGET_GET_STATS = { srcTxBytes: 4467, srcRxBytes: 1143, trgTxBytes: 540, trgRxBytes: 2303 };
+
+/**
+ * Expected stats for HTTPS target via CONNECT tunnel (nested TLS scenario)
+ * Architecture: Client ←[TLS #1]→ HTTPS Proxy ←[TCP tunnel]→ HTTPS Target
+ *                      (srcBytes)                  (trgBytes)
+ *
+ * Handler: direct.ts (CONNECT tunneling without upstream)
+ *
+ * Nested TLS semantics:
+ * 1. Client establishes TLS #1 with proxy (tracked in srcBytes)
+ * 2. Client sends CONNECT request through TLS #1
+ * 3. Proxy establishes raw TCP connection to HTTPS target port 443
+ * 4. Proxy responds "200 Connection Established"
+ * 5. Client establishes TLS #2 THROUGH the tunnel (appears in trgBytes as opaque encrypted data)
+ * 6. All subsequent traffic is TLS #2 encrypted (proxy forwards blindly)
+ *
+ * Target bytes include nested TLS handshake as opaque encrypted data:
+ * - trgTxBytes: Nested TLS ClientHello + encrypted HTTP request
+ * - trgRxBytes: Nested TLS ServerHello + certificate chain + encrypted response
+ *
+ * Values captured from Docker test run on Node.js 18.20.8
+ */
+const EXPECTED_HTTPS_TARGET_CONNECT_STATS = {
+    srcTxBytes: 4489,
+    srcRxBytes: 1141,
+    trgTxBytes: 562,
+    trgRxBytes: 2303,
+};
+
 describe('TLS Overhead Statistics', function() {
     this.timeout(30000);
 
@@ -2281,6 +2325,136 @@ describe('TLS Overhead Statistics', function() {
             expect(!body || body.length === 0, '204 response body should be empty').to.be.true;
         });
     });
+
+    describe('HTTPS Targets (Nested TLS)', () => {
+        it('GET request to HTTPS target includes nested TLS handshake in target bytes (opaque data)', async () => {
+            // Validates nested TLS scenario where HTTPS proxy connects to HTTPS target.
+            const httpsTargetPort = freePorts.shift();
+
+            const httpsTargetServer = new TargetServer({
+                port: httpsTargetPort,
+                useSsl: true,
+                sslKey,
+                sslCrt,
+            });
+            await httpsTargetServer.listen();
+
+            try {
+                const statsPromise = awaitConnectionStats(httpsProxyServer);
+                const agent = createNonCachingAgent({ rejectUnauthorized: false });
+
+                await requestPromised({
+                    url: `https://127.0.0.1:${httpsTargetPort}/hello-world`,
+                    proxy: `https://127.0.0.1:${httpsProxyServer.port}`,
+                    strictSSL: false,
+                    rejectUnauthorized: false,
+                    agent,
+                });
+
+                const stats = await statsPromise;
+
+                // Validates nested TLS overhead in target bytes (opaque encrypted data):
+                // - trgTxBytes (540): Nested TLS ClientHello + encrypted request
+                // - trgRxBytes (2303): Nested TLS ServerHello + certificates + encrypted response
+                // - srcTxBytes (4467): Proxy TLS #1 overhead + tunneled nested TLS #2
+                // - srcRxBytes (1143): Proxy TLS #1 overhead + CONNECT + tunneled nested TLS #2
+                expect(stats).to.deep.include(EXPECTED_HTTPS_TARGET_GET_STATS);
+            } finally {
+                await httpsTargetServer.close();
+                freePorts.push(httpsTargetPort);
+            }
+        });
+
+        it('CONNECT request to HTTPS target includes nested TLS handshake in target bytes (opaque data)', async () => {
+            // Validates nested TLS scenario where HTTPS proxy establishes CONNECT tunnel to HTTPS target.
+            // Unlike GET requests (forward.ts), CONNECT (direct.ts) creates a bidirectional TCP tunnel
+            // where the proxy forwards encrypted TLS data as opaque bytes.
+
+            const httpsTargetPort = freePorts.shift();
+            const httpsTargetServer = new TargetServer({
+                port: httpsTargetPort,
+                useSsl: true,  // HTTPS target
+                sslKey,
+                sslCrt,
+            });
+            await httpsTargetServer.listen();
+
+            try {
+                const statsPromise = awaitConnectionStats(httpsProxyServer);
+
+                // Establish CONNECT tunnel through HTTPS proxy
+                const response = await new Promise((resolve, reject) => {
+                    const targetHostPort = `127.0.0.1:${httpsTargetPort}`;
+
+                    // Use https.request() because proxy is HTTPS
+                    const connectRequest = https.request({
+                        host: '127.0.0.1',
+                        port: httpsProxyServer.port,
+                        method: 'CONNECT',
+                        path: targetHostPort,
+                        headers: { 'Host': targetHostPort },
+                        rejectUnauthorized: false,  // Accept self-signed proxy cert
+                    });
+
+                    connectRequest.on('connect', (res, socket) => {
+                        if (res.statusCode !== 200) {
+                            socket.destroy();
+                            reject(new Error(`CONNECT failed: ${res.statusCode}`));
+                            return;
+                        }
+
+                        // Establish nested TLS connection through the tunnel
+                        const tlsSocket = tls.connect({
+                            socket: socket,  // Use CONNECT tunnel as transport
+                            servername: '127.0.0.1',
+                            rejectUnauthorized: false,  // Accept self-signed target cert
+                        });
+
+                        tlsSocket.on('secureConnect', () => {
+                            // Send minimal HTTP GET request through nested TLS
+                            tlsSocket.write('GET /hello-world HTTP/1.1\r\n');
+                            tlsSocket.write(`Host: 127.0.0.1:${httpsTargetPort}\r\n`);
+                            tlsSocket.write('Connection: close\r\n');
+                            tlsSocket.write('\r\n');
+                        });
+
+                        let responseData = '';
+                        tlsSocket.on('data', (chunk) => {
+                            responseData += chunk.toString();
+                        });
+
+                        tlsSocket.on('end', () => {
+                            tlsSocket.destroy();
+                            socket.destroy();
+                            resolve(responseData);
+                        });
+
+                        tlsSocket.on('error', (err) => {
+                            tlsSocket.destroy();
+                            socket.destroy();
+                            reject(err);
+                        });
+                    });
+
+                    connectRequest.on('error', (err) => {
+                        reject(err);
+                    });
+
+                    connectRequest.end();
+                });
+
+                expect(response).to.include('Hello world!');
+
+                const stats = await statsPromise;
+
+                expect(stats).to.deep.include(EXPECTED_HTTPS_TARGET_CONNECT_STATS);
+
+            } finally {
+                await httpsTargetServer.close();
+                freePorts.push(httpsTargetPort);
+            }
+        });
+    });
 });
 
 describe('WebSocket TLS Overhead Tracking', function () {
@@ -2815,7 +2989,7 @@ describe('TLS Overhead with SOCKS5 Upstream', function () {
     });
 });
 
- // TODO: consider to add in future
+// TODO: consider to add in future
  // 1. Upstream Combinations
  // - HTTPS proxy -> HTTPS upstream
  // 2. Very Large Transfers
