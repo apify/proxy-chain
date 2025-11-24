@@ -389,6 +389,148 @@ describe('TLS Overhead Statistics', function() {
             expect(httpStats).to.not.be.null;
             expect(httpStats).to.deep.include(EXPECTED_HTTP_STATS);
         });
+
+        it('validates independent byte tracking across HTTP and HTTPS proxies with concurrent connections', async function () {
+            // Purpose:
+            // - Validates that Symbol-based byte tracking doesn't interfere between HTTP and HTTPS server types
+            // - Ensures TLS overhead appears ONLY in HTTPS stats, NOT in HTTP stats
+            // - Tests concurrent access to both proxy types
+            //
+            // Architecture:
+            // - HTTP proxy: No TLS overhead (direct application-layer tracking)
+            // - HTTPS proxy: Includes TLS overhead via _parent socket access
+            // - Both proxies share same target server
+            //
+            // Expected behavior:
+            // - HTTP stats: 100 connections with consistent byte counts (no TLS overhead)
+            // - HTTPS stats: 100 connections with consistent byte counts (with TLS overhead)
+            // - HTTPS overhead should be ~115x larger than HTTP overhead (TLS handshake dominates)
+
+            this.timeout(20000);
+
+            const targetUrl = `http://127.0.0.1:${targetServer.httpServer.address().port}/hello-world`;
+
+            const HTTP_CONNECTIONS = 100;
+            const HTTPS_CONNECTIONS = 100;
+
+            const httpStats = [];
+            const httpsStats = [];
+
+            try {
+                httpProxyServer.setMaxListeners(120);
+                httpsProxyServer.setMaxListeners(120);
+
+                // Create closure promises BEFORE launching connections (barrier pattern)
+                const httpClosurePromises = [];
+                for (let i = 0; i < HTTP_CONNECTIONS; i++) {
+                    httpClosurePromises.push(new Promise((resolve) => {
+                        httpProxyServer.once('connectionClosed', ({ stats }) => {
+                            httpStats.push(stats);
+                            resolve();
+                        });
+                    }));
+                }
+
+                const httpsClosurePromises = [];
+                for (let i = 0; i < HTTPS_CONNECTIONS; i++) {
+                    httpsClosurePromises.push(new Promise((resolve) => {
+                        httpsProxyServer.once('connectionClosed', ({ stats }) => {
+                            httpsStats.push(stats);
+                            resolve();
+                        });
+                    }));
+                }
+
+                // Launch HTTP connections
+                const httpRequestPromises = [];
+                for (let i = 0; i < HTTP_CONNECTIONS; i++) {
+                    // Create HTTP agent per connection for determinism
+                    const httpAgent = new http.Agent({ keepAlive: false });
+                    const requestPromise = requestPromised({
+                        url: targetUrl,
+                        proxy: `http://127.0.0.1:${httpProxyServer.port}`,
+                        agent: httpAgent,
+                        headers: {
+                            'Connection': 'close', // Force immediate closure
+                        },
+                    });
+                    httpRequestPromises.push(requestPromise);
+                }
+
+                // Launch HTTPS connections
+                const httpsRequestPromises = [];
+                for (let i = 0; i < HTTPS_CONNECTIONS; i++) {
+                    const agent = createNonCachingAgent(); // New agent per connection
+                    const requestPromise = requestPromised({
+                        url: targetUrl,
+                        proxy: `https://127.0.0.1:${httpsProxyServer.port}`,
+                        agent,
+                        strictSSL: false,
+                        rejectUnauthorized: false,
+                        headers: {
+                            'Connection': 'close',
+                        },
+                    });
+                    httpsRequestPromises.push(requestPromise);
+                }
+
+                // Launch ALL connections concurrently (mixed protocol)
+                await Promise.all([...httpRequestPromises, ...httpsRequestPromises]);
+
+                // Wait for ALL connections to close (explicit barrier)
+                await Promise.all([...httpClosurePromises, ...httpsClosurePromises]);
+
+                expect(httpStats.length).to.equal(HTTP_CONNECTIONS, 'Should have 100 HTTP connections');
+                expect(httpsStats.length).to.equal(HTTPS_CONNECTIONS, 'Should have 100 HTTPS connections');
+
+                // Cross-connection validation: Sum of all bytes (detects byte bleed)
+                const httpTotals = {
+                    srcTxBytes: httpStats.reduce((sum, s) => sum + s.srcTxBytes, 0),
+                    srcRxBytes: httpStats.reduce((sum, s) => sum + s.srcRxBytes, 0),
+                    trgTxBytes: httpStats.reduce((sum, s) => sum + s.trgTxBytes, 0),
+                    trgRxBytes: httpStats.reduce((sum, s) => sum + s.trgRxBytes, 0),
+                };
+
+                const httpsTotals = {
+                    srcTxBytes: httpsStats.reduce((sum, s) => sum + s.srcTxBytes, 0),
+                    srcRxBytes: httpsStats.reduce((sum, s) => sum + s.srcRxBytes, 0),
+                    trgTxBytes: httpsStats.reduce((sum, s) => sum + s.trgTxBytes, 0),
+                    trgRxBytes: httpsStats.reduce((sum, s) => sum + s.trgRxBytes, 0),
+                };
+
+                expect(httpTotals.srcTxBytes).to.equal(EXPECTED_HTTP_STATS.srcTxBytes * HTTP_CONNECTIONS,
+                    'HTTP srcTxBytes total should be 100x single connection');
+                expect(httpTotals.srcRxBytes).to.equal(EXPECTED_HTTP_STATS.srcRxBytes * HTTP_CONNECTIONS,
+                    'HTTP srcRxBytes total should be 100x single connection');
+                expect(httpTotals.trgTxBytes).to.equal(EXPECTED_HTTP_STATS.trgTxBytes * HTTP_CONNECTIONS,
+                    'HTTP trgTxBytes total should be 100x single connection');
+                expect(httpTotals.trgRxBytes).to.equal(EXPECTED_HTTP_STATS.trgRxBytes * HTTP_CONNECTIONS,
+                    'HTTP trgRxBytes total should be 100x single connection');
+
+                expect(httpsTotals.srcTxBytes).to.equal(EXPECTED_HTTPS_STATS.srcTxBytes * HTTPS_CONNECTIONS,
+                    'HTTPS srcTxBytes total should be 100x single connection');
+                expect(httpsTotals.srcRxBytes).to.equal(EXPECTED_HTTPS_STATS.srcRxBytes * HTTPS_CONNECTIONS,
+                    'HTTPS srcRxBytes total should be 100x single connection');
+                expect(httpsTotals.trgTxBytes).to.equal(EXPECTED_HTTPS_STATS.trgTxBytes * HTTPS_CONNECTIONS,
+                    'HTTPS trgTxBytes total should be 100x single connection');
+                expect(httpsTotals.trgRxBytes).to.equal(EXPECTED_HTTPS_STATS.trgRxBytes * HTTPS_CONNECTIONS,
+                    'HTTPS trgRxBytes total should be 100x single connection');
+
+                const httpOverhead = (httpTotals.srcTxBytes + httpTotals.srcRxBytes) - (httpTotals.trgTxBytes + httpTotals.trgRxBytes);
+                const httpsOverhead = (httpsTotals.srcTxBytes + httpsTotals.srcRxBytes) - (httpsTotals.trgTxBytes + httpsTotals.trgRxBytes);
+
+                expect(httpOverhead).to.be.equal(2200);
+                expect(httpsOverhead).to.be.equal(253800);
+
+            } finally {
+                // Agent cleanup: HTTP and HTTPS agents are automatically garbage collected after connections close.
+                // No explicit cleanup needed as agents have no persistent state after socket closure.
+
+                // Reset event listener limits
+                httpProxyServer.setMaxListeners(10);
+                httpsProxyServer.setMaxListeners(10);
+            }
+        });
     });
 
     // TODO: should be fixed after https://github.com/apify/proxy-chain/pull/607 (count TLS overhead bytes for HTTPS upstreams)
