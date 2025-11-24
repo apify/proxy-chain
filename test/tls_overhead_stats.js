@@ -303,6 +303,25 @@ const EXPECTED_HTTPS_TARGET_CONNECT_STATS = {
     trgRxBytes: 2303,
 };
 
+/**
+ * Expected stats for custom response "Hello World" (NO TARGET CONNECTION)
+ * - srcTxBytes: Response with TLS overhead (proxy → client)
+ * - srcRxBytes: Request with TLS overhead (client → proxy)
+ * - trgTxBytes: null (no target connection)
+ * - trgRxBytes: null (no target connection)
+ *
+ * These byte counts are for custom response with Content-Type header.
+ * NULL target bytes because custom response handler never connects to target.
+ *
+ * Values captured from Docker test run on Node.js 18.20.8
+ */
+const EXPECTED_CUSTOM_RESPONSE_STATS = {
+    srcTxBytes: 2213,  // Response with TLS overhead (includes Content-Type header)
+    srcRxBytes: 584,   // Request with TLS overhead
+    trgTxBytes: null,  // No target connection
+    trgRxBytes: null,  // No target connection
+};
+
 describe('TLS Overhead Statistics', function() {
     this.timeout(30000);
 
@@ -1313,6 +1332,97 @@ describe('TLS Overhead Statistics', function() {
             expect(firstEventCaptured).to.be.true;
             expect(secondEventCaptured).to.be.false; // No listener was active
             expect(thirdEventCaptured).to.be.true;
+        });
+    });
+
+    describe('Custom Response Function (API Gateway Pattern)', () => {
+        // Tests TLS overhead tracking when proxy responds directly without target connection.
+        // Validates the API gateway pattern where proxy serves data from cache, auth failures,
+        // rate limiting, etc. without contacting upstream.
+
+        let customResponseProxy;
+
+        beforeEach(async () => {
+            // Create HTTPS proxy server with prepareRequestFunction
+            const customResponsePort = freePorts.shift();
+            customResponseProxy = new Server({
+                port: customResponsePort,
+                serverType: 'https',
+                httpsOptions: { key: sslKey, cert: sslCrt },
+                verbose: false,
+                prepareRequestFunction: ({ hostname }) => {
+                    const result = {};
+
+                    // Custom response for test hostname (API gateway pattern)
+                    if (hostname === 'test-tls-custom-response.gov') {
+                        result.customResponseFunction = () => {
+                            return {
+                                statusCode: 200,
+                                headers: {
+                                    'Content-Type': 'text/plain',
+                                },
+                                body: 'Hello World',  // Same body as /hello-world endpoint
+                            };
+                        };
+                    }
+
+                    return result;
+                },
+            });
+            await customResponseProxy.listen();
+        });
+
+        afterEach(async () => {
+            if (customResponseProxy) {
+                await customResponseProxy.close(true);
+                customResponseProxy = null;
+            }
+            await wait(200); // Let connections fully close
+        });
+
+        it('validates TLS overhead with null target bytes for custom response', async function() {
+            // Use cases:
+            // - API Gateway Pattern: Proxy returns data without backend connection
+            // - Rate Limiting: "429 Too Many Requests" responses without target
+            // - Cached Responses: Serve from cache without upstream call
+            // - Auth Failures: "401 Unauthorized" before target connection
+            //
+            // Expected behavior:
+            // - Source bytes track TLS overhead (via tlsSocket._parent)
+            // - Target bytes are NULL (getTargetStats() returns null when handler never calls countTargetBytes())
+            // - Stats merge correctly in getConnectionStats()
+
+            let capturedStats = null;
+
+            const statsPromise = new Promise((resolve) => {
+                customResponseProxy.once('connectionClosed', ({ stats }) => {
+                    capturedStats = stats;
+                    resolve();
+                });
+            });
+
+            try {
+                // Make request to custom response hostname (no actual target server needed)
+                const { response, body } = await requestPromised({
+                    url: 'http://test-tls-custom-response.gov/test',  // URL doesn't matter, hostname triggers custom response
+                    proxy: `https://127.0.0.1:${customResponseProxy.port}`,
+                    strictSSL: false,
+                    rejectUnauthorized: false,
+                    headers: {
+                        'Connection': 'close', // Force immediate connection closure
+                    },
+                });
+
+                expect(response.statusCode).to.equal(200);
+                expect(body).to.equal('Hello World');
+
+                await statsPromise;
+
+                expect(capturedStats).to.deep.include(EXPECTED_CUSTOM_RESPONSE_STATS);
+
+            } finally {
+                // No cleanup needed (using once() for event listener)
+            }
         });
     });
 
