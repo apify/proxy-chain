@@ -53,7 +53,7 @@ Note: for test in Docker no changes in `/etc/hosts` needed.
     npm run test
     ```
 
-2. Run specific test file
+2. Run a specific test file
 
     ```bash
     npm run test test/anonymize_proxy.js
