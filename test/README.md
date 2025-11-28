@@ -5,9 +5,23 @@
 Since Linux and macOS handle sockets differently, please run tests in a Docker container
 to have a consistent Linux environment for running tests.
 
-```bash
-npm run test:docker
-```
+1. Run all tests
+
+    ```bash
+    npm run test:docker
+    ```
+
+2. Run specific test file
+
+    ```bash
+    npm run test:docker test/server.js
+    ```
+
+3. Run all `direct ipv6` test cases across all tests
+
+    ```bash
+    npm run test:docker test/server.js -- --grep "direct ipv6"
+    ```
 
 Note: for test in Docker no changes in `/etc/hosts` needed.
 
@@ -39,7 +53,7 @@ Note: for test in Docker no changes in `/etc/hosts` needed.
     npm run test
     ```
 
-2. Run specific tests
+2. Run specific test file
 
     ```bash
     npm run test test/anonymize_proxy.js
