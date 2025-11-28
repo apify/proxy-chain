@@ -11,7 +11,7 @@ to have a consistent Linux environment for running tests.
     npm run test:docker
     ```
 
-2. Run specific test file
+2. Run a specific test file
 
     ```bash
     npm run test:docker test/server.js
