@@ -249,7 +249,7 @@ export class Server extends EventEmitter {
         // See https://github.com/apify/proxy-chain/issues/53
         socket.on('error', (err) => {
             // Handle errors only if there's no other handler
-            if (this.listenerCount('error') === 1) {
+            if (socket.listenerCount('error') === 1) {
                 this.log(socket.proxyChainId, `Source socket emitted error: ${err.stack || err}`);
             }
         });

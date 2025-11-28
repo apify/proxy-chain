@@ -1647,3 +1647,63 @@ useSslVariants.forEach((useSsl) => {
         });
     });
 });
+
+describe('Socket error handler regression test', () => {
+    let server;
+    let logs = [];
+    const originalLog = console.log;
+
+    before(() => {
+        console.log = (...args) => {
+            logs.push(args.join(' '));
+            originalLog.apply(console, args);
+        };
+    });
+
+    after(() => {
+        console.log = originalLog;
+    });
+
+    beforeEach(() => {
+        logs = [];
+    });
+
+    afterEach(async () => {
+        if (server) {
+            await server.close(true);
+            server = null;
+        }
+    });
+
+    // The bug was checking `this.listenerCount('error')` (Server) instead of `socket.listenerCount('error')`.
+    // By adding an error listener to the Server, we make server.listenerCount('error') === 1.
+    // With buggy code: condition becomes TRUE (1 === 1) and incorrectly logs.
+    // With fixed code: condition stays FALSE (socket has 2 listeners, 2 !== 1) and correctly doesn't log.
+    it('does not log when server has 1 error listener but socket has multiple', (done) => {
+        server = new Server({ port: 0, verbose: true });
+
+        server.on('error', () => {});
+
+        server.server.once('connection', (serverSocket) => {
+            setImmediate(() => {
+                expect(server.listenerCount('error')).to.equal(1);
+                expect(serverSocket.listenerCount('error')).to.equal(2);
+
+                serverSocket.emit('error', new Error('Regression test error'));
+
+                setTimeout(() => {
+                    const hasLog = logs.some((log) => log.includes('Source socket emitted error') && log.includes('Regression test error'));
+
+                    expect(hasLog).to.equal(false, 'Should check socket.listenerCount, not this.listenerCount (server)');
+
+                    serverSocket.destroy();
+                    done();
+                }, 50);
+            });
+        });
+
+        server.listen().then(() => {
+            net.connect(server.port, '127.0.0.1');
+        });
+    });
+});
