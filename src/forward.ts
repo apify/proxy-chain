@@ -140,6 +140,7 @@ export const forward = async (
     request.pipe(client);
     client.on('error', (error: NodeJS.ErrnoException) => {
         if (response.headersSent) {
+            resolve();
             return;
         }
 
