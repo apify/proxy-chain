@@ -1902,3 +1902,43 @@ describe('HTTPS proxy server TLS error handling', () => {
         }).catch(done);
     });
 });
+
+describe('Server constructor', () => {
+    it('should default to "http" when serverType is not specified', async () => {
+        const server = new Server({ port: 0 });
+        await server.listen();
+        expect(server.serverType).to.equal('http');
+        expect(server.server).to.be.instanceOf(http.Server);
+        await server.close(true);
+    });
+
+    it('should use "http" when explicitly specified', async () => {
+        const server = new Server({ port: 0, serverType: 'http' });
+        await server.listen();
+        expect(server.serverType).to.equal('http');
+        expect(server.server).to.be.instanceOf(http.Server);
+        await server.close(true);
+    });
+
+    it('should use "https" when explicitly specified with httpsOptions', async () => {
+        const server = new Server({
+            port: 0,
+            serverType: 'https',
+            httpsOptions: { key: sslKey, cert: sslCrt }
+        });
+        await server.listen();
+        expect(server.serverType).to.equal('https');
+        expect(server.server).to.be.instanceOf(https.Server);
+        await server.close(true);
+    });
+
+    it('requires httpsOptions when serverType is "https"', () => {
+        expect(() => {
+            new Server({
+                port: 0,
+                serverType: 'https',
+            });
+        }).to.throw('httpsOptions is required when serverType is "https"');
+    });
+});
+
