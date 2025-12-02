@@ -748,7 +748,7 @@ const createTestSuite = ({
                     } else {
                         client = net.createConnection({ port }, () => {
                             client.write(httpMsg);
-                        })
+                        });
                     }
 
                     client.on('data', (data) => {
@@ -1873,7 +1873,7 @@ describe('HTTPS proxy server TLS error handling', () => {
 
                     goodSocket.on('data', (data) => {
                         const response = data.toString();
-                        expect(response).to.be.equal('HTTP/1.1 200 Connection Established\r\n\r\n')
+                        expect(response).to.be.equal('HTTP/1.1 200 Connection Established\r\n\r\n');
 
                         clearTimeout(goodSocketTimeout);
                         goodSocket.destroy();
