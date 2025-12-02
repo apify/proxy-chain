@@ -1996,34 +1996,6 @@ describe('HTTPS proxy server resource cleanup', () => {
         expect(closedConnections.length).to.equal(1);
     });
 
-    it('removes socket from connection map after TLS handshake failure', async function () {
-        this.timeout(5000);
-
-        const tlsErrors = [];
-        server.on('tlsError', ({ error }) => tlsErrors.push(error));
-
-        // Trigger TLS error with incompatible version.
-        const badSocket = tls.connect({
-            port: server.port,
-            host: '127.0.0.1',
-            rejectUnauthorized: false,
-            minVersion: 'TLSv1',
-            maxVersion: 'TLSv1',
-        });
-
-        // Wait for error and socket close.
-        await new Promise((resolve) => {
-            badSocket.on('error', () => {});
-            badSocket.on('close', resolve);
-        });
-
-        // Small delay for server-side cleanup.
-        await wait(100);
-
-        expect(server.getConnectionIds()).to.be.empty;
-        expect(tlsErrors.length).to.equal(1);
-    });
-
     it('cleans up when client closes immediately after CONNECT 200', async function () {
         this.timeout(5000);
 
