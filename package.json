@@ -37,8 +37,11 @@
         "clean": "rimraf dist",
         "prepublishOnly": "npm run build",
         "local-proxy": "node ./dist/run_locally.js",
-        "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail",
-        "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . &&  docker run proxy-chain-tests",
+        "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha",
+        "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . && docker run proxy-chain-tests",
+        "test:docker:node18": "docker build --build-arg NODE_IMAGE=node:18.20.8-bookworm --tag proxy-chain-tests:node18 --file test/Dockerfile . && docker run proxy-chain-tests:node18",
+        "test:docker:node16": "docker build --build-arg NODE_IMAGE=node:16.20.2-bookworm --tag proxy-chain-tests:node16 --file test/Dockerfile . && docker run proxy-chain-tests:node16",
+        "test:docker:node14": "docker build --build-arg NODE_IMAGE=node:14.21.3-bullseye --tag proxy-chain-tests:node14 --file test/Dockerfile . && docker run proxy-chain-tests:node14",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix"
     },
