@@ -114,16 +114,12 @@ export const chain = (
         targetSocket.on('error', (error) => {
             server.log(proxyChainId, `Chain Destination Socket Error: ${error.stack}`);
 
-            sourceSocket.unpipe(targetSocket);
-            targetSocket.unpipe(sourceSocket);
             sourceSocket.destroy();
         });
 
         sourceSocket.on('error', (error) => {
             server.log(proxyChainId, `Chain Source Socket Error: ${error.stack}`);
 
-            sourceSocket.unpipe(targetSocket);
-            targetSocket.unpipe(sourceSocket);
             targetSocket.destroy();
         });
 
@@ -167,13 +163,7 @@ export const chain = (
             head: clientHead,
         });
 
-        try {
-            sourceSocket.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
-        } catch (error) {
-            targetSocket.destroy();
-            sourceSocket.destroy(error as Error);
-            return;
-        }
+        sourceSocket.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
 
         sourceSocket.pipe(targetSocket);
         targetSocket.pipe(sourceSocket);
@@ -182,8 +172,6 @@ export const chain = (
         // We need to enable flowing, otherwise the socket would remain open indefinitely.
         // Nothing would consume the data, we just want to close the socket.
         targetSocket.on('close', () => {
-            sourceSocket.unpipe(targetSocket);
-            targetSocket.unpipe(sourceSocket);
             sourceSocket.resume();
 
             if (sourceSocket.writable) {
@@ -193,8 +181,6 @@ export const chain = (
 
         // Same here.
         sourceSocket.on('close', () => {
-            sourceSocket.unpipe(targetSocket);
-            targetSocket.unpipe(sourceSocket);
             targetSocket.resume();
 
             if (targetSocket.writable) {
