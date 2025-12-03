@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const tls = require('tls');
+const util = require('util');
 const request = require('request');
 const { expect } = require('chai');
 const { Server } = require('../src/index');
@@ -9,16 +10,7 @@ const { TargetServer } = require('./utils/target_server');
 const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 
-const requestPromised = (opts) => {
-    return new Promise((resolve, reject) => {
-        request(opts, (error, response, _) => {
-            if (error) {
-                return reject(error);
-            }
-            resolve(response);
-        });
-    });
-};
+const requestPromised = util.promisify(request);
 
 describe('HTTPS proxy stress testing', function () {
     this.timeout(60000);
