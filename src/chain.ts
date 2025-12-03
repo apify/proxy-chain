@@ -114,16 +114,21 @@ export const chain = (
         targetSocket.on('error', (error) => {
             server.log(proxyChainId, `Chain Destination Socket Error: ${error.stack}`);
 
+            // When a socket error occurs, the pipe() may still have buffered data trying to write.
+            // Calling unpipe() stops this immediately, preventing cascading EPIPE errors.
             sourceSocket.unpipe(targetSocket);
             targetSocket.unpipe(sourceSocket);
+
             sourceSocket.destroy();
         });
 
         sourceSocket.on('error', (error) => {
             server.log(proxyChainId, `Chain Source Socket Error: ${error.stack}`);
 
+            // Unpipe to prevent EPIPE (see above).
             sourceSocket.unpipe(targetSocket);
             targetSocket.unpipe(sourceSocket);
+
             targetSocket.destroy();
         });
 
@@ -167,6 +172,8 @@ export const chain = (
             head: clientHead,
         });
 
+        // Catch synchronous write errors if client disconnected during upstream CONNECT.
+        // Similar pattern is used in direct.ts.
         try {
             sourceSocket.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
         } catch (error) {
@@ -182,8 +189,10 @@ export const chain = (
         // We need to enable flowing, otherwise the socket would remain open indefinitely.
         // Nothing would consume the data, we just want to close the socket.
         targetSocket.on('close', () => {
+            // Unpipe to prevent EPIPE (see above).
             sourceSocket.unpipe(targetSocket);
             targetSocket.unpipe(sourceSocket);
+
             sourceSocket.resume();
 
             if (sourceSocket.writable) {
@@ -193,8 +202,10 @@ export const chain = (
 
         // Same here.
         sourceSocket.on('close', () => {
+            // Unpipe to prevent EPIPE (see above).
             sourceSocket.unpipe(targetSocket);
             targetSocket.unpipe(sourceSocket);
+
             targetSocket.resume();
 
             if (targetSocket.writable) {
