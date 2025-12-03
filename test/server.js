@@ -478,8 +478,8 @@ const createTestSuite = ({
                     if (useMainProxy) {
                         let auth = '';
                         if (mainProxyAuth) auth = `${mainProxyAuth.username}:${mainProxyAuth.password}@`;
-                        const proxyScheme = mainProxyServerType === 'https' ? 'https' : 'http';
-                        mainProxyUrl = `${proxyScheme}://${auth}127.0.0.1:${mainProxyServerPort}`;
+                        const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
+                        mainProxyUrl = `${proxySchema}://${auth}127.0.0.1:${mainProxyServerPort}`;
                     }
                 });
         });
@@ -893,8 +893,8 @@ const createTestSuite = ({
         if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
             it('handles GET request using puppeteer with invalid credentials', async () => {
                 const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const proxyScheme = mainProxyServerType === 'https' ? 'https' : 'http';
-                const response = await puppeteerGet(phantomUrl, `${proxyScheme}://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
+                const response = await puppeteerGet(phantomUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`);
                 expect(response).to.contain('Proxy credentials required');
             });
         }
@@ -912,9 +912,9 @@ const createTestSuite = ({
         if (mainProxyAuth && mainProxyAuth.username) {
             it('handles GET request from curl with invalid credentials', async () => {
                 const curlUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const proxyScheme = mainProxyServerType === 'https' ? 'https' : 'http';
+                const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
                 // For SSL, we need to return curl's stderr to check what kind of error was there
-                const output = await curlGet(curlUrl, `${proxyScheme}://bad:password@127.0.0.1:${mainProxyServerPort}`, !useSsl);
+                const output = await curlGet(curlUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`, !useSsl);
                 if (useSsl) {
                     expect(output).to.contain.oneOf([
                         // Old error message before dafdb20a26d0c890e83dea61a104b75408481ebd
@@ -1081,31 +1081,31 @@ const createTestSuite = ({
                 });
 
                 it('returns 407 for invalid credentials', () => {
-                    const proxyScheme = mainProxyServerType === 'https' ? 'https' : 'http';
+                    const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
 
                     return Promise.resolve()
                         .then(() => {
                             // Test no username and password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxyScheme}://127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxy = `${proxySchema}://127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(() => {
                             // Test good username and invalid password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxyScheme}://${mainProxyAuth.username}:bad-password@127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxy = `${proxySchema}://${mainProxyAuth.username}:bad-password@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(() => {
                             // Test invalid username and good password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxyScheme}://bad-username:${mainProxyAuth.password}@127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxy = `${proxySchema}://bad-username:${mainProxyAuth.password}@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(() => {
                             // Test invalid username and bad password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxyScheme}://bad-username:bad-password@127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxy = `${proxySchema}://bad-username:bad-password@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then((response) => {
