@@ -882,7 +882,11 @@ const createTestSuite = ({
                 });
         });
 
-        if (!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) {
+        // Skip on Node 14: HTTPS proxy -> HTTPS target with upstream proxy causes EPIPE errors.
+        const isNode14 = process.versions.node.split('.')[0] === '14';
+        const skipPuppeteerOnNode14 = isNode14 && mainProxyServerType === 'https' && useSsl && useUpstreamProxy && !mainProxyAuth;
+
+        if ((!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) && !skipPuppeteerOnNode14) {
             it('handles GET request using puppeteer', async () => {
                 const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const response = await puppeteerGet(phantomUrl, mainProxyUrl);
