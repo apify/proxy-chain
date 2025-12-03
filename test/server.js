@@ -882,9 +882,9 @@ const createTestSuite = ({
                 });
         });
 
-        // Skip on Node 14: HTTPS proxy -> HTTPS target with upstream proxy causes EPIPE errors.
+        // Skip on Node 14: HTTPS proxy with upstream proxy causes EPIPE errors.
         const isNode14 = process.versions.node.split('.')[0] === '14';
-        const skipPuppeteerOnNode14 = isNode14 && mainProxyServerType === 'https' && useSsl && useUpstreamProxy && !mainProxyAuth;
+        const skipPuppeteerOnNode14 = isNode14 && mainProxyServerType === 'https' && useUpstreamProxy && !mainProxyAuth;
 
         if ((!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) && !skipPuppeteerOnNode14) {
             it('handles GET request using puppeteer', async () => {
