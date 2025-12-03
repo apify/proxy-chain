@@ -152,7 +152,10 @@ describe('HTTPS proxy stress testing', function () {
         expect(allStats.length).to.equal(REQUESTS);
 
         allStats.forEach((stats) => {
-            expect(stats).to.be.deep.equal({ srcTxBytes: 174, srcRxBytes: 93, trgTxBytes: 71, trgRxBytes: 174 })
+            // These are application-layer bytes only (no TLS overhead).
+            // srcRxBytes > trgTxBytes because hop-by-hop headers (e.g., Proxy-Connection)
+            // are stripped when forwarding the request to target.
+            expect(stats).to.be.deep.equal({ srcTxBytes: 174, srcRxBytes: 93, trgTxBytes: 71, trgRxBytes: 174 });
         });
     });
 });
