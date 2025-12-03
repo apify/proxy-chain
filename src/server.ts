@@ -121,22 +121,22 @@ export type PrepareRequestFunctionResult = {
 type Promisable<T> = T | Promise<T>;
 export type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promisable<undefined | PrepareRequestFunctionResult>;
 
-interface ServerOptionsBase {
+type ServerOptionsBase = {
     port?: number;
     host?: string;
     prepareRequestFunction?: PrepareRequestFunction;
     verbose?: boolean;
     authRealm?: unknown;
-}
+};
 
-export interface HttpServerOptions extends ServerOptionsBase {
+export type HttpServerOptions = ServerOptionsBase & {
     serverType?: 'http';
-}
+};
 
-export interface HttpsServerOptions extends ServerOptionsBase {
+export type HttpsServerOptions = ServerOptionsBase & {
     serverType: 'https';
     httpsOptions: https.ServerOptions;
-}
+};
 
 export type ServerOptions = HttpServerOptions | HttpsServerOptions;
 
