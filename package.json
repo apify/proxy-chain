@@ -1,6 +1,6 @@
 {
     "name": "proxy-chain",
-    "version": "2.6.1",
+    "version": "2.7.0",
     "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
     "main": "dist/index.js",
     "keywords": [
@@ -37,8 +37,9 @@
         "clean": "rimraf dist",
         "prepublishOnly": "npm run build",
         "local-proxy": "node ./dist/run_locally.js",
-        "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha --bail",
-        "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . &&  docker run proxy-chain-tests",
+        "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha",
+        "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . && docker run proxy-chain-tests",
+        "test:docker:all": "bash scripts/test-docker-all.sh",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix"
     },
