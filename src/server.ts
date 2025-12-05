@@ -63,13 +63,13 @@ const HTTPS_DEFAULTS = {
  * Connection statistics for bandwidth tracking.
  */
 export type ConnectionStats = {
-    // Bytes sent from proxy to client.
+    // Bytes sent by proxy to client.
     srcTxBytes: number;
-    // Bytes received from client to proxy.
+    // Bytes received by proxy from client.
     srcRxBytes: number;
-    // Bytes sent from proxy to target.
+    // Bytes sent by proxy to target.
     trgTxBytes: number | null;
-    // Bytes received from target to proxy.
+    // Bytes received by proxy from target.
     trgRxBytes: number | null;
 };
 
