@@ -3,72 +3,38 @@
 name: Check
 
 on:
-    pull_request:
+  pull_request:
+  workflow_call:
 
 jobs:
-    # NPM install is done in a separate job and cached to speed up the following jobs.
-    build_and_test:
-        name: Build & Test
-        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-        runs-on: ${{ matrix.os }}
+  lint_and_test:
+    name: Lint & Test
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-22.04
 
-        strategy:
-            matrix:
-                os: [ubuntu-22.04] # add windows-latest later
-                node-version: [14, 16, 18]
+    strategy:
+      matrix:
+        node-version: [14, 16, 18]
 
-        steps:
-            -
-                uses: actions/checkout@v2
-            -
-                name: Use Node.js ${{ matrix.node-version }}
-                uses: actions/setup-node@v1
-                with:
-                    node-version: ${{ matrix.node-version }}
-            -
-                name: Cache Node Modules
-                if: ${{ matrix.node-version == 18 }}
-                uses: actions/cache@v4
-                with:
-                    path: |
-                        node_modules
-                        build
-                    key: cache-${{ github.run_id }}-v18
-            -
-                name: Install Dependencies
-                run: npm install
-            -
-                name: Add localhost-test to Linux hosts file
-                if: ${{ matrix.os == 'ubuntu-22.04' }}
-                run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
-#            -
-#                name: Add localhost-test to Windows hosts file
-#                if: ${{ matrix.os == 'windows-latest' }}
-#                run: echo "`n127.0.0.1 localhost-test">>C:\Windows\System32\drivers\etc\hosts
-            -
-                name: Run Tests
-                run: npm test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-    lint:
-        name: Lint
-        needs: [build_and_test]
-        runs-on: ubuntu-22.04
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
 
-        steps:
-            -
-                uses: actions/checkout@v2
-            -
-                name: Use Node.js 18
-                uses: actions/setup-node@v1
-                with:
-                    node-version: 18
-            -
-                name: Load Cache
-                uses: actions/cache@v4
-                with:
-                    path: |
-                        node_modules
-                        build
-                    key: cache-${{ github.run_id }}-v18
-            -
-                run: npm run lint
+      - name: Install Dependencies
+        run: npm install
+
+      # Lint only on the latest Node.js version to save time.
+      - name: Lint code
+        if: ${{ matrix.node-version == 18 }}
+        run: npm run lint
+
+      - name: Add localhost-test to Linux hosts file
+        run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
+
+      - name: Run Tests
+        run: npm test
