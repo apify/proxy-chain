@@ -42,7 +42,7 @@ export const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'soc
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 
-const HTTPS_DEFAULTS = {
+const HTTPS_DEFAULT_OPTIONS = {
     minVersion: 'TLSv1.2', // Disable TLS 1.0 and 1.1 (deprecated, insecure)
     maxVersion: 'TLSv1.3', // Enable modern TLS 1.3
     // Strong cipher suites (TLS 1.3 and TLS 1.2)
@@ -228,13 +228,13 @@ export class Server extends EventEmitter {
             }
 
             // Apply secure TLS defaults (user options can override).
-            const secureDefaults: https.ServerOptions = {
-                ...HTTPS_DEFAULTS,
+            const effectiveOptions: https.ServerOptions = {
+                ...HTTPS_DEFAULT_OPTIONS,
                 honorCipherOrder: true,
                 ...options.httpsOptions,
             };
 
-            this.server = https.createServer(secureDefaults);
+            this.server = https.createServer(effectiveOptions);
         } else {
             this.server = http.createServer();
         }
