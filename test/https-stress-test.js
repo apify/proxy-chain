@@ -72,11 +72,11 @@ describe('HTTPS proxy stress testing', function () {
 
     // Not specific for https but still worth to have.
     it('handles 100 concurrent CONNECT tunnels with data verification', async () => {
-        const TUNNELS = 100;
+        const TUNNEL_COUNT = 100;
         const results = [];
 
         const promises = [];
-        for (let i = 0; i < TUNNELS; i++) {
+        for (let i = 0; i < TUNNEL_COUNT; i++) {
             promises.push(new Promise((resolve) => {
                 const socket = tls.connect({
                     port: server.port,
@@ -124,7 +124,7 @@ describe('HTTPS proxy stress testing', function () {
         await Promise.all(promises);
 
         const successful = results.filter((r) => r.success);
-        expect(successful.length).to.equal(TUNNELS);
+        expect(successful.length).to.equal(TUNNEL_COUNT);
     });
 
     it('tracks accurate statistics for 100 concurrent requests', async () => {
