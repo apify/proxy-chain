@@ -1,4 +1,5 @@
-FROM node:18.20.8-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783
+ARG NODE_IMAGE=node:18.20.8-bookworm
+FROM ${NODE_IMAGE}
 
 RUN apt-get update && apt-get install -y --no-install-recommends chromium \
     && rm -rf /var/lib/apt/lists/*

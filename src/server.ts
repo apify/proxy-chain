@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer';
 import type dns from 'node:dns';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
-import type https from 'node:https';
+import https from 'node:https';
 import type net from 'node:net';
 import { URL } from 'node:url';
 import util from 'node:util';
@@ -19,7 +19,7 @@ import type { HandlerOpts as ForwardOpts } from './forward';
 import { forward } from './forward';
 import { forwardSocks } from './forward_socks';
 import { RequestError } from './request_error';
-import type { Socket } from './socket';
+import type { Socket, TLSSocket } from './socket';
 import { badGatewayStatusCodes } from './statuses';
 import { getTargetStats } from './utils/count_target_bytes';
 import { nodeify } from './utils/nodeify';
@@ -41,10 +41,23 @@ export const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'soc
 const DEFAULT_AUTH_REALM = 'ProxyChain';
 const DEFAULT_PROXY_SERVER_PORT = 8000;
 
+const HTTPS_DEFAULT_OPTIONS = {
+    // Disable TLS 1.0 and 1.1 (deprecated, insecure).
+    // All other TLS settings use Node.js defaults for cipher selection (automatically updated).
+    minVersion: 'TLSv1.2',
+} as const;
+
+/**
+ * Connection statistics for bandwidth tracking.
+ */
 export type ConnectionStats = {
+    // Bytes sent by proxy to client.
     srcTxBytes: number;
+    // Bytes received by proxy from client.
     srcRxBytes: number;
+    // Bytes sent by proxy to target.
     trgTxBytes: number | null;
+    // Bytes received by proxy from target.
     trgRxBytes: number | null;
 };
 
@@ -96,10 +109,31 @@ export type PrepareRequestFunctionResult = {
 type Promisable<T> = T | Promise<T>;
 export type PrepareRequestFunction = (opts: PrepareRequestFunctionOpts) => Promisable<undefined | PrepareRequestFunctionResult>;
 
+type ServerOptionsBase = {
+    port?: number;
+    host?: string;
+    prepareRequestFunction?: PrepareRequestFunction;
+    verbose?: boolean;
+    authRealm?: unknown;
+};
+
+export type HttpServerOptions = ServerOptionsBase & {
+    serverType?: 'http';
+};
+
+export type HttpsServerOptions = ServerOptionsBase & {
+    serverType: 'https';
+    httpsOptions: https.ServerOptions;
+};
+
+export type ServerOptions = HttpServerOptions | HttpsServerOptions;
+
 /**
  * Represents the proxy server.
  * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
+ * It emits the 'tlsError' event on TLS handshake failures (HTTPS servers only), with parameter `{ error, socket }`.
+ * with parameter `{ connectionId, reason, hasParent, parentType }`.
  */
 export class Server extends EventEmitter {
     port: number;
@@ -112,7 +146,9 @@ export class Server extends EventEmitter {
 
     verbose: boolean;
 
-    server: http.Server;
+    server: http.Server | https.Server;
+
+    serverType: 'http' | 'https';
 
     lastHandlerId: number;
 
@@ -124,6 +160,9 @@ export class Server extends EventEmitter {
      * Initializes a new instance of Server class.
      * @param options
      * @param [options.port] Port where the server will listen. By default 8000.
+     * @param [options.serverType] Type of server to create: 'http' or 'https'. By default 'http'.
+     * @param [options.httpsOptions] HTTPS server options (required when serverType is 'https').
+     * Accepts standard Node.js https.ServerOptions including key, cert, ca, passphrase, etc.
      * @param [options.prepareRequestFunction] Custom function to authenticate proxy requests,
      * provide URL to upstream proxy or potentially provide a function that generates a custom response to HTTP requests.
      * It accepts a single parameter which is an object:
@@ -154,13 +193,7 @@ export class Server extends EventEmitter {
      * @param [options.authRealm] Realm used in the Proxy-Authenticate header and also in the 'Server' HTTP header. By default it's `ProxyChain`.
      * @param [options.verbose] If true, the server will output logs
      */
-    constructor(options: {
-        port?: number,
-        host?: string,
-        prepareRequestFunction?: PrepareRequestFunction,
-        verbose?: boolean,
-        authRealm?: unknown,
-    } = {}) {
+    constructor(options: ServerOptions = {}) {
         super();
 
         if (options.port === undefined || options.port === null) {
@@ -174,11 +207,43 @@ export class Server extends EventEmitter {
         this.authRealm = options.authRealm || DEFAULT_AUTH_REALM;
         this.verbose = !!options.verbose;
 
-        this.server = http.createServer();
+        // Keep legacy behavior (http) as default behavior.
+        this.serverType = options.serverType === 'https' ? 'https' : 'http';
+
+        if (options.serverType === 'https') {
+            if (!options.httpsOptions) {
+                throw new Error('httpsOptions is required when serverType is "https"');
+            }
+
+            // Apply secure TLS defaults (user options can override).
+            const effectiveOptions: https.ServerOptions = {
+                ...HTTPS_DEFAULT_OPTIONS,
+                honorCipherOrder: true,
+                ...options.httpsOptions,
+            };
+
+            this.server = https.createServer(effectiveOptions);
+        } else {
+            this.server = http.createServer();
+        }
+
+        // Attach common event handlers (same for both HTTP and HTTPS).
         this.server.on('clientError', this.onClientError.bind(this));
         this.server.on('request', this.onRequest.bind(this));
         this.server.on('connect', this.onConnect.bind(this));
-        this.server.on('connection', this.onConnection.bind(this));
+
+        // Attach connection tracking based on server type.
+        // Only listen to one connection event to avoid double registration.
+        if (this.serverType === 'https') {
+            // For HTTPS: Track only post-TLS-handshake sockets (secureConnection).
+            // This ensures we track the TLS-wrapped socket with correct bytesRead/bytesWritten.
+            this.server.on('secureConnection', this.onConnection.bind(this));
+            // Handle TLS handshake errors to prevent server crashes.
+            this.server.on('tlsClientError', this.onTLSClientError.bind(this));
+        } else {
+            // For HTTP: Track raw TCP sockets (connection).
+            this.server.on('connection', this.onConnection.bind(this));
+        }
 
         this.lastHandlerId = 0;
         this.stats = {
@@ -187,6 +252,29 @@ export class Server extends EventEmitter {
         };
 
         this.connections = new Map();
+    }
+
+    /**
+     * Handles TLS handshake errors for HTTPS servers.
+     * Without this handler, unhandled TLS errors can crash the server.
+     * Common errors: ECONNRESET, ERR_SSL_SSLV3_ALERT_CERTIFICATE_UNKNOWN,
+     * ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION, ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE
+     */
+    onTLSClientError(err: NodeJS.ErrnoException, tlsSocket: TLSSocket): void {
+        const connectionId = (tlsSocket as TLSSocket).proxyChainId;
+        this.log(connectionId, `TLS handshake failed: ${err.message}`);
+
+        // Emit event in first place before any return statement.
+        this.emit('tlsError', { error: err, socket: tlsSocket });
+
+        // If connection already reset or socket not writable, nothing more to do.
+        if (err.code === 'ECONNRESET' || !tlsSocket.writable) {
+            return;
+        }
+
+        // TLS handshake failed before HTTP, cannot send HTTP response.
+        // Destroy the socket to clean up.
+        tlsSocket.destroy(err);
     }
 
     log(connectionId: unknown, str: string): void {
