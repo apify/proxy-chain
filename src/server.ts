@@ -5,7 +5,6 @@ import { EventEmitter } from 'node:events';
 import http from 'node:http';
 import https from 'node:https';
 import type net from 'node:net';
-import type tls from 'node:tls';
 import { URL } from 'node:url';
 import util from 'node:util';
 
@@ -272,7 +271,7 @@ export class Server extends EventEmitter {
      * Common errors: ECONNRESET, ERR_SSL_SSLV3_ALERT_CERTIFICATE_UNKNOWN,
      * ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION, ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE
      */
-    onTLSClientError(err: NodeJS.ErrnoException, tlsSocket: tls.TLSSocket): void {
+    onTLSClientError(err: NodeJS.ErrnoException, tlsSocket: TLSSocket): void {
         const connectionId = (tlsSocket as TLSSocket).proxyChainId;
         this.log(connectionId, `TLS handshake failed: ${err.message}`);
 
