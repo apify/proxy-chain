@@ -67,7 +67,7 @@
         "proxy": "^1.0.2",
         "puppeteer": "^19.6.3",
         "request": "^2.88.2",
-        "rimraf": "^4.1.2",
+        "rimraf": "^6.1.0",
         "sinon": "^13.0.2",
         "sinon-stub-promise": "^4.0.0",
         "socksv5": "^0.0.6",
