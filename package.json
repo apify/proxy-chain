@@ -38,7 +38,7 @@
         "prepublishOnly": "npm run build",
         "local-proxy": "node ./dist/run_locally.js",
         "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha",
-        "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . && docker run proxy-chain-tests",
+        "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . && docker run --add-host localhost-test:127.0.0.1 proxy-chain-tests",
         "test:docker:all": "bash scripts/test-docker-all.sh",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix"
