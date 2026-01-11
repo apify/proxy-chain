@@ -14,128 +14,139 @@ it('handles TLS handshake failures gracefully and continues accepting connection
     this.timeout(10000);
 
     const tlsErrors = [];
+    let server;
+    let badSocket;
+    let goodSocket;
 
-    let server = new Server({
-        port: 0,
-        serverType: 'https',
-        httpsOptions: {
-            key: sslKey,
-            cert: sslCrt,
-        },
-    });
-
-    server.on('tlsError', ({ error }) => {
-        tlsErrors.push(error);
-    });
-
-    await server.listen();
-    const serverPort = server.port;
-
-    // Make invalid TLS connection.
-    const badSocket = tls.connect({
-        port: serverPort,
-        host: '127.0.0.1',
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1',
-        maxVersion: 'TLSv1',
-    });
-
-    const badSocketErrorOccurred = await new Promise((resolve, reject) => {
-        let errorOccurred = false;
-
-        badSocket.on('error', () => {
-            errorOccurred = true;
-            // Expected: TLS handshake will fail due to version mismatch.
+    try {
+        server = new Server({
+            port: 0,
+            serverType: 'https',
+            httpsOptions: {
+                key: sslKey,
+                cert: sslCrt,
+            },
         });
 
-        badSocket.on('close', () => {
-            resolve(errorOccurred);
+        server.on('tlsError', ({ error }) => {
+            tlsErrors.push(error);
         });
 
-        badSocket.setTimeout(5000, () => {
+        await server.listen();
+        const serverPort = server.port;
+
+        // Make invalid TLS connection.
+        badSocket = tls.connect({
+            port: serverPort,
+            host: '127.0.0.1',
+            rejectUnauthorized: false,
+            minVersion: 'TLSv1',
+            maxVersion: 'TLSv1',
+        });
+
+        const badSocketErrorOccurred = await new Promise((resolve, reject) => {
+            let errorOccurred = false;
+
+            badSocket.on('error', () => {
+                errorOccurred = true;
+                // Expected: TLS handshake will fail due to version mismatch.
+            });
+
+            badSocket.on('close', () => {
+                resolve(errorOccurred);
+            });
+
+            badSocket.setTimeout(5000, () => {
+                badSocket.destroy();
+                reject(new Error('Bad socket timed out before error'));
+            });
+
+        });
+
+        await wait(100);
+
+        expect(badSocketErrorOccurred).to.equal(true);
+
+        // Make a valid TLS connection to prove server still works.
+        goodSocket = tls.connect({
+            port: serverPort,
+            host: '127.0.0.1',
+            rejectUnauthorized: false,
+        });
+
+        // Wait for secure connection.
+        const goodSocketConnected = await new Promise((resolve, reject) => {
+            let isConnected = false;
+
+            const timeout = setTimeout(() => {
+                goodSocket.destroy();
+                reject(new Error('Good socket connection timed out'));
+            }, 5000);
+
+            goodSocket.on('error', (err) => {
+                clearTimeout(timeout);
+                goodSocket.destroy();
+                reject(err);
+            });
+
+            goodSocket.on('secureConnect', () => {
+                isConnected = true;
+                clearTimeout(timeout);
+                resolve(isConnected);
+            });
+
+            goodSocket.on('close', () => {
+                clearTimeout(timeout);
+            });
+        });
+
+        expect(goodSocketConnected).to.equal(true, 'Good socket should have connected');
+
+        // Write the CONNECT request.
+        goodSocket.write('CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n');
+
+        const response = await new Promise((resolve, reject) => {
+            const goodSocketTimeout = setTimeout(() => {
+                goodSocket.destroy();
+                reject(new Error('Good socket connection timed out'));
+            }, 5000);
+
+            goodSocket.on('error', (err) => {
+                clearTimeout(goodSocketTimeout);
+                goodSocket.destroy();
+                reject(err);
+            });
+
+            goodSocket.on('data', (data) => {
+                clearTimeout(goodSocketTimeout);
+                goodSocket.destroy();
+                resolve(data.toString());
+            });
+
+            goodSocket.on('close', () => {
+                clearTimeout(goodSocketTimeout);
+            });
+        });
+
+        await wait(100);
+
+        expect(response).to.be.equal('HTTP/1.1 200 Connection Established\r\n\r\n');
+
+        expect(tlsErrors.length).to.be.equal(1);
+        expect(tlsErrors[0].library).to.be.equal('SSL routines');
+        expect(tlsErrors[0].reason).to.be.equal('unsupported protocol');
+        expect(tlsErrors[0].code).to.be.equal('ERR_SSL_UNSUPPORTED_PROTOCOL');
+    } finally {
+        if (badSocket && !badSocket.destroyed) {
             badSocket.destroy();
-            reject(new Error('Bad socket timed out before error'));
-        });
-
-    });
-
-    await wait(100);
-
-    expect(badSocketErrorOccurred).to.equal(true);
-
-    // Make a valid TLS connection to prove server still works.
-    const goodSocket = tls.connect({
-        port: serverPort,
-        host: '127.0.0.1',
-        rejectUnauthorized: false,
-    });
-
-    // Wait for secure connection.
-    const goodSocketConnected = await new Promise((resolve, reject) => {
-        let isConnected = false;
-
-        const timeout = setTimeout(() => {
+        }
+        if (goodSocket && !goodSocket.destroyed) {
             goodSocket.destroy();
-            reject(new Error('Good socket connection timed out'));
-        }, 5000);
-
-        goodSocket.on('error', (err) => {
-            clearTimeout(timeout);
-            goodSocket.destroy();
-            reject(err);
-        });
-
-        goodSocket.on('secureConnect', () => {
-            isConnected = true;
-            clearTimeout(timeout);
-            resolve(isConnected);
-        });
-
-        goodSocket.on('close', () => {
-            clearTimeout(timeout);
-        });
-    });
-
-    expect(goodSocketConnected).to.equal(true, 'Good socket should have connected');
-
-    // Write the CONNECT request.
-    goodSocket.write('CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n');
-
-    const response = await new Promise((resolve, reject) => {
-        const goodSocketTimeout = setTimeout(() => {
-            goodSocket.destroy();
-            reject(new Error('Good socket connection timed out'));
-        }, 5000);
-
-        goodSocket.on('error', (err) => {
-            clearTimeout(goodSocketTimeout);
-            goodSocket.destroy();
-            reject(err);
-        });
-
-        goodSocket.on('data', (data) => {
-            clearTimeout(goodSocketTimeout);
-            goodSocket.destroy();
-            resolve(data.toString());
-        });
-
-        goodSocket.on('close', () => {
-            clearTimeout(goodSocketTimeout);
-        });
-    });
-
-    await wait(100);
-
-    expect(response).to.be.equal('HTTP/1.1 200 Connection Established\r\n\r\n');
-
-    expect(tlsErrors.length).to.be.equal(1);
-    expect(tlsErrors[0].library).to.be.equal('SSL routines');
-    expect(tlsErrors[0].reason).to.be.equal('unsupported protocol');
-    expect(tlsErrors[0].code).to.be.equal('ERR_SSL_UNSUPPORTED_PROTOCOL');
-
-    // Cleanup.
-    server.close(true);
-    server = null;
+        }
+        if (server) {
+            await server.close(true);
+        }
+    }
 });
 
 describe('HTTPS proxy server resource cleanup', () => {
