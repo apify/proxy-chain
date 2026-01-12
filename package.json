@@ -44,7 +44,7 @@
         "lint:fix": "eslint . --fix"
     },
     "engines": {
-        "node": ">=14"
+        "node": ">=20"
     },
     "devDependencies": {
         "@apify/eslint-config": "^1.0.0",
