@@ -3,8 +3,8 @@ import type http from 'node:http';
 import type net from 'node:net';
 import { URL } from 'node:url';
 
-import { Server, SOCKS_PROTOCOLS } from './server';
-import { nodeify } from './utils/nodeify';
+import { Server, SOCKS_PROTOCOLS } from './server.js';
+import { nodeify } from './utils/nodeify.js';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};

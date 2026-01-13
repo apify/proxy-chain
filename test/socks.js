@@ -1,8 +1,8 @@
-const portastic = require('portastic');
-const socksv5 = require('socksv5');
-const { gotScraping } = require('got-scraping');
-const { expect } = require('chai');
-const ProxyChain = require('../src/index');
+import portastic from 'portastic';
+import socksv5 from 'socksv5';
+import { gotScraping } from 'got-scraping';
+import { expect } from 'chai';
+import * as ProxyChain from '../dist/index.js';
 
 describe('SOCKS protocol', () => {
     let socksServer;

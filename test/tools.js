@@ -1,8 +1,8 @@
-const { expect } = require('chai');
-const { redactUrl } = require('../src/utils/redact_url');
-const { isHopByHopHeader } = require('../src/utils/is_hop_by_hop_header');
-const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
-const { nodeify } = require('../src/utils/nodeify');
+import { expect } from 'chai';
+import { redactUrl } from '../dist/utils/redact_url.js';
+import { isHopByHopHeader } from '../dist/utils/is_hop_by_hop_header.js';
+import { parseAuthorizationHeader } from '../dist/utils/parse_authorization_header.js';
+import { nodeify } from '../dist/utils/nodeify.js';
 
 describe('tools.redactUrl()', () => {
     it('works', () => {

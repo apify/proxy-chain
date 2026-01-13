@@ -1,12 +1,15 @@
-const fs = require('fs');
-const http = require('http');
-const path = require('path');
-const tls = require('tls');
-const util = require('util');
-const request = require('request');
-const { expect } = require('chai');
-const { Server } = require('../src/index');
-const { TargetServer } = require('./utils/target_server');
+import fs from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
+import tls from 'node:tls';
+import util from 'node:util';
+import { fileURLToPath } from 'node:url';
+import request from 'request';
+import { expect } from 'chai';
+import { Server } from '../dist/index.js';
+import { TargetServer } from './utils/target_server.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Node.js 20+ enables HTTP keep-alive by default in the global agent,
 // which causes connection tracking issues in tests. Disable it.
