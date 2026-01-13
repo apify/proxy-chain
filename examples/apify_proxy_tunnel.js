@@ -1,4 +1,4 @@
-const { createTunnel, closeTunnel, redactUrl } = require('proxy-chain');
+import { closeTunnel, createTunnel, redactUrl } from 'proxy-chain';
 
 // This example demonstrates how to create a tunnel via Apify's HTTP proxy service.
 // For details, see https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff

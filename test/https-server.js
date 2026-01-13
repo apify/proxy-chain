@@ -1,9 +1,12 @@
-const fs = require('fs');
-const path = require('path');
-const tls = require('tls');
-const { expect } = require('chai');
-const http = require('http');
-const { Server } = require('../src/index');
+import fs from 'node:fs';
+import path from 'node:path';
+import tls from 'node:tls';
+import { fileURLToPath } from 'node:url';
+import { expect } from 'chai';
+import http from 'node:http';
+import { Server } from '../dist/index.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));

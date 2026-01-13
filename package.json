@@ -3,6 +3,13 @@
     "version": "2.7.1",
     "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
     "main": "dist/index.js",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
     "keywords": [
         "proxy",
         "squid",

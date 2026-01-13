@@ -1,25 +1,28 @@
-const fs = require('fs');
-const zlib = require('zlib');
-const path = require('path');
-const stream = require('stream');
-const childProcess = require('child_process');
-const tls = require('tls');
-const net = require('net');
-const dns = require('dns');
-const util = require('util');
-const { expect, assert } = require('chai');
-const proxy = require('proxy');
-const http = require('http');
-const https = require('https');
-const portastic = require('portastic');
-const request = require('request');
-const WebSocket = require('faye-websocket');
-const { gotScraping } = require('got-scraping');
+import fs from 'node:fs';
+import zlib from 'node:zlib';
+import path from 'node:path';
+import stream from 'node:stream';
+import childProcess from 'node:child_process';
+import tls from 'node:tls';
+import net from 'node:net';
+import dns from 'node:dns';
+import util from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { expect, assert } from 'chai';
+import proxy from 'proxy';
+import http from 'node:http';
+import https from 'node:https';
+import portastic from 'portastic';
+import request from 'request';
+import WebSocket from 'faye-websocket';
+import { gotScraping } from 'got-scraping';
 
-const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
-const { Server, RequestError } = require('../src/index');
-const { TargetServer } = require('./utils/target_server');
-const ProxyChain = require('../src/index');
+import { parseAuthorizationHeader } from '../dist/utils/parse_authorization_header.js';
+import { Server, RequestError } from '../dist/index.js';
+import { TargetServer } from './utils/target_server.js';
+import * as ProxyChain from '../dist/index.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /*
 TODO - add following tests:
@@ -69,58 +72,55 @@ const requestPromised = (opts) => {
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 // Opens web page in puppeteer and returns the HTML content
-const puppeteerGet = (url, proxyUrl) => {
-    // eslint-disable-next-line global-require
-    const puppeteer = require('puppeteer');
+const puppeteerGet = async (url, proxyUrl) => {
+    const { default: puppeteer } = await import('puppeteer');
 
-    return (async () => {
-        const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
+    const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
 
-        const args = [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
-        ];
+    const args = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+    ];
 
-        const launchOpts = {
-            ignoreHTTPSErrors: true,
-            headless: 'new',
-            args
-        };
+    const launchOpts = {
+        ignoreHTTPSErrors: true,
+        headless: 'new',
+        args
+    };
+
+    if (parsed) {
+        if (parsed.protocol === 'https:') {
+            args.push(`--proxy-server=${parsed.origin}`);
+            // For HTTPS proxies with self-signed certificates,
+            // ignore certificate errors on the proxy connection itself.
+            args.push('--ignore-certificate-errors');
+        } else {
+            launchOpts.env = {
+                HTTP_PROXY: parsed.origin,
+            };
+        }
+    }
+
+    const browser = await puppeteer.launch(launchOpts);
+
+    try {
+        const page = await browser.newPage();
 
         if (parsed) {
-            if (parsed.protocol === 'https:') {
-                args.push(`--proxy-server=${parsed.origin}`);
-                // For HTTPS proxies with self-signed certificates,
-                // ignore certificate errors on the proxy connection itself.
-                args.push('--ignore-certificate-errors');
-            } else {
-                launchOpts.env = {
-                    HTTP_PROXY: parsed.origin,
-                };
-            }
+            await page.authenticate({
+                username: decodeURIComponent(parsed.username),
+                password: decodeURIComponent(parsed.password),
+            });
         }
 
-        const browser = await puppeteer.launch(launchOpts);
+        const response = await page.goto(url);
+        const text = await response.text();
 
-        try {
-            const page = await browser.newPage();
-
-            if (parsed) {
-                await page.authenticate({
-                    username: decodeURIComponent(parsed.username),
-                    password: decodeURIComponent(parsed.password),
-                });
-            }
-
-            const response = await page.goto(url);
-            const text = await response.text();
-
-            return text;
-        } finally {
-            await browser.close();
-        }
-    })();
+        return text;
+    } finally {
+        await browser.close();
+    }
 };
 
 // Opens web page in curl and returns the HTML content.

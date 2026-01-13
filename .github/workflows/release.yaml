@@ -44,7 +44,7 @@ jobs:
             # Check version consistency and increment pre-release version number for beta only.
             - name: Bump pre-release version
               if: steps.get_release_tag.outputs.release_tag == 'beta'
-              run: node ./.github/scripts/before-beta-release.js
+              run: node ./.github/scripts/before-beta-release.cjs
 
             - name: Publish to NPM
               run: npm publish --tag ${{ steps.get_release_tag.outputs.release_tag }}

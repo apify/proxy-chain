@@ -1,4 +1,4 @@
-const net = require('net');
+import net from 'node:net';
 
 // TODO: please move this into ./test dir
 
