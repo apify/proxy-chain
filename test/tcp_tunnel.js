@@ -78,7 +78,7 @@ describe('tcp_tunnel.createTunnel', () => {
             .finally(() => closeServer(proxyServer, proxyServerConnections))
             .finally(() => closeServer(targetService, targetServiceConnections));
     });
-    it('correctly tunnels to tcp service and then is able to close the connection when used with callbacks', () => {
+    it('correctly tunnels to tcp service and then is able to close the connection (async/await)', async () => {
         const proxyServerConnections = [];
 
         const proxyServer = proxy(http.createServer());
@@ -93,19 +93,16 @@ describe('tcp_tunnel.createTunnel', () => {
             conn.on('error', (err) => { throw err; });
         });
 
-        return serverListen(proxyServer, 0)
-            .then(() => serverListen(targetService, 0))
-            .then((targetServicePort) => new Promise((resolve, reject) => {
-                createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`, {}, (err, tunnel) => {
-                    if (err) return reject(err);
-                    return resolve(tunnel);
-                });
-            }).then((tunnel) => closeTunnel(tunnel, true))
-                .then((result) => {
-                    assert.equal(result, true);
-                }))
-            .finally(() => closeServer(proxyServer, proxyServerConnections))
-            .finally(() => closeServer(targetService, targetServiceConnections));
+        try {
+            await serverListen(proxyServer, 0);
+            const targetServicePort = await serverListen(targetService, 0);
+            const tunnel = await createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`, {});
+            const result = await closeTunnel(tunnel, true);
+            assert.equal(result, true);
+        } finally {
+            await closeServer(proxyServer, proxyServerConnections);
+            await closeServer(targetService, targetServiceConnections);
+        }
     });
     it('creates tunnel that is able to transfer data', () => {
         let tunnel;

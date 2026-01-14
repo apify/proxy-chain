@@ -22,7 +22,6 @@ import { RequestError } from './request_error.js';
 import type { Socket, TLSSocket } from './socket.js';
 import { badGatewayStatusCodes } from './statuses.js';
 import { getTargetStats } from './utils/count_target_bytes.js';
-import { nodeify } from './utils/nodeify.js';
 import { normalizeUrlPort } from './utils/normalize_url_port.js';
 import { parseAuthorizationHeader } from './utils/parse_authorization_header.js';
 import { redactUrl } from './utils/redact_url.js';
@@ -666,12 +665,10 @@ export class Server extends EventEmitter {
     /**
      * Starts listening at a port specified in the constructor.
      */
-    async listen(callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
-        const promise = new Promise<void>((resolve, reject) => {
-            // Unfortunately server.listen() is not a normal function that fails on error,
-            // so we need this trickery
+    async listen(): Promise<void> {
+        return new Promise((resolve, reject) => {
             const onError = (error: NodeJS.ErrnoException) => {
-                this.log(null, `Listen failed: ${error}`);
+                this.log(null, `Listen error: ${error}`);
                 removeListeners();
                 reject(error);
             };
@@ -690,8 +687,6 @@ export class Server extends EventEmitter {
             this.server.on('listening', onListening);
             this.server.listen(this.port, this.host);
         });
-
-        return nodeify(promise, callback);
     }
 
     /**
@@ -751,12 +746,7 @@ export class Server extends EventEmitter {
      * Closes the proxy server.
      * @param closeConnections If true, pending proxy connections are forcibly closed.
      */
-    async close(closeConnections: boolean, callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
-        if (typeof closeConnections === 'function') {
-            callback = closeConnections;
-            closeConnections = false;
-        }
-
+    async close(closeConnections = false): Promise<void> {
         if (closeConnections) {
             this.closeConnections();
         }
@@ -765,10 +755,7 @@ export class Server extends EventEmitter {
             const { server } = this;
             // @ts-expect-error Let's make sure we can't access the server anymore.
             this.server = null;
-            const promise = util.promisify(server.close).bind(server)();
-            return nodeify(promise, callback);
+            await util.promisify(server.close).bind(server)();
         }
-
-        return nodeify(Promise.resolve(), callback);
     }
 }

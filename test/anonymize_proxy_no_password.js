@@ -93,20 +93,14 @@ const requestPromised = (opts) => {
 describe('utils.anonymizeProxyNoPassword', function () {
     // Need larger timeout for Travis CI
     this.timeout(5 * 1000);
-    it('anonymizes authenticated with no password upstream proxy (both with callbacks and promises)', () => {
+    it('anonymizes authenticated with no password upstream proxy', () => {
         let proxyUrl1;
         let proxyUrl2;
         return Promise.resolve()
             .then(() => {
                 return Promise.all([
                     anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
-                    new Promise((resolve, reject) => {
-                        anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`,
-                            (err, result) => {
-                                if (err) return reject(err);
-                                resolve(result);
-                            });
-                    }),
+                    anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
                 ]);
             })
             .then((results) => {
@@ -170,34 +164,20 @@ describe('utils.anonymizeProxyNoPassword', function () {
                         expect(validErrors.some((e) => err.message.includes(e))).to.equal(true);
                     });
             })
-            .then(() => {
-                // Test callback-style
-                return new Promise((resolve, reject) => {
-                    closeAnonymizedProxy(proxyUrl2, true, (err, closed) => {
-                        if (err) return reject(err);
-                        resolve(closed);
-                    });
-                });
-            })
-            .then((closed) => {
+            .then(async () => {
+                // Test async/await style
+                const closed = await closeAnonymizedProxy(proxyUrl2, true);
                 expect(closed).to.eql(true);
 
                 // Test the second-time call to close
                 return closeAnonymizedProxy(proxyUrl1, true);
             })
-            .then((closed) => {
+            .then(async (closed) => {
                 expect(closed).to.eql(false);
 
-                // Test callback-style
-                return new Promise((resolve, reject) => {
-                    closeAnonymizedProxy(proxyUrl2, false, (err, closed) => {
-                        if (err) return reject(err);
-                        resolve(closed);
-                    });
-                });
-            })
-            .then((closed) => {
-                expect(closed).to.eql(false);
+                // Test async/await style
+                const closed2 = await closeAnonymizedProxy(proxyUrl2, false);
+                expect(closed2).to.eql(false);
             });
     });
 });

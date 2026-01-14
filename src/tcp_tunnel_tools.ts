@@ -2,7 +2,6 @@ import net from 'node:net';
 import { URL } from 'node:url';
 
 import { chain } from './chain.js';
-import { nodeify } from './utils/nodeify.js';
 
 const runningServers: Record<string, { server: net.Server, connections: Set<net.Socket> }> = {};
 
@@ -23,7 +22,6 @@ export async function createTunnel(
         verbose?: boolean;
         ignoreProxyCertificate?: boolean;
     },
-    callback?: (error: Error | null, result?: string) => void,
 ): Promise<string> {
     const parsedProxyUrl = new URL(proxyUrl);
     if (!['http:', 'https:'].includes(parsedProxyUrl.protocol)) {
@@ -94,13 +92,12 @@ export async function createTunnel(
         });
     });
 
-    return nodeify(promise, callback);
+    return promise;
 }
 
 export async function closeTunnel(
     serverPath: string,
-    closeConnections: boolean | undefined,
-    callback: (error: Error | null, result?: boolean) => void,
+    closeConnections?: boolean,
 ): Promise<boolean> {
     const { hostname, port } = new URL(`tcp://${serverPath}`);
     if (!hostname) throw new Error('serverPath must contain hostname');
@@ -131,5 +128,5 @@ export async function closeTunnel(
             });
         }));
 
-    return nodeify(promise, callback);
+    return promise;
 }
