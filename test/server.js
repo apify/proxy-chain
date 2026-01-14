@@ -1350,50 +1350,50 @@ describe('non-200 upstream connect response', () => {
         }
     });
 
-    it('fails downstream with 590', (done) => {
+    it('fails downstream with 590', async () => {
         const server = http.createServer();
         server.on('connect', (_request, socket) => {
             socket.once('error', () => {});
             socket.end('HTTP/1.1 403 Forbidden\r\ncontent-length: 1\r\n\r\na');
         });
-        server.listen(() => {
-            const serverPort = server.address().port;
-            const proxyServer = new Server({
-                port: 0,
-                prepareRequestFunction: () => {
-                    return {
-                        upstreamProxyUrl: `http://localhost:${serverPort}`,
-                    };
+        await new Promise((resolve) => server.listen(resolve));
+        const serverPort = server.address().port;
+        const proxyServer = new Server({
+            port: 0,
+            prepareRequestFunction: () => {
+                return {
+                    upstreamProxyUrl: `http://localhost:${serverPort}`,
+                };
+            },
+        });
+        await proxyServer.listen();
+        const proxyServerPort = proxyServer.port;
+
+        await new Promise((resolve) => {
+            const req = http.request({
+                method: 'CONNECT',
+                host: 'localhost',
+                port: proxyServerPort,
+                path: 'example.com:443',
+                headers: {
+                    host: 'example.com:443',
                 },
             });
-            proxyServer.listen(() => {
-                const proxyServerPort = proxyServer.port;
+            req.once('connect', (response, socket, head) => {
+                expect(response.statusCode).to.equal(590);
+                expect(response.statusMessage).to.equal('UPSTREAM403');
+                expect(head.length).to.equal(0);
+                success = true;
 
-                const req = http.request({
-                    method: 'CONNECT',
-                    host: 'localhost',
-                    port: proxyServerPort,
-                    path: 'example.com:443',
-                    headers: {
-                        host: 'example.com:443',
-                    },
+                socket.once('close', () => {
+                    proxyServer.close();
+                    server.close();
+
+                    resolve();
                 });
-                req.once('connect', (response, socket, head) => {
-                    expect(response.statusCode).to.equal(590);
-                    expect(response.statusMessage).to.equal('UPSTREAM403');
-                    expect(head.length).to.equal(0);
-                    success = true;
-
-                    socket.once('close', () => {
-                        proxyServer.close();
-                        server.close();
-
-                        done();
-                    });
-                });
-
-                req.end();
             });
+
+            req.end();
         });
     });
 });

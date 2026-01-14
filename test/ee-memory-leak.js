@@ -23,7 +23,7 @@ describe('ProxyChain server', () => {
         server.close();
     });
 
-    it('does not leak events', (done) => {
+    it('does not leak events', async () => {
         let socket;
         let registeredCount;
         proxyServer.server.prependOnceListener('request', (request) => {
@@ -31,31 +31,29 @@ describe('ProxyChain server', () => {
             registeredCount = socket.listenerCount('error');
         });
 
-        const callback = () => {
-            assert.equal(socket.listenerCount('error'), registeredCount);
-            done();
-        };
+        await proxyServer.listen();
+        const proxyServerPort = proxyServer.server.address().port;
 
-        proxyServer.listen(async () => {
-            const proxyServerPort = proxyServer.server.address().port;
+        const requestCount = 20;
 
-            const requestCount = 20;
+        const client = net.connect({
+            host: 'localhost',
+            port: proxyServerPort,
+        });
 
-            const client = net.connect({
-                host: 'localhost',
-                port: proxyServerPort,
-            });
+        client.setTimeout(100);
 
-            client.setTimeout(100);
-
+        await new Promise((resolve) => {
             client.on('timeout', () => {
                 client.destroy();
-                callback();
+                resolve();
             });
 
             for (let i = 0; i < requestCount; i++) {
                 client.write(`GET http://localhost:${port} HTTP/1.1\r\nhost: localhost:${port}\r\nconnection: keep-alive\r\n\r\n`);
             }
         });
+
+        assert.equal(socket.listenerCount('error'), registeredCount);
     });
 });
