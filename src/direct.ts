@@ -5,6 +5,7 @@ import net from 'node:net';
 import { URL } from 'node:url';
 
 import type { Socket } from './socket';
+import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses';
 import { countTargetBytes } from './utils/count_target_bytes';
 
 export interface HandlerOpts {
@@ -67,6 +68,7 @@ export const direct = (
             sourceSocket.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
         } catch (error) {
             sourceSocket.destroy(error as Error);
+            targetSocket.destroy();
         }
     });
 
@@ -96,11 +98,22 @@ export const direct = (
     });
 
     const { proxyChainId } = sourceSocket;
+    let connected = false;
 
-    targetSocket.on('error', (error) => {
+    targetSocket.once('connect', () => {
+        connected = true;
+    });
+
+    targetSocket.on('error', (error: NodeJS.ErrnoException) => {
         server.log(proxyChainId, `Direct Destination Socket Error: ${error.stack}`);
 
-        sourceSocket.destroy();
+        // If we haven't connected yet, send an error response to the client
+        if (!connected && sourceSocket.writable) {
+            const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
+            sourceSocket.end(createCustomStatusHttpResponse(statusCode, error.code ?? 'Connection Failed'));
+        } else {
+            sourceSocket.destroy();
+        }
     });
 
     sourceSocket.on('error', (error) => {

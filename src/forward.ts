@@ -35,8 +35,8 @@ export interface HandlerOpts {
 
 /**
  * The request is read from the client and is resent.
- * This is similar to Direct / Chain, however it uses the CONNECT protocol instead.
- * Forward uses standard HTTP methods.
+ * Unlike Direct / Chain which use the CONNECT protocol for tunneling,
+ * Forward uses standard HTTP methods (GET, POST, etc.).
  *
  * ```
  * Client -> Apify (HTTP) -> Web

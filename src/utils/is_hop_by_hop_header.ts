@@ -1,4 +1,4 @@
-// As per HTTP specification, hop-by-hop headers should be consumed but the proxy, and not forwarded
+// As per HTTP specification, hop-by-hop headers should be consumed by the proxy, and not forwarded
 const hopByHopHeaders = [
     'connection',
     'keep-alive',

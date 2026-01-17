@@ -828,7 +828,7 @@ const createTestSuite = ({
                         const stats = mainProxyServer.getConnectionStats(Number(lastConnectionId))
                             || mainProxyServerConnectionId2Stats[lastConnectionId];
 
-                        // 5% range because network negotiation adds to network trafic
+                        // 5% range because network negotiation adds to network traffic
                         expect(stats.srcTxBytes).to.be.within(expectedSize, expectedSize * 1.05);
                         expect(stats.trgRxBytes).to.be.within(expectedSize, expectedSize * 1.05);
                     }

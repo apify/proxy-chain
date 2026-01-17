@@ -6,7 +6,11 @@ export const redactUrl = (url: string | URL, passwordReplacement = '<redacted>')
     }
 
     if (url.password) {
-        return url.href.replace(`:${url.password}`, `:${passwordReplacement}`);
+        // Use the URL's internal encoded password representation for replacement
+        // We need to rebuild the userinfo part to handle URL-encoded passwords correctly
+        const redactedUrl = new URL(url.href);
+        redactedUrl.password = passwordReplacement;
+        return redactedUrl.href;
     }
 
     return url.href;

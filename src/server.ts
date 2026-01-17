@@ -130,10 +130,11 @@ export type ServerOptions = HttpServerOptions | HttpsServerOptions;
 
 /**
  * Represents the proxy server.
- * It emits the 'requestFailed' event on unexpected request errors, with the following parameter `{ error, request }`.
+ * It emits the 'requestFailed' event on unexpected request errors, with parameter `{ error, request }`.
  * It emits the 'connectionClosed' event when connection to proxy server is closed, with parameter `{ connectionId, stats }`.
  * It emits the 'tlsError' event on TLS handshake failures (HTTPS servers only), with parameter `{ error, socket }`.
- * with parameter `{ connectionId, reason, hasParent, parentType }`.
+ * It emits the 'tunnelConnectResponded' event on successful CONNECT tunnel establishment, with parameter `{ proxyChainId, response, customTag, socket, head }`.
+ * It emits the 'tunnelConnectFailed' event when upstream proxy rejects CONNECT request, with parameter `{ proxyChainId, response, customTag, socket, head }`.
  */
 export class Server extends EventEmitter {
     port: number;
@@ -474,7 +475,7 @@ export class Server extends EventEmitter {
                 throw new RequestError(`Target "${request.url}" could not be parsed`, 400);
             }
 
-            // Only HTTP is supported, other protocols such as HTTP or FTP must use the CONNECT method
+            // Only HTTP is supported, other protocols such as HTTPS or FTP must use the CONNECT method
             if (parsed.protocol !== 'http:') {
                 throw new RequestError(`Only HTTP protocol is supported (was ${parsed.protocol})`, 400);
             }
@@ -558,7 +559,7 @@ export class Server extends EventEmitter {
             try {
                 handlerOpts.upstreamProxyUrlParsed = new URL(funcResult.upstreamProxyUrl);
             } catch (error) {
-                throw new Error(`Invalid "upstreamProxyUrl" provided: ${error} (was "${funcResult.upstreamProxyUrl}"`);
+                throw new Error(`Invalid "upstreamProxyUrl" provided: ${error} (was "${funcResult.upstreamProxyUrl}")`);
             }
 
             if (!['http:', 'https:', ...SOCKS_PROTOCOLS].includes(handlerOpts.upstreamProxyUrlParsed.protocol)) {
@@ -740,11 +741,12 @@ export class Server extends EventEmitter {
     closeConnections(): void {
         this.log(null, 'Closing pending sockets');
 
+        const count = this.connections.size;
         for (const socket of this.connections.values()) {
             socket.destroy();
         }
 
-        this.log(null, `Destroyed ${this.connections.size} pending sockets`);
+        this.log(null, `Destroyed ${count} pending sockets`);
     }
 
     /**

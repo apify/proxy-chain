@@ -44,7 +44,7 @@ describe('SOCKS protocol', () => {
         });
     }).timeout(10 * 1000);
 
-    it('work with auth', (done) => {
+    it('works with auth', (done) => {
         portastic.find({ min: 50250, max: 50500 }).then((ports) => {
             const [socksPort, proxyPort] = ports;
             socksServer = socksv5.createServer((info, accept) => {

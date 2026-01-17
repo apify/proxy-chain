@@ -163,7 +163,13 @@ export const chain = (
             head: clientHead,
         });
 
-        sourceSocket.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
+        try {
+            sourceSocket.write(isPlain ? '' : `HTTP/1.1 200 Connection Established\r\n\r\n`);
+        } catch (error) {
+            sourceSocket.destroy(error as Error);
+            targetSocket.destroy();
+            return;
+        }
 
         sourceSocket.pipe(targetSocket);
         targetSocket.pipe(sourceSocket);

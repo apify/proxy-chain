@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 
 const splitAt = (string: string, index: number) => {
     return [
-        index === -1 ? '' : string.substring(0, index),
+        index === -1 ? string : string.substring(0, index),
         index === -1 ? '' : string.substring(index + 1),
     ];
 };

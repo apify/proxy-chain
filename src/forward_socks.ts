@@ -53,7 +53,7 @@ export const forwardSocks = async (
         agent,
     };
 
-    // Only handling "http" here - since everything else is handeled by tunnelSocks.
+    // Only handling "http" here - since everything else is handled by chainSocks.
     // We have to force cast `options` because @types/node doesn't support an array.
     const client = http.request(request.url!, options as unknown as http.ClientRequestArgs, async (clientResponse) => {
         try {

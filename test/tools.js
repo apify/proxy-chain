@@ -114,8 +114,9 @@ describe('tools.parseAuthorizationHeader()', () => {
         expect(parse('')).to.eql(null);
         expect(parse('    ')).to.eql(null);
 
+        // When there's no space, the entire string is the type (auth-scheme)
         expect(parse('whatever')).to.eql({
-            type: '',
+            type: 'whatever',
             data: '',
         });
 
@@ -124,13 +125,17 @@ describe('tools.parseAuthorizationHeader()', () => {
             data: 'bla bla',
         });
 
+        // authStr('Basic', '') produces "Basic " - empty base64
         expect(parse(authStr('Basic', ''))).to.eql({
-            type: '',
+            type: 'Basic',
+            username: '',
+            password: '',
             data: '',
         });
 
+        // When there's no space, the entire string is the type
         expect(parse('123124')).to.eql({
-            type: '',
+            type: '123124',
             data: '',
         });
     });
@@ -177,7 +182,7 @@ describe('tools.nodeify()', () => {
             const promise = asyncFunction(true);
             await new Promise((resolve) => {
                 nodeify(promise, (error, result) => {
-                    expect(result, undefined);
+                    expect(result).to.be.undefined;
                     expect(error.message).to.eql('Test error');
                     resolve();
                 });

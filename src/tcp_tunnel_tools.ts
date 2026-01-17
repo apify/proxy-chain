@@ -2,9 +2,12 @@ import net from 'node:net';
 import { URL } from 'node:url';
 
 import { chain } from './chain';
+import type { Socket } from './socket';
 import { nodeify } from './utils/nodeify';
 
 const runningServers: Record<string, { server: net.Server, connections: Set<net.Socket> }> = {};
+
+let lastConnectionId = 0;
 
 const getAddress = (server: net.Server) => {
     const { address: host, port, family } = server.address() as net.AddressInfo;
@@ -51,8 +54,11 @@ export async function createTunnel(
 
     server.log = log;
 
-    server.on('connection', (sourceSocket) => {
+    server.on('connection', (sourceSocket: Socket) => {
         const remoteAddress = `${sourceSocket.remoteAddress}:${sourceSocket.remotePort}`;
+
+        // Assign a unique ID for logging purposes (similar to Server.registerConnection)
+        sourceSocket.proxyChainId = lastConnectionId++;
 
         const { connections } = runningServers[getAddress(server)];
 

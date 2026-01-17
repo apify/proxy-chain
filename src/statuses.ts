@@ -12,7 +12,7 @@ export const badGatewayStatusCodes = {
      */
     NON_200: 590,
     /**
-     * Upstream respondend with status code different than 100-999.
+     * Upstream responded with status code different than 100-999.
      */
     STATUS_CODE_OUT_OF_RANGE: 592,
     /**

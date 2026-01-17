@@ -28,7 +28,7 @@ export const handleCustomResponse = async (
         throw new Error('The user-provided "customResponseFunction" must return an object.');
     }
 
-    response.statusCode = customResponse.statusCode || 200;
+    response.statusCode = customResponse.statusCode ?? 200;
 
     if (customResponse.headers) {
         for (const [key, value] of Object.entries(customResponse.headers)) {

@@ -56,7 +56,7 @@ export const chainSocks = async ({
 
     const proxy: SocksProxy = {
         host: hostname,
-        port: Number(port),
+        port: port ? Number(port) : 1080, // Default SOCKS port is 1080
         type: socksProtocolToVersionNumber(handlerOpts.upstreamProxyUrlParsed.protocol),
         userId: decodeURIComponent(username),
         password: decodeURIComponent(password),
@@ -74,9 +74,14 @@ export const chainSocks = async ({
     }
 
     const url = new URL(`connect://${request.url}`);
+    let host = url.hostname;
+    // Strip IPv6 brackets if present (e.g., [::1] -> ::1)
+    if (host[0] === '[') {
+        host = host.slice(1, -1);
+    }
     const destination = {
         port: Number(url.port),
-        host: url.hostname,
+        host,
     };
 
     let targetSocket: net.Socket;
@@ -89,7 +94,13 @@ export const chainSocks = async ({
         });
         targetSocket = client.socket;
 
-        sourceSocket.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
+        try {
+            sourceSocket.write(`HTTP/1.1 200 Connection Established\r\n\r\n`);
+        } catch (writeError) {
+            sourceSocket.destroy(writeError as Error);
+            targetSocket.destroy();
+            return;
+        }
     } catch (error) {
         const socksError = error as SocksClientError;
         server.log(proxyChainId, `Failed to connect to upstream SOCKS proxy ${socksError.stack}`);

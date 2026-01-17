@@ -14,7 +14,7 @@ For details, read [How to make headless Chrome and Puppeteer use a proxy server 
 
 The proxy-chain package is developed by [Apify](https://apify.com/), the full-stack web scraping and data extraction platform, to support their [Apify Proxy](https://apify.com/proxy) product,
 which provides an easy access to a large pool of datacenter and residential IP addresses all around the world. The proxy-chain package is also used by [Crawlee](https://crawlee.dev/),
-the world's most popular web craling library for Node.js.
+the world's most popular web crawling library for Node.js.
 
 The proxy-chain package currently supports HTTP/SOCKS forwarding and HTTP CONNECT tunneling to forward arbitrary protocols such as HTTPS or FTP ([learn more](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff)). The HTTP CONNECT tunneling also supports the SOCKS protocol. Also, proxy-chain only supports the Basic [Proxy-Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authorization).
 
@@ -64,7 +64,7 @@ const server = new ProxyChain.Server({
     // * connectionId - Unique ID of the HTTP connection. It can be used to obtain traffic statistics.
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
         return {
-            // If set to true, the client is sent HTTP 407 resposne with the Proxy-Authenticate header set,
+            // If set to true, the client is sent HTTP 407 response with the Proxy-Authenticate header set,
             // requiring Basic authentication. Here you can verify user credentials.
             requestAuthentication: username !== 'bob' || password !== 'TopSecret',
 
@@ -78,7 +78,7 @@ const server = new ProxyChain.Server({
 
             // Applies to HTTPS upstream proxy. If set to true, requests made to the proxy will
             // ignore certificate errors. Useful when upstream proxy uses self-signed certificate. By default "false".
-            ignoreUpstreamProxyCertificate: true
+            ignoreUpstreamProxyCertificate: true,
 
             // If "requestAuthentication" is true, you can use the following property
             // to define a custom error message to return to the client instead of the default "Proxy credentials required"
@@ -131,7 +131,7 @@ const ProxyChain = require('proxy-chain');
         // -> listen for 'connection' events to track raw TCP sockets
         //
         // https:
-        // -> listen for 'securedConnection' events (instead of 'connection') to track only post-TLS-handshake sockets
+        // -> listen for 'secureConnection' events (instead of 'connection') to track only post-TLS-handshake sockets
         // -> additionally listen for 'tlsError' events to handle TLS handshake errors
         //
         // Default value is 'http'
@@ -263,7 +263,7 @@ Upstream responded with non-200 status code.
 
 ### `592 Status Code Out Of Range`
 
-Upstream respondend with status code different than 100-999.
+Upstream responded with status code different than 100-999.
 
 ### `593 Not Found`
 
@@ -482,7 +482,7 @@ server.on('tunnelConnectResponded', ({ proxyChainId, response, socket, head, cus
 });
 ```
 
-Alternatively a [helper function](##helper-functions) may be used:
+Alternatively a [helper function](#helper-functions) may be used:
 
 ```javascript
 listenConnectAnonymizedProxy(anonymizedProxyUrl, ({ response, socket, head }) => {

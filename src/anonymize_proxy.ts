@@ -22,7 +22,7 @@ export interface AnonymizeProxyOptions {
  */
 export const anonymizeProxy = async (
     options: string | AnonymizeProxyOptions,
-    callback?: (error: Error | null) => void,
+    callback?: (error: Error | null, result?: string) => void,
 ): Promise<string> => {
     let proxyUrl: string;
     let port = 0;
@@ -32,11 +32,11 @@ export const anonymizeProxy = async (
         proxyUrl = options;
     } else {
         proxyUrl = options.url;
-        port = options.port;
+        port = options.port ?? 0;
 
         if (port < 0 || port > 65535) {
             throw new Error(
-                'Invalid "port" option: only values equals or between 0-65535 are valid',
+                'Invalid "port" option: only values between 0-65535 are valid',
             );
         }
 
@@ -88,7 +88,7 @@ export const anonymizeProxy = async (
 /**
  * Closes anonymous proxy previously started by `anonymizeProxy()`.
  * If proxy was not found or was already closed, the function has no effect
- * and its result if `false`. Otherwise the result is `true`.
+ * and its result is `false`. Otherwise the result is `true`.
  * @param closeConnections If true, pending proxy connections are forcibly closed.
  */
 export const closeAnonymizedProxy = async (
