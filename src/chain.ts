@@ -130,6 +130,7 @@ export const chain = (
             // Parse response headers into key/value pairs
             const headers: Record<string, string> = {};
             for (const line of headerStr.split('\r\n').slice(1)) {
+                if (!line) continue;
                 const colonIdx = line.indexOf(':');
                 if (colonIdx > 0) {
                     headers[line.slice(0, colonIdx).trim().toLowerCase()] = line.slice(colonIdx + 1).trim();
@@ -187,7 +188,8 @@ export const chain = (
             }
 
             if (remaining.length > 0) {
-                // See comment above
+                // Push any remaining bytes from the CONNECT response back onto the socket
+                // so they are treated as the start of the tunnelled data stream.
                 targetSocket.unshift(remaining);
             }
 
