@@ -362,6 +362,14 @@ export class Server extends EventEmitter {
      * Handles normal HTTP request by forwarding it to target host or the upstream proxy.
      */
     async onRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+        // Some environments (e.g., Bun.js) route HTTP CONNECT requests through the
+        // 'request' event instead of the dedicated 'connect' event. Handle them here
+        // as a fallback so that CONNECT tunnelling works in those runtimes too.
+        if (request.method === 'CONNECT') {
+            await this.onConnect(request, request.socket as Socket, Buffer.alloc(0));
+            return;
+        }
+
         try {
             const handlerOpts = await this.prepareRequestHandling(request);
             handlerOpts.srcResponse = response;
