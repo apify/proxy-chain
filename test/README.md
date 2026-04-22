@@ -58,3 +58,12 @@ Note: for test in Docker no changes in `/etc/hosts` needed.
     ```bash
     npm run test test/anonymize_proxy.js
     ```
+
+### Run tests with Bun
+
+[Bun](https://bun.com) is supported as an alternative runtime. Install it from
+https://bun.com, then run the tests with:
+
+```bash
+npm run test:bun
+```

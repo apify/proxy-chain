@@ -38,3 +38,31 @@ jobs:
 
       - name: Run Tests
         run: npm test
+
+  bun_test:
+    name: Test on Bun
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v6
+        with:
+          node-version: 18
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Add localhost-test to Linux hosts file
+        run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
+
+      - name: Run Tests with Bun
+        run: npm run test:bun
