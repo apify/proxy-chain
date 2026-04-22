@@ -1,4 +1,4 @@
-import type { Buffer } from 'node:buffer';
+import { Buffer } from 'node:buffer';
 import type dns from 'node:dns';
 import type { EventEmitter } from 'node:events';
 import http from 'node:http';

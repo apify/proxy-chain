@@ -4,4 +4,4 @@ export * from './utils/redact_url';
 export * from './anonymize_proxy';
 export * from './tcp_tunnel_tools';
 
-export { CustomResponse } from './custom_response';
+export type { CustomResponse } from './custom_response';
