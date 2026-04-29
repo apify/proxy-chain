@@ -21,9 +21,9 @@ The proxy-chain package currently supports HTTP/SOCKS forwarding and HTTP CONNEC
 ## Run a simple HTTP/HTTPS proxy server
 
 ```javascript
-import ProxyChain from 'proxy-chain';
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({ port: 8000 });
+const server = new Server({ port: 8000 });
 
 server.listen(() => {
     console.log(`Proxy server is listening on port ${server.port}`);
@@ -33,9 +33,9 @@ server.listen(() => {
 ## Run a HTTP/HTTPS proxy server with credentials and upstream proxy
 
 ```javascript
-import ProxyChain from 'proxy-chain';
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     // Port where the server will listen. By default 8000.
     port: 8000,
 
@@ -115,7 +115,7 @@ server.on('requestFailed', ({ request, error }) => {
 This example demonstrates how to create an HTTPS proxy server with a self-signed certificate. The HTTPS proxy server works identically to the HTTP version but with TLS encryption.
 
 ```javascript
-import ProxyChain from 'proxy-chain';
+import { Server } from 'proxy-chain';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -127,7 +127,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
     const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
 
-    const server = new ProxyChain.Server({
+    const server = new Server({
         // Main difference between 'http' and 'https' is additional event listening:
         //
         // http
@@ -213,7 +213,7 @@ You can provide custom HTTP/HTTPS agents to enable connection pooling and reuse 
 ```javascript
 import http from 'node:http';
 import https from 'node:https';
-import ProxyChain from 'proxy-chain';
+import { Server } from 'proxy-chain';
 
 // Create agents with keepAlive to enable connection pooling
 const httpAgent = new http.Agent({
@@ -226,7 +226,7 @@ const httpsAgent = new https.Agent({
     maxSockets: 10,
 });
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request }) => {
         return {
@@ -312,12 +312,12 @@ The class constructor has the following parameters: `RequestError(body, statusCo
 By default, the response will have `Content-Type: text/plain; charset=utf-8`.
 
 ```javascript
-import ProxyChain from 'proxy-chain';
+import { Server, RequestError } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
         if (username !== 'bob') {
-           throw new ProxyChain.RequestError('Only Bob can use this proxy!', 400);
+           throw new RequestError('Only Bob can use this proxy!', 400);
         }
     },
 });
@@ -382,9 +382,9 @@ with the following properties:
 Here is a simple example:
 
 ```javascript
-import ProxyChain from 'proxy-chain';
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         return {
@@ -410,13 +410,13 @@ It's possible to route those requests differently using the `customConnectServer
 
 ```javascript
 import http from 'node:http';
-import ProxyChain from 'proxy-chain';
+import { Server } from 'proxy-chain';
 
 const exampleServer = http.createServer((request, response) => {
     response.end('Hello from a custom server!');
 });
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         if (request.url.toLowerCase() === 'example.com:80') {
@@ -527,11 +527,11 @@ For details, read this [blog post](https://blog.apify.com/how-to-make-headless-c
 
 ```javascript
 import puppeteer from 'puppeteer';
-import proxyChain from 'proxy-chain';
+import { anonymizeProxy, closeAnonymizedProxy } from 'proxy-chain';
 
 (async() => {
     const oldProxyUrl = 'http://bob:password123@proxy.example.com:8000';
-    const newProxyUrl = await proxyChain.anonymizeProxy(oldProxyUrl);
+    const newProxyUrl = await anonymizeProxy(oldProxyUrl);
 
     // Prints something like "http://127.0.0.1:45678"
     console.log(newProxyUrl);
@@ -547,7 +547,7 @@ import proxyChain from 'proxy-chain';
     await browser.close();
 
     // Clean up
-    await proxyChain.closeAnonymizedProxy(newProxyUrl, true);
+    await closeAnonymizedProxy(newProxyUrl, true);
 })();
 ```
 
