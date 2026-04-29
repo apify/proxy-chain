@@ -3,38 +3,38 @@
 name: Check
 
 on:
-  pull_request:
-  workflow_call:
+    pull_request:
+    workflow_call:
 
 jobs:
-  lint_and_test:
-    name: Lint & Test
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    runs-on: ubuntu-22.04
+    lint_and_test:
+        name: Lint & Test
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+        runs-on: ubuntu-22.04
 
-    strategy:
-      matrix:
-        node-version: [14, 16, 18]
+        strategy:
+            matrix:
+                node-version: [20, 22, 24]
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v6
+              with:
+                  node-version: ${{ matrix.node-version }}
 
-      - name: Install Dependencies
-        run: npm install
+            - name: Install Dependencies
+              run: npm install
 
-      # Lint only on the latest Node.js version to save time.
-      - name: Lint code
-        if: ${{ matrix.node-version == 18 }}
-        run: npm run lint
+            # Lint only on the latest Node.js version to save time.
+            - name: Lint code
+              if: ${{ matrix.node-version == 20 }}
+              run: npm run lint
 
-      - name: Add localhost-test to Linux hosts file
-        run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
+            - name: Add localhost-test to Linux hosts file
+              run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 
-      - name: Run Tests
-        run: npm test
+            - name: Run Tests
+              run: npm test

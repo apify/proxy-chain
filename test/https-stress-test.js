@@ -1,4 +1,5 @@
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 const tls = require('tls');
 const util = require('util');
@@ -6,6 +7,10 @@ const request = require('request');
 const { expect } = require('chai');
 const { Server } = require('../src/index');
 const { TargetServer } = require('./utils/target_server');
+
+// Node.js 20+ enables HTTP keep-alive by default in the global agent,
+// which causes connection tracking issues in tests. Disable it.
+http.globalAgent.keepAlive = false;
 
 const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
@@ -35,6 +40,9 @@ describe('HTTPS proxy stress testing', function () {
             serverType: 'https',
             httpsOptions: { key: sslKey, cert: sslCrt },
         });
+        // Node.js 20+ enables HTTP keep-alive by default, which causes connection
+        // tracking issues in tests. Disable keep-alive on the proxy server.
+        server.server.keepAliveTimeout = 0;
         await server.listen();
     });
 

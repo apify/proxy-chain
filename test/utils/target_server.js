@@ -42,6 +42,10 @@ class TargetServer {
             this.httpServer = http.createServer(this.app);
         }
 
+        // Node.js 20+ enables HTTP keep-alive by default, which causes connection
+        // tracking issues in tests. Disable keep-alive on the target server.
+        this.httpServer.keepAliveTimeout = 0;
+
         // Web socket server for upgraded HTTP connections
         this.wsUpgServer = new WebSocket.Server({ server: this.httpServer });
         this.wsUpgServer.on('connection', this.onWsConnection.bind(this));

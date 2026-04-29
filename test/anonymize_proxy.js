@@ -226,7 +226,9 @@ describe('utils.anonymizeProxy', function () {
                         assert.fail();
                     })
                     .catch((err) => {
-                        expect(err.message).to.contain('ECONNREFUSED');
+                        // Node.js 20+ may return 'socket hang up' instead of 'ECONNREFUSED'
+                        const validErrors = ['ECONNREFUSED', 'socket hang up'];
+                        expect(validErrors.some((e) => err.message.includes(e))).to.equal(true);
                     });
             })
             .then(() => {
