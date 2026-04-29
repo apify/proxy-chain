@@ -1,15 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import tls from 'node:tls';
-import { fileURLToPath } from 'node:url';
 import { expect } from 'chai';
 import http from 'node:http';
 import { Server } from '../src/index.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 

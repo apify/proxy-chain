@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
-import { fileURLToPath } from 'node:url';
 import { expect } from 'chai';
 import portastic from 'portastic';
 import proxy from 'proxy';
@@ -11,10 +10,8 @@ import request from 'request';
 import { Server } from '../src/index.js';
 import { TargetServer } from './utils/target_server.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 describe('HTTP Agent Support', () => {
     let mainProxyServer;

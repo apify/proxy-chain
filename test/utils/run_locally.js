@@ -2,7 +2,7 @@
  * This script runs the proxy with a second upstream proxy locally on port specified by PORT environment variable
  * or 8080 if not provided. This is used to manually test the proxy on normal browsing.
  *
- * node ./build/run_locally.js
+ * npm run local-proxy
  *
  * Author: Jan Curn (jan@apify.com)
  * Copyright(c) 2017 Apify Technologies. All rights reserved.

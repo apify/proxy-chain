@@ -7,7 +7,6 @@ import tls from 'node:tls';
 import net from 'node:net';
 import dns from 'node:dns';
 import util from 'node:util';
-import { fileURLToPath } from 'node:url';
 import { expect, assert } from 'chai';
 import proxy from 'proxy';
 import http from 'node:http';
@@ -16,14 +15,10 @@ import portastic from 'portastic';
 import request from 'request';
 import WebSocket from 'faye-websocket';
 import { gotScraping } from 'got-scraping';
-import puppeteer from 'puppeteer';
 
 import { parseAuthorizationHeader } from '../src/utils/parse_authorization_header.js';
 import { Server, RequestError } from '../src/index.js';
 import { TargetServer } from './utils/target_server.js';
-import * as ProxyChain from '../src/index.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /*
 TODO - add following tests:
@@ -36,8 +31,8 @@ TODO - add following tests:
 // See README.md for details
 const LOCALHOST_TEST = 'localhost-test';
 
-const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 // Enable self-signed certificates
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -74,6 +69,8 @@ const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout))
 
 // Opens web page in puppeteer and returns the HTML content
 const puppeteerGet = async (url, proxyUrl) => {
+    const { default: puppeteer } = await import('puppeteer');
+
     const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
 
     const args = [
@@ -901,17 +898,17 @@ const createTestSuite = ({
 
         if ((!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) && !skipPuppeteerOnNode14) {
             it('handles GET request using puppeteer', async () => {
-                const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const response = await puppeteerGet(phantomUrl, mainProxyUrl);
+                const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const response = await puppeteerGet(targetUrl, mainProxyUrl);
                 expect(response).to.contain('Hello world!');
             });
         }
 
         if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
             it('handles GET request using puppeteer with invalid credentials', async () => {
-                const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
-                const response = await puppeteerGet(phantomUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                const response = await puppeteerGet(targetUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`);
                 expect(response).to.contain('Proxy credentials required');
             });
         }
@@ -1361,7 +1358,7 @@ describe('non-200 upstream connect response', () => {
         });
         server.listen(() => {
             const serverPort = server.address().port;
-            const proxyServer = new ProxyChain.Server({
+            const proxyServer = new Server({
                 port: 0,
                 prepareRequestFunction: () => {
                     return {
@@ -1438,7 +1435,7 @@ it('supports https proxy relay', async () => {
     target.listen(() => {
     });
 
-    const proxyServer = new ProxyChain.Server({
+    const proxyServer = new Server({
         port: 6666,
         prepareRequestFunction: () => {
             console.log(`https://localhost:${target.address().port}`);
@@ -1591,7 +1588,7 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         await util.promisify(target.listen.bind(target))(0);
 
-        const proxyServer = new ProxyChain.Server({
+        const proxyServer = new Server({
             port: 6666,
             prepareRequestFunction: () => {
                 return {
@@ -1633,7 +1630,7 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         await util.promisify(target.listen.bind(target))(0);
 
-        const proxyServer = new ProxyChain.Server({
+        const proxyServer = new Server({
             port: 6666,
             prepareRequestFunction: () => {
                 return {
