@@ -20,16 +20,12 @@ interface Extras {
     [calculateTargetStats]: () => Stats;
 }
 
-// @ts-expect-error TS is not aware that `source` is used in the assertion.
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-function typeSocket(source: unknown): asserts source is net.Socket & Extras {}
-
 export const countTargetBytes = (
-    source: net.Socket,
+    sourceSocket: net.Socket,
     target: SocketWithPreviousStats,
     registerCloseHandler?: (handler: () => void) => void,
 ): void => {
-    typeSocket(source);
+    const source = sourceSocket as net.Socket & Extras;
 
     source[targetBytesWritten] = source[targetBytesWritten] || 0;
     source[targetBytesRead] = source[targetBytesRead] || 0;
@@ -65,8 +61,8 @@ export const countTargetBytes = (
     }
 };
 
-export const getTargetStats = (socket: net.Socket): Stats => {
-    typeSocket(socket);
+export const getTargetStats = (rawSocket: net.Socket): Stats => {
+    const socket = rawSocket as net.Socket & Extras;
 
     if (socket[calculateTargetStats]) {
         return socket[calculateTargetStats]();
