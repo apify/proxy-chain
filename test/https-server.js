@@ -4,7 +4,7 @@ import tls from 'node:tls';
 import { fileURLToPath } from 'node:url';
 import { expect } from 'chai';
 import http from 'node:http';
-import { Server } from '../dist/index.js';
+import { Server } from '../src/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

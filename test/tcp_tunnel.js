@@ -3,7 +3,7 @@ import { expect, assert } from 'chai';
 import http from 'node:http';
 import proxy from 'proxy';
 
-import { createTunnel, closeTunnel } from '../dist/index.js';
+import { createTunnel, closeTunnel } from '../src/index.js';
 import { expectThrowsAsync } from './utils/throws_async.js';
 
 const destroySocket = (socket) => new Promise((resolve, reject) => {

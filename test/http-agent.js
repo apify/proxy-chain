@@ -8,7 +8,7 @@ import portastic from 'portastic';
 import proxy from 'proxy';
 import request from 'request';
 
-import { Server } from '../dist/index.js';
+import { Server } from '../src/index.js';
 import { TargetServer } from './utils/target_server.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

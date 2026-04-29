@@ -6,7 +6,7 @@ import util from 'node:util';
 import { fileURLToPath } from 'node:url';
 import request from 'request';
 import { expect } from 'chai';
-import { Server } from '../dist/index.js';
+import { Server } from '../src/index.js';
 import { TargetServer } from './utils/target_server.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
