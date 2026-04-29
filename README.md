@@ -118,14 +118,11 @@ This example demonstrates how to create an HTTPS proxy server with a self-signed
 import { Server } from 'proxy-chain';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 (async () => {
     // TODO: update these lines to use your own key and cert
-    const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-    const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+    const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+    const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
     const server = new Server({
         // Main difference between 'http' and 'https' is additional event listening:

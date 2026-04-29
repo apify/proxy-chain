@@ -16,6 +16,7 @@ import portastic from 'portastic';
 import request from 'request';
 import WebSocket from 'faye-websocket';
 import { gotScraping } from 'got-scraping';
+import puppeteer from 'puppeteer';
 
 import { parseAuthorizationHeader } from '../src/utils/parse_authorization_header.js';
 import { Server, RequestError } from '../src/index.js';
@@ -73,8 +74,6 @@ const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout))
 
 // Opens web page in puppeteer and returns the HTML content
 const puppeteerGet = async (url, proxyUrl) => {
-    const { default: puppeteer } = await import('puppeteer');
-
     const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
 
     const args = [
