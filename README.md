@@ -21,9 +21,9 @@ The proxy-chain package currently supports HTTP/SOCKS forwarding and HTTP CONNEC
 ## Run a simple HTTP/HTTPS proxy server
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({ port: 8000 });
+const server = new Server({ port: 8000 });
 
 server.listen(() => {
     console.log(`Proxy server is listening on port ${server.port}`);
@@ -33,9 +33,9 @@ server.listen(() => {
 ## Run a HTTP/HTTPS proxy server with credentials and upstream proxy
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     // Port where the server will listen. By default 8000.
     port: 8000,
 
@@ -115,16 +115,16 @@ server.on('requestFailed', ({ request, error }) => {
 This example demonstrates how to create an HTTPS proxy server with a self-signed certificate. The HTTPS proxy server works identically to the HTTP version but with TLS encryption.
 
 ```javascript
-const fs = require('fs');
-const path = require('path');
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
+import fs from 'node:fs';
+import path from 'node:path';
 
 (async () => {
     // TODO: update these lines to use your own key and cert
-    const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-    const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+    const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+    const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
-    const server = new ProxyChain.Server({
+    const server = new Server({
         // Main difference between 'http' and 'https' is additional event listening:
         //
         // http
@@ -208,9 +208,9 @@ curl --proxy-insecure -x https://localhost:8443 -k https://example.com
 You can provide custom HTTP/HTTPS agents to enable connection pooling and reuse with upstream proxies. This is particularly useful for maintaining sticky IP addresses or reducing connection overhead:
 
 ```javascript
-const http = require('http');
-const https = require('https');
-const ProxyChain = require('proxy-chain');
+import http from 'node:http';
+import https from 'node:https';
+import { Server } from 'proxy-chain';
 
 // Create agents with keepAlive to enable connection pooling
 const httpAgent = new http.Agent({
@@ -223,7 +223,7 @@ const httpsAgent = new https.Agent({
     maxSockets: 10,
 });
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request }) => {
         return {
@@ -309,12 +309,12 @@ The class constructor has the following parameters: `RequestError(body, statusCo
 By default, the response will have `Content-Type: text/plain; charset=utf-8`.
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server, RequestError } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
         if (username !== 'bob') {
-           throw new ProxyChain.RequestError('Only Bob can use this proxy!', 400);
+           throw new RequestError('Only Bob can use this proxy!', 400);
         }
     },
 });
@@ -379,9 +379,9 @@ with the following properties:
 Here is a simple example:
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         return {
@@ -406,14 +406,14 @@ While `customResponseFunction` enables custom handling methods such as `GET` and
 It's possible to route those requests differently using the `customConnectServer` option. It accepts an instance of Node.js HTTP server.
 
 ```javascript
-const http = require('http');
-const ProxyChain = require('proxy-chain');
+import http from 'node:http';
+import { Server } from 'proxy-chain';
 
 const exampleServer = http.createServer((request, response) => {
     response.end('Hello from a custom server!');
 });
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         if (request.url.toLowerCase() === 'example.com:80') {
@@ -437,8 +437,9 @@ This is an unsecure server, so it accepts only `http:` requests.
 In order to intercept `https:` requests, `https.createServer` should be used instead, along with a self signed certificate.
 
 ```javascript
-const https = require('https');
-const fs = require('fs');
+import https from 'node:https';
+import fs from 'node:fs';
+
 const key = fs.readFileSync('./test/ssl.key');
 const cert = fs.readFileSync('./test/ssl.crt');
 
@@ -522,12 +523,12 @@ from headless Chrome and [Puppeteer](https://github.com/GoogleChrome/puppeteer).
 For details, read this [blog post](https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212).
 
 ```javascript
-const puppeteer = require('puppeteer');
-const proxyChain = require('proxy-chain');
+import puppeteer from 'puppeteer';
+import { anonymizeProxy, closeAnonymizedProxy } from 'proxy-chain';
 
 (async() => {
     const oldProxyUrl = 'http://bob:password123@proxy.example.com:8000';
-    const newProxyUrl = await proxyChain.anonymizeProxy(oldProxyUrl);
+    const newProxyUrl = await anonymizeProxy(oldProxyUrl);
 
     // Prints something like "http://127.0.0.1:45678"
     console.log(newProxyUrl);
@@ -543,7 +544,7 @@ const proxyChain = require('proxy-chain');
     await browser.close();
 
     // Clean up
-    await proxyChain.closeAnonymizedProxy(newProxyUrl, true);
+    await closeAnonymizedProxy(newProxyUrl, true);
 })();
 ```
 

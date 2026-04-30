@@ -1,17 +1,17 @@
-const fs = require('fs');
-const path = require('path');
-const http = require('http');
-const https = require('https');
-const { expect } = require('chai');
-const portastic = require('portastic');
-const proxy = require('proxy');
-const request = require('request');
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import https from 'node:https';
+import { expect } from 'chai';
+import portastic from 'portastic';
+import proxy from 'proxy';
+import request from 'request';
 
-const { Server } = require('../src/index');
-const { TargetServer } = require('./utils/target_server');
+import { Server } from '../src/index.js';
+import { TargetServer } from './utils/target_server.js';
 
-const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 describe('HTTP Agent Support', () => {
     let mainProxyServer;

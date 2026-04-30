@@ -1,25 +1,24 @@
-const fs = require('fs');
-const zlib = require('zlib');
-const path = require('path');
-const stream = require('stream');
-const childProcess = require('child_process');
-const tls = require('tls');
-const net = require('net');
-const dns = require('dns');
-const util = require('util');
-const { expect, assert } = require('chai');
-const proxy = require('proxy');
-const http = require('http');
-const https = require('https');
-const portastic = require('portastic');
-const request = require('request');
-const WebSocket = require('faye-websocket');
-const { gotScraping } = require('got-scraping');
+import fs from 'node:fs';
+import zlib from 'node:zlib';
+import path from 'node:path';
+import stream from 'node:stream';
+import childProcess from 'node:child_process';
+import tls from 'node:tls';
+import net from 'node:net';
+import dns from 'node:dns';
+import util from 'node:util';
+import { expect, assert } from 'chai';
+import proxy from 'proxy';
+import http from 'node:http';
+import https from 'node:https';
+import portastic from 'portastic';
+import request from 'request';
+import WebSocket from 'faye-websocket';
+import { gotScraping } from 'got-scraping';
 
-const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
-const { Server, RequestError } = require('../src/index');
-const { TargetServer } = require('./utils/target_server');
-const ProxyChain = require('../src/index');
+import { parseAuthorizationHeader } from '../src/utils/parse_authorization_header.js';
+import { Server, RequestError } from '../src/index.js';
+import { TargetServer } from './utils/target_server.js';
 
 /*
 TODO - add following tests:
@@ -32,8 +31,8 @@ TODO - add following tests:
 // See README.md for details
 const LOCALHOST_TEST = 'localhost-test';
 
-const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 // Enable self-signed certificates
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -69,58 +68,55 @@ const requestPromised = (opts) => {
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 // Opens web page in puppeteer and returns the HTML content
-const puppeteerGet = (url, proxyUrl) => {
-    // eslint-disable-next-line global-require
-    const puppeteer = require('puppeteer');
+const puppeteerGet = async (url, proxyUrl) => {
+    const { default: puppeteer } = await import('puppeteer');
 
-    return (async () => {
-        const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
+    const parsed = proxyUrl ? new URL(proxyUrl) : undefined;
 
-        const args = [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
-        ];
+    const args = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+    ];
 
-        const launchOpts = {
-            ignoreHTTPSErrors: true,
-            headless: 'new',
-            args
-        };
+    const launchOpts = {
+        ignoreHTTPSErrors: true,
+        headless: 'new',
+        args
+    };
+
+    if (parsed) {
+        if (parsed.protocol === 'https:') {
+            args.push(`--proxy-server=${parsed.origin}`);
+            // For HTTPS proxies with self-signed certificates,
+            // ignore certificate errors on the proxy connection itself.
+            args.push('--ignore-certificate-errors');
+        } else {
+            launchOpts.env = {
+                HTTP_PROXY: parsed.origin,
+            };
+        }
+    }
+
+    const browser = await puppeteer.launch(launchOpts);
+
+    try {
+        const page = await browser.newPage();
 
         if (parsed) {
-            if (parsed.protocol === 'https:') {
-                args.push(`--proxy-server=${parsed.origin}`);
-                // For HTTPS proxies with self-signed certificates,
-                // ignore certificate errors on the proxy connection itself.
-                args.push('--ignore-certificate-errors');
-            } else {
-                launchOpts.env = {
-                    HTTP_PROXY: parsed.origin,
-                };
-            }
+            await page.authenticate({
+                username: decodeURIComponent(parsed.username),
+                password: decodeURIComponent(parsed.password),
+            });
         }
 
-        const browser = await puppeteer.launch(launchOpts);
+        const response = await page.goto(url);
+        const text = await response.text();
 
-        try {
-            const page = await browser.newPage();
-
-            if (parsed) {
-                await page.authenticate({
-                    username: decodeURIComponent(parsed.username),
-                    password: decodeURIComponent(parsed.password),
-                });
-            }
-
-            const response = await page.goto(url);
-            const text = await response.text();
-
-            return text;
-        } finally {
-            await browser.close();
-        }
-    })();
+        return text;
+    } finally {
+        await browser.close();
+    }
 };
 
 // Opens web page in curl and returns the HTML content.
@@ -902,17 +898,17 @@ const createTestSuite = ({
 
         if ((!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) && !skipPuppeteerOnNode14) {
             it('handles GET request using puppeteer', async () => {
-                const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
-                const response = await puppeteerGet(phantomUrl, mainProxyUrl);
+                const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const response = await puppeteerGet(targetUrl, mainProxyUrl);
                 expect(response).to.contain('Hello world!');
             });
         }
 
         if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
             it('handles GET request using puppeteer with invalid credentials', async () => {
-                const phantomUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
+                const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
-                const response = await puppeteerGet(phantomUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`);
+                const response = await puppeteerGet(targetUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`);
                 expect(response).to.contain('Proxy credentials required');
             });
         }
@@ -1362,7 +1358,7 @@ describe('non-200 upstream connect response', () => {
         });
         server.listen(() => {
             const serverPort = server.address().port;
-            const proxyServer = new ProxyChain.Server({
+            const proxyServer = new Server({
                 port: 0,
                 prepareRequestFunction: () => {
                     return {
@@ -1439,7 +1435,7 @@ it('supports https proxy relay', async () => {
     target.listen(() => {
     });
 
-    const proxyServer = new ProxyChain.Server({
+    const proxyServer = new Server({
         port: 6666,
         prepareRequestFunction: () => {
             console.log(`https://localhost:${target.address().port}`);
@@ -1592,7 +1588,7 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         await util.promisify(target.listen.bind(target))(0);
 
-        const proxyServer = new ProxyChain.Server({
+        const proxyServer = new Server({
             port: 6666,
             prepareRequestFunction: () => {
                 return {
@@ -1634,7 +1630,7 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         await util.promisify(target.listen.bind(target))(0);
 
-        const proxyServer = new ProxyChain.Server({
+        const proxyServer = new Server({
             port: 6666,
             prepareRequestFunction: () => {
                 return {

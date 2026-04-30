@@ -1,10 +1,10 @@
-const net = require('net');
-const { expect, assert } = require('chai');
-const http = require('http');
-const proxy = require('proxy');
+import net from 'node:net';
+import { expect, assert } from 'chai';
+import http from 'node:http';
+import proxy from 'proxy';
 
-const { createTunnel, closeTunnel } = require('../src/index');
-const { expectThrowsAsync } = require('./utils/throws_async');
+import { createTunnel, closeTunnel } from '../src/index.js';
+import { expectThrowsAsync } from './utils/throws_async.js';
 
 const destroySocket = (socket) => new Promise((resolve, reject) => {
     if (!socket || socket.destroyed) return resolve();

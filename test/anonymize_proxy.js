@@ -1,15 +1,15 @@
-const _ = require('underscore');
-const util = require('util');
-const { expect, assert } = require('chai');
-const proxy = require('proxy');
-const http = require('http');
-const portastic = require('portastic');
-const basicAuthParser = require('basic-auth-parser');
-const request = require('request');
-const express = require('express');
+import _ from 'underscore';
+import util from 'node:util';
+import { expect, assert } from 'chai';
+import proxy from 'proxy';
+import http from 'node:http';
+import portastic from 'portastic';
+import basicAuthParser from 'basic-auth-parser';
+import request from 'request';
+import express from 'express';
 
-const { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } = require('../src/index');
-const { expectThrowsAsync } = require('./utils/throws_async');
+import { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } from '../src/index.js';
+import { expectThrowsAsync } from './utils/throws_async.js';
 
 let expressServer;
 let proxyServer;

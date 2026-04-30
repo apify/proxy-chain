@@ -1,7 +1,7 @@
-const net = require('net');
-const http = require('http');
-const { assert } = require('chai');
-const ProxyChain = require('../src/index');
+import net from 'node:net';
+import http from 'node:http';
+import { assert } from 'chai';
+import * as ProxyChain from '../src/index.js';
 
 describe('ProxyChain server', () => {
     let proxyServer;

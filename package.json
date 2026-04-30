@@ -3,6 +3,13 @@
     "version": "2.7.1",
     "description": "Node.js implementation of a proxy server (think Squid) with support for SSL, authentication, upstream proxy chaining, and protocol tunneling.",
     "main": "dist/index.js",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
     "keywords": [
         "proxy",
         "squid",
@@ -36,7 +43,7 @@
         "build": "tsc",
         "clean": "rimraf dist",
         "prepublishOnly": "npm run build",
-        "local-proxy": "node ./dist/run_locally.js",
+        "local-proxy": "tsx test/utils/run_locally.js",
         "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha",
         "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . && docker run --add-host localhost-test:127.0.0.1 proxy-chain-tests",
         "test:docker:all": "bash scripts/test-docker-all.sh",
@@ -44,7 +51,7 @@
         "lint:fix": "eslint . --fix"
     },
     "engines": {
-        "node": ">=20"
+        "node": ">=20.11"
     },
     "devDependencies": {
         "@apify/eslint-config": "^1.0.0",
@@ -72,7 +79,7 @@
         "sinon-stub-promise": "^4.0.0",
         "socksv5": "^0.0.6",
         "through": "^2.3.8",
-        "ts-node": "^10.2.1",
+        "tsx": "^4.21.0",
         "typescript": "^4.4.3",
         "typescript-eslint": "^8.20.0",
         "underscore": "^1.13.1",
