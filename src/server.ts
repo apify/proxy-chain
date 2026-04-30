@@ -45,7 +45,7 @@ const HTTPS_DEFAULT_OPTIONS = {
     // Disable TLS 1.0 and 1.1 (deprecated, insecure).
     // All other TLS settings use Node.js defaults for cipher selection (automatically updated).
     minVersion: 'TLSv1.2',
-} as const;
+} as const satisfies https.ServerOptions;
 
 /**
  * Connection statistics for bandwidth tracking.
