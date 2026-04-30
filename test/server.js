@@ -67,6 +67,20 @@ const requestPromised = (opts) => {
 
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
+// Chromium occasionally fails to spawn under headless Docker (dbus/crashpad noise + ENOENT-ish exits).
+// Retry briefly so a single flaky launch doesn't fail the whole suite.
+const launchPuppeteer = async (puppeteer, launchOpts) => {
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            return await puppeteer.launch(launchOpts);
+        } catch (error) {
+            if (attempt === MAX_ATTEMPTS) throw error;
+            await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+        }
+    }
+};
+
 // Opens web page in puppeteer and returns the HTML content
 const puppeteerGet = async (url, proxyUrl) => {
     const { default: puppeteer } = await import('puppeteer');
@@ -76,7 +90,8 @@ const puppeteerGet = async (url, proxyUrl) => {
     const args = [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage'
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
     ];
 
     const launchOpts = {
@@ -98,7 +113,7 @@ const puppeteerGet = async (url, proxyUrl) => {
         }
     }
 
-    const browser = await puppeteer.launch(launchOpts);
+    const browser = await launchPuppeteer(puppeteer, launchOpts);
 
     try {
         const page = await browser.newPage();
