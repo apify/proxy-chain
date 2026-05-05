@@ -9,10 +9,10 @@ describe('SOCKS protocol', () => {
     let proxyServer;
     let anonymizeProxyUrl;
 
-    afterEach(() => {
+    afterEach(async () => {
         if (socksServer) socksServer.close();
-        if (proxyServer) proxyServer.close();
-        if (anonymizeProxyUrl) ProxyChain.closeAnonymizedProxy(anonymizeProxyUrl, true);
+        if (proxyServer) await proxyServer.close();
+        if (anonymizeProxyUrl) await ProxyChain.closeAnonymizedProxy(anonymizeProxyUrl, true);
     });
 
     it('works without auth', async () => {
@@ -61,27 +61,22 @@ describe('SOCKS protocol', () => {
         expect(response.body).to.contain('Example Domain');
     }).timeout(10 * 1000);
 
-    it('works with anonymizeProxy', (done) => {
-        portastic.find({ min: 50500, max: 50750 }).then((ports) => {
-            const [socksPort, proxyPort] = ports;
-            socksServer = socksv5.createServer((info, accept) => {
-                accept();
-            });
-            socksServer.listen(socksPort, '0.0.0.0', () => {
-                socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
-                    cb(user === 'proxy-ch@in' && password === 'rules!');
-                }));
-
-                ProxyChain.anonymizeProxy({ port: proxyPort, url: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}` }).then((anonymizedProxyUrl) => {
-                    anonymizeProxyUrl = anonymizedProxyUrl;
-                    gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizedProxyUrl })
-                        .then((response) => {
-                            expect(response.body).to.contain('Example Domain');
-                            done();
-                        })
-                        .catch(done);
-                });
-            });
+    it('works with anonymizeProxy', async () => {
+        const ports = await portastic.find({ min: 50500, max: 50750 });
+        const [socksPort, proxyPort] = ports;
+        socksServer = socksv5.createServer((info, accept) => {
+            accept();
         });
+        await new Promise((resolve) => socksServer.listen(socksPort, '0.0.0.0', resolve));
+        socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+            cb(user === 'proxy-ch@in' && password === 'rules!');
+        }));
+
+        anonymizeProxyUrl = await ProxyChain.anonymizeProxy({
+            port: proxyPort,
+            url: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}`,
+        });
+        const response = await gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizeProxyUrl });
+        expect(response.body).to.contain('Example Domain');
     }).timeout(10 * 1000);
 });

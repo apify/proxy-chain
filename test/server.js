@@ -1400,10 +1400,9 @@ describe('non-200 upstream connect response', () => {
                 expect(head.length).to.equal(0);
                 success = true;
 
-                socket.once('close', () => {
-                    proxyServer.close();
-                    server.close();
-
+                socket.once('close', async () => {
+                    await proxyServer.close();
+                    await new Promise((res) => server.close(res));
                     resolve();
                 });
             });
