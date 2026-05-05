@@ -1,3 +1,32 @@
+# 3.0.0 / 2026-05-05
+
+This is a major release that modernizes the codebase. The runtime behavior of the
+proxy server itself is unchanged; the breaking changes are about how you import,
+package, and call the library.
+
+- **BREAKING:** Dropped support for Node.js older than `20.11`. The minimum supported
+  version is now Node.js `20.11`.
+  See [#638](https://github.com/apify/proxy-chain/pull/638),
+  [#654](https://github.com/apify/proxy-chain/pull/654).
+- **BREAKING:** The package is now ESM-only (`"type": "module"` in `package.json`).
+  Use `import` instead of `require()`. CommonJS consumers must migrate to ESM
+  (or use a dynamic `import()`).
+  See [#654](https://github.com/apify/proxy-chain/pull/654).
+- **BREAKING:** Removed Node.js-style callbacks from the entire public API.
+  `Server#listen()`, `Server#close()`, `anonymizeProxy()`,
+  `closeAnonymizedProxy()`, `createTunnel()`, and `closeTunnel()` now return a
+  `Promise` only - use `await` or `.then()`.
+  See [#656](https://github.com/apify/proxy-chain/pull/656).
+
+- **BREAKING:** `CustomResponse` is now a `type`-only export. If you were importing
+  it as a value, switch to `import type { CustomResponse } from 'proxy-chain'`.
+  See [#654](https://github.com/apify/proxy-chain/pull/654).
+- Upgraded TypeScript to v5 and adopted `NodeNext` module resolution with
+  `verbatimModuleSyntax`.
+  See [#655](https://github.com/apify/proxy-chain/pull/655).
+- Internal: removed the unused `typeSocket` assertion helper.
+  See [#653](https://github.com/apify/proxy-chain/pull/653).
+
 # 2.0.1 / 2022-05-02
 
 - Simplify code, fix tests, move to TypeScript [#162](https://github.com/apify/proxy-chain/pull/162)
