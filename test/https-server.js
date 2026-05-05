@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import tls from 'node:tls';
 import { expect } from 'chai';
@@ -17,8 +18,16 @@ it('handles TLS handshake failures gracefully and continues accepting connection
     let server;
     let badSocket;
     let goodSocket;
+    let targetServer;
 
     try {
+        // Create a local TCP server as the CONNECT target to avoid external network dependency.
+        targetServer = net.createServer((socket) => {
+            socket.on('error', () => {});
+        });
+        await new Promise((resolve) => targetServer.listen(0, '127.0.0.1', resolve));
+        const targetPort = targetServer.address().port;
+
         server = new Server({
             port: 0,
             serverType: 'https',
@@ -102,8 +111,8 @@ it('handles TLS handshake failures gracefully and continues accepting connection
 
         expect(goodSocketConnected).to.equal(true, 'Good socket should have connected');
 
-        // Write the CONNECT request.
-        goodSocket.write('CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n');
+        // Write the CONNECT request to local target server.
+        goodSocket.write(`CONNECT 127.0.0.1:${targetPort} HTTP/1.1\r\nHost: 127.0.0.1:${targetPort}\r\n\r\n`);
 
         const response = await new Promise((resolve, reject) => {
             const goodSocketTimeout = setTimeout(() => {
@@ -145,6 +154,9 @@ it('handles TLS handshake failures gracefully and continues accepting connection
         }
         if (server) {
             await server.close(true);
+        }
+        if (targetServer) {
+            await new Promise((resolve) => targetServer.close(resolve));
         }
     }
 });

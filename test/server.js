@@ -67,6 +67,20 @@ const requestPromised = (opts) => {
 
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
+// Chromium occasionally fails to spawn under headless Docker (dbus/crashpad noise + ENOENT-ish exits).
+// Retry briefly so a single flaky launch doesn't fail the whole suite.
+const launchPuppeteer = async (puppeteer, launchOpts) => {
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            return await puppeteer.launch(launchOpts);
+        } catch (error) {
+            if (attempt === MAX_ATTEMPTS) throw error;
+            await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+        }
+    }
+};
+
 // Opens web page in puppeteer and returns the HTML content
 const puppeteerGet = async (url, proxyUrl) => {
     const { default: puppeteer } = await import('puppeteer');
@@ -76,7 +90,8 @@ const puppeteerGet = async (url, proxyUrl) => {
     const args = [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage'
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
     ];
 
     const launchOpts = {
@@ -98,7 +113,7 @@ const puppeteerGet = async (url, proxyUrl) => {
         }
     }
 
-    const browser = await puppeteer.launch(launchOpts);
+    const browser = await launchPuppeteer(puppeteer, launchOpts);
 
     try {
         const page = await browser.newPage();
@@ -998,7 +1013,7 @@ const createTestSuite = ({
                 });
             }
 
-            it('handles invalid CONNECT path', (done) => {
+            it('handles invalid CONNECT path', async () => {
                 const requestModule = mainProxyServerType === 'https' ? https : http;
                 const req = requestModule.request(mainProxyUrl, {
                     method: 'CONNECT',
@@ -1009,14 +1024,17 @@ const createTestSuite = ({
                     // Accept self-signed certificates for HTTPS proxy.
                     rejectUnauthorized: false,
                 });
-                req.once('connect', (response, socket, head) => {
-                    expect(response.statusCode).to.equal(400);
 
-                    socket.destroy();
-                    done();
+                const response = await new Promise((resolve, reject) => {
+                    req.once('connect', (res, socket) => {
+                        socket.destroy();
+                        resolve(res);
+                    });
+                    req.once('error', reject);
+                    req.end();
                 });
 
-                req.end();
+                expect(response.statusCode).to.equal(400);
             });
 
             _it('returns 404 for non-existent hostname', () => {
@@ -1050,16 +1068,17 @@ const createTestSuite = ({
             });
 
             if (mainProxyAuth) {
-                it('implies username if colon missing', (done) => {
+                it('implies username if colon missing', async () => {
                     const server = net.createServer((socket) => {
                         socket.end();
                     });
 
-                    server.once('error', (error) => {
-                        done(error);
+                    await new Promise((resolve, reject) => {
+                        server.once('error', reject);
+                        server.listen(0, resolve);
                     });
 
-                    server.listen(0, () => {
+                    try {
                         const proxyUrl = new URL(mainProxyUrl);
                         const requestModule = proxyUrl.protocol === 'https:' ? https : http;
 
@@ -1080,18 +1099,18 @@ const createTestSuite = ({
                         }
 
                         const req = requestModule.request(requestOpts);
-                        req.once('connect', (response, socket, head) => {
-                            expect(response.statusCode).to.equal(200);
-                            expect(head.length).to.equal(0);
-
-                            socket.destroy();
-                            server.close(() => {
-                                done();
-                            });
+                        const { response, socket, head } = await new Promise((resolve, reject) => {
+                            req.once('connect', (res, sock, h) => resolve({ response: res, socket: sock, head: h }));
+                            req.once('error', reject);
+                            req.end();
                         });
 
-                        req.end();
-                    });
+                        expect(response.statusCode).to.equal(200);
+                        expect(head.length).to.equal(0);
+                        socket.destroy();
+                    } finally {
+                        await new Promise((resolve) => server.close(resolve));
+                    }
                 });
 
                 it('returns 407 for invalid credentials', () => {
@@ -1260,46 +1279,43 @@ const createTestSuite = ({
             }
         }
 
-        after(function () {
+        after(async function () {
             this.timeout(3 * 1000);
-            return wait(1000)
-                .then(() => {
-                    // Ensure all handlers are removed
-                    if (mainProxyServer) {
-                        expect(mainProxyServer.getConnectionIds()).to.be.deep.eql([]);
-                    }
-                    expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
+            await wait(1000);
 
-                    const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
-                        .reduce((duplicateConnections, id, index) => {
-                            if (index > 0 && mainProxyServerConnectionsClosed[index - 1] === id) {
-                                duplicateConnections.push(id);
-                            }
-                            return duplicateConnections;
-                        }, []);
+            // Ensure all handlers are removed
+            if (mainProxyServer) {
+                expect(mainProxyServer.getConnectionIds()).to.be.deep.eql([]);
+            }
+            expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
 
-                    expect(closedSomeConnectionsTwice).to.be.deep.eql([]);
-                    if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
-                    if (mainProxyServer) {
-                        // NOTE: we need to forcibly close pending connections,
-                        // because e.g. on 502 errors in HTTPS mode, the request library
-                        // doesn't close the connection and this would timeout
-                        return mainProxyServer.close(true);
+            const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
+                .reduce((duplicateConnections, id, index) => {
+                    if (index > 0 && mainProxyServerConnectionsClosed[index - 1] === id) {
+                        duplicateConnections.push(id);
                     }
-                })
-                .then(() => {
-                    if (upstreamProxyServer) {
-                        // NOTE: We used to wait for upstream proxy connections to close,
-                        // but for HTTPS, in Node 10+, they linger for some reason...
-                        // return util.promisify(upstreamProxyServer.close).bind(upstreamProxyServer)();
-                        upstreamProxyServer.close();
-                    }
-                })
-                .then(() => {
-                    if (targetServer) {
-                        return targetServer.close();
-                    }
-                });
+                    return duplicateConnections;
+                }, []);
+
+            expect(closedSomeConnectionsTwice).to.be.deep.eql([]);
+            if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
+
+            if (mainProxyServer) {
+                // NOTE: we need to forcibly close pending connections,
+                // because e.g. on 502 errors in HTTPS mode, the request library
+                // doesn't close the connection and this would timeout
+                await mainProxyServer.close(true);
+            }
+
+            if (upstreamProxyServer) {
+                // NOTE: We used to wait for upstream proxy connections to close,
+                // but for HTTPS, in Node 10+, they linger for some reason...
+                upstreamProxyServer.close();
+            }
+
+            if (targetServer) {
+                await targetServer.close();
+            }
         });
     };
 };
@@ -1310,10 +1326,11 @@ describe('Test 0 port option', async () => {
             const server = new Server({
                 port: 0,
             });
-            // eslint-disable-next-line no-await-in-loop
+            /* eslint-disable no-await-in-loop */
             await server.listen();
             expect(server.port).to.be.eql(server.server.address().port);
-            server.close(true);
+            await server.close(true);
+            /* eslint-enable no-await-in-loop */
         }
     });
 });
@@ -1350,50 +1367,49 @@ describe('non-200 upstream connect response', () => {
         }
     });
 
-    it('fails downstream with 590', (done) => {
+    it('fails downstream with 590', async () => {
         const server = http.createServer();
         server.on('connect', (_request, socket) => {
             socket.once('error', () => {});
             socket.end('HTTP/1.1 403 Forbidden\r\ncontent-length: 1\r\n\r\na');
         });
-        server.listen(() => {
-            const serverPort = server.address().port;
-            const proxyServer = new Server({
-                port: 0,
-                prepareRequestFunction: () => {
-                    return {
-                        upstreamProxyUrl: `http://localhost:${serverPort}`,
-                    };
+        await new Promise((resolve) => server.listen(resolve));
+        const serverPort = server.address().port;
+        const proxyServer = new Server({
+            port: 0,
+            prepareRequestFunction: () => {
+                return {
+                    upstreamProxyUrl: `http://localhost:${serverPort}`,
+                };
+            },
+        });
+        await proxyServer.listen();
+        const proxyServerPort = proxyServer.port;
+
+        await new Promise((resolve) => {
+            const req = http.request({
+                method: 'CONNECT',
+                host: 'localhost',
+                port: proxyServerPort,
+                path: 'example.com:443',
+                headers: {
+                    host: 'example.com:443',
                 },
             });
-            proxyServer.listen(() => {
-                const proxyServerPort = proxyServer.port;
+            req.once('connect', (response, socket, head) => {
+                expect(response.statusCode).to.equal(590);
+                expect(response.statusMessage).to.equal('UPSTREAM403');
+                expect(head.length).to.equal(0);
+                success = true;
 
-                const req = http.request({
-                    method: 'CONNECT',
-                    host: 'localhost',
-                    port: proxyServerPort,
-                    path: 'example.com:443',
-                    headers: {
-                        host: 'example.com:443',
-                    },
+                socket.once('close', async () => {
+                    await proxyServer.close();
+                    await new Promise((res) => server.close(res));
+                    resolve();
                 });
-                req.once('connect', (response, socket, head) => {
-                    expect(response.statusCode).to.equal(590);
-                    expect(response.statusMessage).to.equal('UPSTREAM403');
-                    expect(head.length).to.equal(0);
-                    success = true;
-
-                    socket.once('close', () => {
-                        proxyServer.close();
-                        server.close();
-
-                        done();
-                    });
-                });
-
-                req.end();
             });
+
+            req.end();
         });
     });
 });
@@ -1464,8 +1480,8 @@ it('supports https proxy relay', async () => {
     }
     expect(proxyServerError).to.be.equal(false);
 
-    proxyServer.close();
-    target.close();
+    await proxyServer.close();
+    await util.promisify(target.close.bind(target))();
 });
 
 it('supports custom CONNECT server handler', async () => {
@@ -1515,25 +1531,20 @@ it('supports custom CONNECT server handler', async () => {
     }
 });
 
-it('supports pre-response CONNECT payload', (done) => {
+it('supports pre-response CONNECT payload', async () => {
     const plain = net.createServer((socket) => {
         socket.pipe(socket);
     });
 
-    plain.once('error', done);
+    await new Promise((resolve, reject) => {
+        plain.once('error', reject);
+        plain.listen(0, resolve);
+    });
 
-    plain.listen(0, async () => {
-        const server = new Server({
-            port: 0,
-        });
+    const server = new Server({ port: 0 });
+    await server.listen();
 
-        try {
-            await server.listen();
-        } catch (error) {
-            done(error);
-            return;
-        }
-
+    try {
         const socket = net.connect({
             host: '127.0.0.1',
             port: server.port,
@@ -1546,30 +1557,27 @@ it('supports pre-response CONNECT payload', (done) => {
             `foobar`,
         ].join('\r\n'));
 
-        let success = false;
+        const success = await new Promise((resolve, reject) => {
+            let received = false;
 
-        socket.once('error', done);
-        socket.on('data', (data) => {
-            success = data.includes('foobar');
-            socket.end();
-        });
-
-        socket.setTimeout(1000, () => {
-            socket.destroy(new Error('Socket timed out'));
-        });
-
-        socket.once('close', () => {
-            plain.close(async () => {
-                await server.close();
-
-                if (success) {
-                    done();
-                } else {
-                    done(new Error('failure'));
-                }
+            socket.once('error', reject);
+            socket.on('data', (data) => {
+                received = data.includes('foobar');
+                socket.end();
             });
+
+            socket.setTimeout(1000, () => {
+                socket.destroy(new Error('Socket timed out'));
+            });
+
+            socket.once('close', () => resolve(received));
         });
-    });
+
+        if (!success) throw new Error('failure');
+    } finally {
+        await server.close();
+        await new Promise((resolve) => plain.close(resolve));
+    }
 });
 
 describe('supports ignoreUpstreamProxyCertificate', () => {
@@ -1618,8 +1626,8 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         expect(response.statusCode).to.be.equal(599);
 
-        proxyServer.close();
-        target.close();
+        await proxyServer.close();
+        await util.promisify(target.close.bind(target))();
     });
 
     it('bypass upstream error', async () => {
@@ -1662,8 +1670,8 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
         expect(response.statusCode).to.be.equal(200);
         expect(response.body).to.be.equal(responseMessage);
 
-        proxyServer.close();
-        target.close();
+        await proxyServer.close();
+        await util.promisify(target.close.bind(target))();
     });
 });
 
@@ -1778,32 +1786,42 @@ describe('Socket error handler regression test', () => {
     // By adding an error listener to the Server, we make server.listenerCount('error') === 1.
     // With buggy code: condition becomes TRUE (1 === 1) and incorrectly logs.
     // With fixed code: condition stays FALSE (socket has 2 listeners, 2 !== 1) and correctly doesn't log.
-    it('does not log when server has 1 error listener but socket has multiple', (done) => {
+    it('does not log when server has 1 error listener but socket has multiple', async () => {
         server = new Server({ port: 0, verbose: true });
 
         server.on('error', () => {});
 
-        server.server.once('connection', (serverSocket) => {
-            setImmediate(() => {
-                expect(server.listenerCount('error')).to.equal(1);
-                expect(serverSocket.listenerCount('error')).to.equal(2);
+        const settled = new Promise((resolve, reject) => {
+            server.server.once('connection', (serverSocket) => {
+                setImmediate(() => {
+                    try {
+                        expect(server.listenerCount('error')).to.equal(1);
+                        expect(serverSocket.listenerCount('error')).to.equal(2);
 
-                serverSocket.emit('error', new Error('Regression test error'));
+                        serverSocket.emit('error', new Error('Regression test error'));
 
-                setTimeout(() => {
-                    const hasLog = logs.some((log) => log.includes('Source socket emitted error') && log.includes('Regression test error'));
+                        setTimeout(() => {
+                            try {
+                                const hasLog = logs.some((log) => log.includes('Source socket emitted error') && log.includes('Regression test error'));
+                                expect(hasLog).to.equal(false, 'Should check socket.listenerCount, not this.listenerCount (server)');
 
-                    expect(hasLog).to.equal(false, 'Should check socket.listenerCount, not this.listenerCount (server)');
-
-                    serverSocket.destroy();
-                    done();
-                }, 50);
+                                serverSocket.destroy();
+                                resolve();
+                            } catch (err) {
+                                reject(err);
+                            }
+                        }, 50);
+                    } catch (err) {
+                        reject(err);
+                    }
+                });
             });
         });
 
-        server.listen().then(() => {
-            net.connect(server.port, '127.0.0.1');
-        });
+        await server.listen();
+        net.connect(server.port, '127.0.0.1');
+
+        await settled;
     });
 });
 

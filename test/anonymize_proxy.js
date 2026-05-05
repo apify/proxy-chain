@@ -79,12 +79,12 @@ before(() => {
         });
 });
 
-after(function () {
+after(async function () {
     this.timeout(5 * 1000);
 
-    expressServer.close();
+    await new Promise((resolve) => expressServer.close(resolve));
 
-    if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
+    if (proxyServer) await util.promisify(proxyServer.close.bind(proxyServer))();
 });
 
 const requestPromised = (opts) => {
@@ -137,129 +137,78 @@ describe('utils.anonymizeProxy', function () {
         expectThrowsAsync(async () => { await anonymizeProxy({ url: 'https://whatever.com' }); });
     });
 
-    it('keeps already anonymous proxies (both with callbacks and promises)', () => {
-        return Promise.resolve()
-            .then(() => {
-                return anonymizeProxy('http://whatever:4567');
-            })
-            .then((anonymousProxyUrl) => {
-                expect(anonymousProxyUrl).to.eql('http://whatever:4567');
-            })
-            .then(() => {
-                return new Promise((resolve, reject) => {
-                    anonymizeProxy('http://whatever:4567', (err, result) => {
-                        if (err) return reject(err);
-                        resolve(result);
-                    });
-                });
-            })
-            .then((anonymousProxyUrl) => {
-                expect(anonymousProxyUrl).to.eql('http://whatever:4567');
-            });
+    it('keeps already anonymous proxies', async () => {
+        const anonymousProxyUrl = await anonymizeProxy('http://whatever:4567');
+        expect(anonymousProxyUrl).to.eql('http://whatever:4567');
+
+        const anonymousProxyUrl2 = await anonymizeProxy('http://whatever:4567');
+        expect(anonymousProxyUrl2).to.eql('http://whatever:4567');
     });
 
-    it('anonymizes authenticated upstream proxy (both with callbacks and promises)', () => {
-        let proxyUrl1;
-        let proxyUrl2;
-        return Promise.resolve()
-            .then(() => {
-                return Promise.all([
-                    anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
-                    new Promise((resolve, reject) => {
-                        anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`, (err, result) => {
-                            if (err) return reject(err);
-                            resolve(result);
-                        });
-                    }),
-                ]);
-            })
-            .then((results) => {
-                [proxyUrl1, proxyUrl2] = results;
-                expect(proxyUrl1).to.not.contain(`${proxyPort}`);
-                expect(proxyUrl2).to.not.contain(`${proxyPort}`);
-                expect(proxyUrl1).to.not.equal(proxyUrl2);
+    it('anonymizes authenticated upstream proxy', async () => {
+        const [proxyUrl1, proxyUrl2] = await Promise.all([
+            anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
+            anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
+        ]);
 
-                // Test call through proxy 1
-                wasProxyCalled = false;
-                return requestPromised({
-                    uri: `http://localhost:${testServerPort}`,
-                    proxy: proxyUrl1,
-                    expectBodyContainsText: 'Hello World!',
-                });
-            })
-            .then(() => {
-                expect(wasProxyCalled).to.equal(true);
-            })
-            .then(() => {
-                // Test call through proxy 2
-                wasProxyCalled = false;
-                return requestPromised({
-                    uri: `http://localhost:${testServerPort}`,
-                    proxy: proxyUrl2,
-                    expectBodyContainsText: 'Hello World!',
-                });
-            })
-            .then(() => {
-                expect(wasProxyCalled).to.equal(true);
-            })
-            .then(() => {
-                // Test again call through proxy 1
-                wasProxyCalled = false;
-                return requestPromised({
-                    uri: `http://localhost:${testServerPort}`,
-                    proxy: proxyUrl1,
-                    expectBodyContainsText: 'Hello World!',
-                });
-            })
-            .then(() => {
-                expect(wasProxyCalled).to.equal(true);
-            })
-            .then(() => closeAnonymizedProxy(proxyUrl1, true))
-            .then((closed) => {
-                expect(closed).to.eql(true);
+        expect(proxyUrl1).to.not.contain(`${proxyPort}`);
+        expect(proxyUrl2).to.not.contain(`${proxyPort}`);
+        expect(proxyUrl1).to.not.equal(proxyUrl2);
 
-                // Test proxy is really closed
-                return requestPromised({
-                    uri: proxyUrl1,
-                })
-                    .then(() => {
-                        assert.fail();
-                    })
-                    .catch((err) => {
-                        // Node.js 20+ may return 'socket hang up' instead of 'ECONNREFUSED'
-                        const validErrors = ['ECONNREFUSED', 'socket hang up'];
-                        expect(validErrors.some((e) => err.message.includes(e))).to.equal(true);
-                    });
-            })
-            .then(() => {
-                // Test callback-style
-                return new Promise((resolve, reject) => {
-                    closeAnonymizedProxy(proxyUrl2, true, (err, closed) => {
-                        if (err) return reject(err);
-                        resolve(closed);
-                    });
-                });
-            })
-            .then((closed) => {
-                expect(closed).to.eql(true);
+        // Test call through proxy 1
+        wasProxyCalled = false;
+        await requestPromised({
+            uri: `http://localhost:${testServerPort}`,
+            proxy: proxyUrl1,
+            expectBodyContainsText: 'Hello World!',
+        });
+        expect(wasProxyCalled).to.equal(true);
 
-                // Test the second-time call to close
-                return closeAnonymizedProxy(proxyUrl1, true);
-            })
-            .then((closed) => {
-                expect(closed).to.eql(false);
+        // Test call through proxy 2
+        wasProxyCalled = false;
+        await requestPromised({
+            uri: `http://localhost:${testServerPort}`,
+            proxy: proxyUrl2,
+            expectBodyContainsText: 'Hello World!',
+        });
+        expect(wasProxyCalled).to.equal(true);
 
-                // Test callback-style
-                return new Promise((resolve, reject) => {
-                    closeAnonymizedProxy(proxyUrl2, false, (err, closed2) => {
-                        if (err) return reject(err);
-                        resolve(closed2);
-                    });
-                });
-            })
-            .then((closed) => {
-                expect(closed).to.eql(false);
+        // Test again call through proxy 1
+        wasProxyCalled = false;
+        await requestPromised({
+            uri: `http://localhost:${testServerPort}`,
+            proxy: proxyUrl1,
+            expectBodyContainsText: 'Hello World!',
+        });
+        expect(wasProxyCalled).to.equal(true);
+
+        // Close proxy 1 and verify
+        const closed1 = await closeAnonymizedProxy(proxyUrl1, true);
+        expect(closed1).to.eql(true);
+
+        // Test proxy is really closed
+        try {
+            await requestPromised({
+                uri: proxyUrl1,
             });
+            assert.fail();
+        } catch (err) {
+            // Node.js 20+ may return 'socket hang up' instead of 'ECONNREFUSED'
+            const validErrors = ['ECONNREFUSED', 'socket hang up'];
+            expect(validErrors.some((e) => err.message.includes(e))).to.equal(true);
+        }
+
+        // Close proxy 2
+        const closed2 = await closeAnonymizedProxy(proxyUrl2, true);
+        expect(closed2).to.eql(true);
+
+        // Test the second-time call to close (should return false)
+        const closed1Again = await closeAnonymizedProxy(proxyUrl1, true);
+        expect(closed1Again).to.eql(false);
+
+        // Test another second-time call to close
+        const closed2Again = await closeAnonymizedProxy(proxyUrl2, false);
+        expect(closed2Again).to.eql(false);
     });
 
     it('handles many concurrent calls without port collision', () => {

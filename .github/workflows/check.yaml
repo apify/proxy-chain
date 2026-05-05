@@ -10,7 +10,7 @@ jobs:
     lint_and_test:
         name: Lint & Test
         if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-24.04
 
         strategy:
             matrix:
@@ -30,7 +30,7 @@ jobs:
 
             # Lint only on the latest Node.js version to save time.
             - name: Lint code
-              if: ${{ matrix.node-version == 20 }}
+              if: ${{ matrix.node-version == 24 }}
               run: npm run lint
 
             - name: Add localhost-test to Linux hosts file
