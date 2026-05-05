@@ -103,30 +103,21 @@ export async function closeTunnel(
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
 
-    const promise = new Promise((resolve) => {
-        if (!runningServers[serverPath]) {
-            resolve(false);
-            return;
-        }
-        if (!closeConnections) {
-            resolve(true);
-            return;
-        }
-        for (const connection of runningServers[serverPath].connections) {
+    const entry = runningServers[serverPath];
+    if (!entry) return false;
+
+    if (closeConnections) {
+        for (const connection of entry.connections) {
             connection.destroy();
         }
-        resolve(true);
-    })
-        .then(async (serverExists) => new Promise<boolean>((resolve) => {
-            if (!serverExists) {
-                resolve(false);
-                return;
-            }
-            runningServers[serverPath].server.close(() => {
-                delete runningServers[serverPath];
-                resolve(true);
-            });
-        }));
+    }
 
-    return promise;
+    await new Promise<void>((resolve) => {
+        entry.server.close(() => {
+            delete runningServers[serverPath];
+            resolve();
+        });
+    });
+
+    return true;
 }

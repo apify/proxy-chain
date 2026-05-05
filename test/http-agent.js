@@ -48,10 +48,10 @@ describe('HTTP Agent Support', () => {
         mainProxyServerPort = freePorts.shift();
     });
 
-    after(() => {
-        if (targetServer) targetServer.close();
-        if (upstreamProxyServer) upstreamProxyServer.close();
-        if (mainProxyServer) mainProxyServer.close(true);
+    after(async () => {
+        if (targetServer) await targetServer.close();
+        if (upstreamProxyServer) await new Promise((resolve) => upstreamProxyServer.close(resolve));
+        if (mainProxyServer) await mainProxyServer.close(true);
     });
 
     it('httpAgent smoke test - no exceptions', async () => {
@@ -238,7 +238,7 @@ describe('HTTP Agent Support', () => {
 
      it('pools connections with HTTP upstream proxy', async () => {
         if (mainProxyServer) await mainProxyServer.close(true);
-        if (upstreamProxyServer) upstreamProxyServer.close();
+        if (upstreamProxyServer) await new Promise((resolve) => upstreamProxyServer.close(resolve));
 
         let httpUpstreamConnectionCount = 0;
 

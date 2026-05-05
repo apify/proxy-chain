@@ -53,34 +53,24 @@ export const anonymizeProxy = async (
         return proxyUrl;
     }
 
-    let server: Server & { port: number };
+    const server = new Server({
+        // verbose: true,
+        port,
+        host: '127.0.0.1',
+        prepareRequestFunction: () => {
+            return {
+                requestAuthentication: false,
+                upstreamProxyUrl: proxyUrl,
+                ignoreUpstreamProxyCertificate: ignoreProxyCertificate,
+            };
+        },
+    }) as Server & { port: number };
 
-    const startServer = async () => {
-        return Promise.resolve().then(async () => {
-            server = new Server({
-                // verbose: true,
-                port,
-                host: '127.0.0.1',
-                prepareRequestFunction: () => {
-                    return {
-                        requestAuthentication: false,
-                        upstreamProxyUrl: proxyUrl,
-                        ignoreUpstreamProxyCertificate: ignoreProxyCertificate,
-                    };
-                },
-            }) as Server & { port: number };
+    await server.listen();
 
-            return server.listen();
-        });
-    };
-
-    const promise = startServer().then(() => {
-        const url = `http://127.0.0.1:${server.port}`;
-        anonymizedProxyUrlToServer[url] = server;
-        return url;
-    });
-
-    return promise;
+    const url = `http://127.0.0.1:${server.port}`;
+    anonymizedProxyUrlToServer[url] = server;
+    return url;
 };
 
 /**
@@ -104,10 +94,8 @@ export const closeAnonymizedProxy = async (
 
     delete anonymizedProxyUrlToServer[anonymizedProxyUrl];
 
-    const promise = server.close(closeConnections).then(() => {
-        return true;
-    });
-    return promise;
+    await server.close(closeConnections);
+    return true;
 };
 
 type Callback = ({

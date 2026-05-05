@@ -448,17 +448,16 @@ const exampleServer = https.createServer({
 
 ## Closing the server
 
-To shut down the proxy server, call the `close([destroyConnections], [callback])` function. For example:
+To shut down the proxy server, call the `close([destroyConnections])` function. For example:
 
 ```javascript
-server.close(true, () => {
-  console.log('Proxy server was closed.');
-});
+await server.close(true);
+console.log('Proxy server was closed.');
 ```
 
 The `closeConnections` parameter indicates whether pending proxy connections should be forcibly closed.
 If it's `false`, the function will wait until all connections are closed, which can take a long time.
-If the `callback` parameter is omitted, the function returns a promise.
+The function returns a promise.
 
 
 ## Accessing the CONNECT response headers for proxy tunneling
@@ -500,7 +499,7 @@ server.on('tunnelConnectFailed', ({ proxyChainId, response, socket, head, custom
 The package also provides several utility functions.
 
 
-### `anonymizeProxy({ url, port }, callback)`
+### `anonymizeProxy({ url, port })`
 
 Parses and validates a HTTP/HTTPS proxy URL. If the proxy requires authentication,
 then the function starts an open local proxy server that forwards to the proxy.
@@ -509,9 +508,8 @@ The port (on which the local proxy server will start) can be set via the `port` 
 For HTTPS proxy with self-signed certificate, set `ignoreProxyCertificate` property of the first argument to `true` to ignore certificate errors in
 proxy requests.
 
-The function takes an optional callback that receives the anonymous proxy URL.
-If no callback is supplied, the function returns a promise that resolves to a String with
-anonymous proxy URL or the original URL if it was already anonymous.
+The function returns a promise that resolves to a String with the anonymous proxy URL,
+or the original URL if it was already anonymous.
 
 The following example shows how you can use a proxy with authentication
 from headless Chrome and [Puppeteer](https://github.com/GoogleChrome/puppeteer).
@@ -543,7 +541,7 @@ import { anonymizeProxy, closeAnonymizedProxy } from 'proxy-chain';
 })();
 ```
 
-### `closeAnonymizedProxy(anonymizedProxyUrl, closeConnections, callback)`
+### `closeAnonymizedProxy(anonymizedProxyUrl, closeConnections)`
 
 Closes anonymous proxy previously started by `anonymizeProxy()`.
 If proxy was not found or was already closed, the function has no effect
@@ -552,10 +550,9 @@ and its result is `false`. Otherwise the result is `true`.
 The `closeConnections` parameter indicates whether pending proxy connections are forcibly closed.
 If it's `false`, the function will wait until all connections are closed, which can take a long time.
 
-The function takes an optional callback that receives the result Boolean from the function.
-If callback is not provided, the function returns a promise instead.
+The function returns a promise that resolves to a Boolean.
 
-### `createTunnel(proxyUrl, targetHost, options, callback)`
+### `createTunnel(proxyUrl, targetHost, options)`
 
 Creates a TCP tunnel to `targetHost` that goes through a HTTP/HTTPS proxy server
 specified by the `proxyUrl` parameter.
@@ -573,8 +570,7 @@ For example, this is useful if you want to access a certain service from a speci
 
 The tunnel should be eventually closed by calling the `closeTunnel()` function.
 
-The `createTunnel()` function accepts an optional Node.js-style callback that receives the path to the local endpoint.
-If no callback is supplied, the function returns a promise that resolves to a String with
+The `createTunnel()` function returns a promise that resolves to a String with
 the path to the local endpoint.
 
 For more information, read this [blog post](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff).
@@ -587,7 +583,7 @@ const host = await createTunnel('http://bob:pass123@proxy.example.com:8000', 'se
 console.log(host);
 ```
 
-### `closeTunnel(tunnelString, closeConnections, callback)`
+### `closeTunnel(tunnelString, closeConnections)`
 
 Closes tunnel previously started by `createTunnel()`.
 The result value is `false` if the tunnel was not found or was already closed, otherwise it is `true`.
@@ -595,8 +591,7 @@ The result value is `false` if the tunnel was not found or was already closed, o
 The `closeConnections` parameter indicates whether pending connections are forcibly closed.
 If it's `false`, the function will wait until all connections are closed, which can take a long time.
 
-The function takes an optional callback that receives the result of the function.
-If the callback is not provided, the function returns a promise instead.
+The function returns a promise that resolves to a Boolean.
 
 ### `listenConnectAnonymizedProxy(anonymizedProxyUrl, tunnelConnectRespondedCallback)`
 

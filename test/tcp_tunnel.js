@@ -31,15 +31,13 @@ const connect = (port) => new Promise((resolve, reject) => {
     });
 });
 
-const closeServer = (server, connections) => new Promise((resolve, reject) => {
-    if (!server || !server.listening) return resolve();
-    Promise.all(connections, destroySocket).then(() => {
-        server.close((err) => {
-            if (err) return reject(err);
-            return resolve();
-        });
+const closeServer = async (server, connections) => {
+    if (!server || !server.listening) return;
+    await Promise.all(connections.map(destroySocket));
+    await new Promise((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
     });
-});
+};
 
 describe('tcp_tunnel.createTunnel', () => {
     it('throws error if proxyUrl is not in correct format', () => {

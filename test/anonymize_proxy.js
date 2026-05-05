@@ -79,12 +79,12 @@ before(() => {
         });
 });
 
-after(function () {
+after(async function () {
     this.timeout(5 * 1000);
 
-    expressServer.close();
+    await new Promise((resolve) => expressServer.close(resolve));
 
-    if (proxyServer) return util.promisify(proxyServer.close).bind(proxyServer)();
+    if (proxyServer) await util.promisify(proxyServer.close.bind(proxyServer))();
 });
 
 const requestPromised = (opts) => {
