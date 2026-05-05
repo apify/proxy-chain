@@ -6,12 +6,10 @@ import proxy from 'proxy';
 import { createTunnel, closeTunnel } from '../src/index.js';
 import { expectThrowsAsync } from './utils/throws_async.js';
 
-const destroySocket = (socket) => new Promise((resolve, reject) => {
+const destroySocket = (socket) => new Promise((resolve) => {
     if (!socket || socket.destroyed) return resolve();
-    socket.destroy((err) => {
-        if (err) return reject(err);
-        return resolve();
-    });
+    socket.once('close', () => resolve());
+    socket.destroy();
 });
 
 const serverListen = (server, port) => new Promise((resolve, reject) => {
