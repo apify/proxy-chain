@@ -1,17 +1,14 @@
 import type dns from 'node:dns';
 import http from 'node:http';
 import https from 'node:https';
-import stream from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { URL } from 'node:url';
-import util from 'node:util';
 
 import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { getBasicAuthorizationHeader } from './utils/get_basic.js';
 import { validHeadersOnly } from './utils/valid_headers_only.js';
-
-const pipeline = util.promisify(stream.pipeline);
 
 interface Options {
     method: string;
