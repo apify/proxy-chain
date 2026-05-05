@@ -25,9 +25,8 @@ import { Server } from 'proxy-chain';
 
 const server = new Server({ port: 8000 });
 
-server.listen(() => {
-    console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 ## Run a HTTP/HTTPS proxy server with credentials and upstream proxy
@@ -93,10 +92,6 @@ const server = new Server({
     },
 });
 
-server.listen(() => {
-  console.log(`Proxy server is listening on port ${server.port}`);
-});
-
 // Emitted when HTTP connection is closed
 server.on('connectionClosed', ({ connectionId, stats }) => {
   console.log(`Connection ${connectionId} closed`);
@@ -108,6 +103,9 @@ server.on('requestFailed', ({ request, error }) => {
   console.log(`Request ${request.url} failed`);
   console.error(error);
 });
+
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 ## Run a simple HTTPS proxy server
@@ -237,9 +235,8 @@ const server = new Server({
     },
 });
 
-server.listen(() => {
-    console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 **Note:** Custom agents are only supported for HTTP and HTTPS upstream proxies. SOCKS upstream proxies use direct socket connections and do not support custom agents.
@@ -395,9 +392,8 @@ const server = new Server({
     },
 });
 
-server.listen(() => {
-  console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 ## Routing CONNECT to another HTTP server
@@ -426,9 +422,8 @@ const server = new Server({
     },
 });
 
-server.listen(() => {
-  console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 In the example above, all CONNECT tunnels to `example.com` are overridden.
