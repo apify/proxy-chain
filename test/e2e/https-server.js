@@ -4,7 +4,7 @@ import path from 'node:path';
 import tls from 'node:tls';
 import { expect } from 'chai';
 import http from 'node:http';
-import { Server } from '../src/index.js';
+import { Server } from '../../src/index.js';
 
 const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));

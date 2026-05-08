@@ -8,8 +8,8 @@ import basicAuthParser from 'basic-auth-parser';
 import request from 'request';
 import express from 'express';
 
-import { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } from '../src/index.js';
-import { expectThrowsAsync } from './utils/throws_async.js';
+import { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } from '../../src/index.js';
+import { expectThrowsAsync } from '../utils/throws_async.js';
 
 let expressServer;
 let proxyServer;

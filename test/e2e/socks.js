@@ -2,7 +2,7 @@ import portastic from 'portastic';
 import socksv5 from 'socksv5';
 import { gotScraping } from 'got-scraping';
 import { expect } from 'chai';
-import * as ProxyChain from '../src/index.js';
+import * as ProxyChain from '../../src/index.js';
 
 describe('SOCKS protocol', () => {
     let socksServer;

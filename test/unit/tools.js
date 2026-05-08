@@ -1,7 +1,7 @@
 import { expect } from 'chai';
-import { redactUrl } from '../src/utils/redact_url.js';
-import { isHopByHopHeader } from '../src/utils/is_hop_by_hop_header.js';
-import { parseAuthorizationHeader } from '../src/utils/parse_authorization_header.js';
+import { redactUrl } from '../../src/utils/redact_url.js';
+import { isHopByHopHeader } from '../../src/utils/is_hop_by_hop_header.js';
+import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
 
 describe('tools.redactUrl()', () => {
     it('works', () => {

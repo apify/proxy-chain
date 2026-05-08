@@ -16,9 +16,9 @@ import request from 'request';
 import WebSocket from 'faye-websocket';
 import { gotScraping } from 'got-scraping';
 
-import { parseAuthorizationHeader } from '../src/utils/parse_authorization_header.js';
-import { Server, RequestError } from '../src/index.js';
-import { TargetServer } from './utils/target_server.js';
+import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
+import { Server, RequestError } from '../../src/index.js';
+import { TargetServer } from '../utils/target_server.js';
 
 /*
 TODO - add following tests:

@@ -8,7 +8,7 @@ import basicAuthParser from 'basic-auth-parser';
 import request from 'request';
 import express from 'express';
 
-import { anonymizeProxy, closeAnonymizedProxy } from '../src/index.js';
+import { anonymizeProxy, closeAnonymizedProxy } from '../../src/index.js';
 
 let expressServer;
 let proxyServer;

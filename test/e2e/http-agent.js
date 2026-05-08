@@ -7,8 +7,8 @@ import portastic from 'portastic';
 import proxy from 'proxy';
 import request from 'request';
 
-import { Server } from '../src/index.js';
-import { TargetServer } from './utils/target_server.js';
+import { Server } from '../../src/index.js';
+import { TargetServer } from '../utils/target_server.js';
 
 const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));

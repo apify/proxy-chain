@@ -1,7 +1,7 @@
 import net from 'node:net';
 import http from 'node:http';
 import { assert } from 'chai';
-import * as ProxyChain from '../src/index.js';
+import * as ProxyChain from '../../src/index.js';
 
 describe('ProxyChain server', () => {
     let server;

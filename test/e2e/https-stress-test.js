@@ -5,8 +5,8 @@ import tls from 'node:tls';
 import util from 'node:util';
 import request from 'request';
 import { expect } from 'chai';
-import { Server } from '../src/index.js';
-import { TargetServer } from './utils/target_server.js';
+import { Server } from '../../src/index.js';
+import { TargetServer } from '../utils/target_server.js';
 
 // Node.js 20+ enables HTTP keep-alive by default in the global agent,
 // which causes connection tracking issues in tests. Disable it.
