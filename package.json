@@ -48,6 +48,8 @@
         "test:unit": "mocha 'test/unit/**/*.js'",
         "test:e2e": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha 'test/e2e/**/*.js'",
         "test:bun": "bun --bun run mocha --no-config --exit 'test/unit/**/*.js'",
+        "test:bun:e2e:compatible": "bun --bun run mocha --no-config --exit test/e2e/tcp_tunnel.js test/e2e/socks.js",
+        "test:bun:e2e:full": "bun --bun run mocha --no-config --exit 'test/e2e/**/*.js'",
         "test:docker": "docker build --tag proxy-chain-tests --file test/Dockerfile . && docker run --add-host localhost-test:127.0.0.1 proxy-chain-tests",
         "test:docker:all": "bash scripts/test-docker-all.sh",
         "lint": "eslint .",

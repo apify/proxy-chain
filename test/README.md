@@ -84,13 +84,24 @@ Note: for test in Docker no changes in `/etc/hosts` needed.
 ### Run tests with Bun
 
 [Bun](https://bun.com) is supported as an alternative runtime. Install it from
-https://bun.com, then run the unit tests with:
+https://bun.com, then run:
 
 ```bash
+# Unit tests (always green on Bun, gates every PR)
 npm run test:bun
+
+# E2E tests — curated subset known to pass on Bun
+npm run test:bun:e2e:compatible
+
+# E2E tests — entire suite (some tests rely on Node-only HTTP semantics
+# such as HTTP/1.1 pipelining and stream.pipeline behaviour that current
+# Bun releases don't fully emulate; expect failures)
+npm run test:bun:e2e:full
 ```
 
-Only the unit tests run under Bun in CI. The e2e suite relies on Node-only
-HTTP/networking edge cases (HTTP/1.1 pipelining in `ProxyChain.Server`,
-`stream.pipeline` semantics) that current Bun releases don't fully emulate;
-run e2e tests with Node.
+In CI, `bun_unit` and `bun_e2e` (in `compatible` mode) run on every PR.
+The full Bun e2e suite is opt-in: trigger the **Check** workflow via
+**Actions → Check → Run workflow** and pick `full` for the
+`bun_e2e_mode` input. As individual e2e files become reliable under Bun,
+extend the `test:bun:e2e:compatible` script in `package.json` to include
+them.

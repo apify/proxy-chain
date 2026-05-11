@@ -5,6 +5,22 @@ name: Check
 on:
     pull_request:
     workflow_call:
+        inputs:
+            bun_e2e_mode:
+                description: 'Bun e2e suite scope: `compatible` (curated subset known to pass) or `full` (entire suite).'
+                type: string
+                default: compatible
+                required: false
+    workflow_dispatch:
+        inputs:
+            bun_e2e_mode:
+                description: 'Bun e2e suite scope'
+                type: choice
+                options:
+                    - compatible
+                    - full
+                default: compatible
+                required: true
 
 jobs:
     lint:
@@ -53,7 +69,7 @@ jobs:
               run: npm run test:unit
 
     e2e:
-        name: E2E tests
+        name: E2E tests (Node.js 24)
         if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
         runs-on: ubuntu-24.04
 
@@ -75,8 +91,8 @@ jobs:
             - name: Run E2E tests
               run: npm run test:e2e
 
-    bun:
-        name: Tests on Bun
+    bun_unit:
+        name: Unit tests on Bun
         if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
         runs-on: ubuntu-24.04
         timeout-minutes: 15
@@ -98,8 +114,34 @@ jobs:
             - name: Install Dependencies
               run: npm install
 
+            - name: Run unit tests with Bun
+              run: npm run test:bun
+
+    bun_e2e:
+        name: E2E tests on Bun (${{ inputs.bun_e2e_mode || 'compatible' }})
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Use Node.js 24
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+
+            - name: Install Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Install Dependencies
+              run: npm install
+
             - name: Add localhost-test to Linux hosts file
               run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 
-            - name: Run tests with Bun
-              run: npm run test:bun
+            - name: Run E2E tests with Bun (${{ inputs.bun_e2e_mode || 'compatible' }})
+              run: npm run test:bun:e2e:${{ inputs.bun_e2e_mode || 'compatible' }}
