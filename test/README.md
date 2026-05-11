@@ -102,6 +102,11 @@ npm run test:bun:e2e:full
 In CI, `bun_unit` and `bun_e2e` (in `compatible` mode) run on every PR.
 The full Bun e2e suite is opt-in: trigger the **Check** workflow via
 **Actions → Check → Run workflow** and pick `full` for the
-`bun_e2e_mode` input. As individual e2e files become reliable under Bun,
-extend the `test:bun:e2e:compatible` script in `package.json` to include
-them.
+`bun_e2e_mode` input.
+
+The `compatible` subset is intentionally narrow today — it only runs the
+URL-validation tests in `test/e2e/tcp_tunnel.js` (via `--grep 'throws
+error'`), which exercise `createTunnel`'s error paths without touching
+the network. As individual networked tests are confirmed to pass on
+Bun, widen the `test:bun:e2e:compatible` script in `package.json` (drop
+the `--grep`, add files, or list specific test names).
