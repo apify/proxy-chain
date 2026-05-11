@@ -92,7 +92,7 @@ jobs:
               run: npm run test:e2e
 
     bun_unit:
-        name: Unit tests on Bun
+        name: Unit tests (Bun)
         if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
         runs-on: ubuntu-24.04
         timeout-minutes: 15
@@ -118,7 +118,7 @@ jobs:
               run: npm run test:bun
 
     bun_e2e:
-        name: E2E tests on Bun (${{ inputs.bun_e2e_mode || 'compatible' }})
+        name: E2E tests (Bun, ${{ inputs.bun_e2e_mode || 'compatible' }})
         if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
         runs-on: ubuntu-24.04
         timeout-minutes: 30
@@ -143,5 +143,5 @@ jobs:
             - name: Add localhost-test to Linux hosts file
               run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 
-            - name: Run E2E tests with Bun (${{ inputs.bun_e2e_mode || 'compatible' }})
+            - name: Run E2E tests (Bun, ${{ inputs.bun_e2e_mode || 'compatible' }})
               run: npm run test:bun:e2e:${{ inputs.bun_e2e_mode || 'compatible' }}
