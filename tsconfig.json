@@ -1,9 +1,11 @@
 {
-	"extends": "@apify/tsconfig",
-	"compilerOptions": {
-		"outDir": "dist"
-	},
-	"include": [
-		"src"
-	]
+    "extends": "@apify/tsconfig",
+    "compilerOptions": {
+        "outDir": "dist",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "target": "ES2022",
+        "verbatimModuleSyntax": true
+    },
+    "include": ["src"]
 }

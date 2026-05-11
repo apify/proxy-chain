@@ -3,67 +3,103 @@
 name: Check
 
 on:
-  pull_request:
-  workflow_call:
+    pull_request:
+    workflow_call:
 
 jobs:
-  lint_and_test:
-    name: Lint & Test
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    runs-on: ubuntu-22.04
+    lint:
+        name: Lint
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+        runs-on: ubuntu-24.04
 
-    strategy:
-      matrix:
-        node-version: [14, 16, 18]
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+            - name: Use Node.js 24
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
+            - name: Install Dependencies
+              run: npm install
 
-      - name: Install Dependencies
-        run: npm install
+            - name: Lint code
+              run: npm run lint
 
-      # Lint only on the latest Node.js version to save time.
-      - name: Lint code
-        if: ${{ matrix.node-version == 18 }}
-        run: npm run lint
+    unit:
+        name: Unit tests (Node.js ${{ matrix.node-version }})
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+        runs-on: ubuntu-24.04
 
-      - name: Add localhost-test to Linux hosts file
-        run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
+        strategy:
+            fail-fast: false
+            matrix:
+                node-version: [20, 22, 24]
 
-      - name: Run Tests
-        run: npm test
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
 
-  bun_test:
-    name: Test on Bun
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v6
+              with:
+                  node-version: ${{ matrix.node-version }}
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+            - name: Install Dependencies
+              run: npm install
 
-      - name: Use Node.js 18
-        uses: actions/setup-node@v6
-        with:
-          node-version: 18
+            - name: Run unit tests
+              run: npm run test:unit
 
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+    e2e:
+        name: E2E tests
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+        runs-on: ubuntu-24.04
 
-      - name: Install Dependencies
-        run: npm install
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
 
-      - name: Add localhost-test to Linux hosts file
-        run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
+            - name: Use Node.js 24
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
 
-      - name: Run Tests with Bun
-        run: npm run test:bun
+            - name: Install Dependencies
+              run: npm install
+
+            - name: Add localhost-test to Linux hosts file
+              run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
+
+            - name: Run E2E tests
+              run: npm run test:e2e
+
+    bun:
+        name: Tests on Bun
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 15
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Use Node.js 24
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+
+            - name: Install Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Install Dependencies
+              run: npm install
+
+            - name: Add localhost-test to Linux hosts file
+              run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
+
+            - name: Run tests with Bun
+              run: npm run test:bun

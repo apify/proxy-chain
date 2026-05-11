@@ -4,8 +4,8 @@ import type { EventEmitter } from 'node:events';
 import net from 'node:net';
 import { URL } from 'node:url';
 
-import type { Socket } from './socket';
-import { countTargetBytes } from './utils/count_target_bytes';
+import type { Socket } from './socket.js';
+import { countTargetBytes } from './utils/count_target_bytes.js';
 
 export interface HandlerOpts {
     localAddress?: string;

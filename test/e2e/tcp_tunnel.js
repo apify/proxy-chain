@@ -1,17 +1,15 @@
-const net = require('net');
-const { expect, assert } = require('chai');
-const http = require('http');
-const proxy = require('proxy');
+import net from 'node:net';
+import { expect, assert } from 'chai';
+import http from 'node:http';
+import proxy from 'proxy';
 
-const { createTunnel, closeTunnel } = require('../src/index');
-const { expectThrowsAsync } = require('./utils/throws_async');
+import { createTunnel, closeTunnel } from '../../src/index.js';
+import { expectThrowsAsync } from '../utils/throws_async.js';
 
-const destroySocket = (socket) => new Promise((resolve, reject) => {
+const destroySocket = (socket) => new Promise((resolve) => {
     if (!socket || socket.destroyed) return resolve();
-    socket.destroy((err) => {
-        if (err) return reject(err);
-        return resolve();
-    });
+    socket.once('close', () => resolve());
+    socket.destroy();
 });
 
 const serverListen = (server, port) => new Promise((resolve, reject) => {
@@ -31,15 +29,13 @@ const connect = (port) => new Promise((resolve, reject) => {
     });
 });
 
-const closeServer = (server, connections) => new Promise((resolve, reject) => {
-    if (!server || !server.listening) return resolve();
-    Promise.all(connections, destroySocket).then(() => {
-        server.close((err) => {
-            if (err) return reject(err);
-            return resolve();
-        });
+const closeServer = async (server, connections) => {
+    if (!server || !server.listening) return;
+    await Promise.all(connections.map(destroySocket));
+    await new Promise((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
     });
-});
+};
 
 describe('tcp_tunnel.createTunnel', () => {
     it('throws error if proxyUrl is not in correct format', () => {
@@ -78,7 +74,7 @@ describe('tcp_tunnel.createTunnel', () => {
             .finally(() => closeServer(proxyServer, proxyServerConnections))
             .finally(() => closeServer(targetService, targetServiceConnections));
     });
-    it('correctly tunnels to tcp service and then is able to close the connection when used with callbacks', () => {
+    it('correctly tunnels to tcp service and then is able to close the connection (async/await)', async () => {
         const proxyServerConnections = [];
 
         const proxyServer = proxy(http.createServer());
@@ -93,19 +89,16 @@ describe('tcp_tunnel.createTunnel', () => {
             conn.on('error', (err) => { throw err; });
         });
 
-        return serverListen(proxyServer, 0)
-            .then(() => serverListen(targetService, 0))
-            .then((targetServicePort) => new Promise((resolve, reject) => {
-                createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`, {}, (err, tunnel) => {
-                    if (err) return reject(err);
-                    return resolve(tunnel);
-                });
-            }).then((tunnel) => closeTunnel(tunnel, true))
-                .then((result) => {
-                    assert.equal(result, true);
-                }))
-            .finally(() => closeServer(proxyServer, proxyServerConnections))
-            .finally(() => closeServer(targetService, targetServiceConnections));
+        try {
+            await serverListen(proxyServer, 0);
+            const targetServicePort = await serverListen(targetService, 0);
+            const tunnel = await createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`, {});
+            const result = await closeTunnel(tunnel, true);
+            assert.equal(result, true);
+        } finally {
+            await closeServer(proxyServer, proxyServerConnections);
+            await closeServer(targetService, targetServiceConnections);
+        }
     });
     it('creates tunnel that is able to transfer data', () => {
         let tunnel;

@@ -21,21 +21,20 @@ The proxy-chain package currently supports HTTP/SOCKS forwarding and HTTP CONNEC
 ## Run a simple HTTP/HTTPS proxy server
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({ port: 8000 });
+const server = new Server({ port: 8000 });
 
-server.listen(() => {
-    console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 ## Run a HTTP/HTTPS proxy server with credentials and upstream proxy
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     // Port where the server will listen. By default 8000.
     port: 8000,
 
@@ -93,10 +92,6 @@ const server = new ProxyChain.Server({
     },
 });
 
-server.listen(() => {
-  console.log(`Proxy server is listening on port ${server.port}`);
-});
-
 // Emitted when HTTP connection is closed
 server.on('connectionClosed', ({ connectionId, stats }) => {
   console.log(`Connection ${connectionId} closed`);
@@ -108,6 +103,9 @@ server.on('requestFailed', ({ request, error }) => {
   console.log(`Request ${request.url} failed`);
   console.error(error);
 });
+
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 ## Run a simple HTTPS proxy server
@@ -115,16 +113,16 @@ server.on('requestFailed', ({ request, error }) => {
 This example demonstrates how to create an HTTPS proxy server with a self-signed certificate. The HTTPS proxy server works identically to the HTTP version but with TLS encryption.
 
 ```javascript
-const fs = require('fs');
-const path = require('path');
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
+import fs from 'node:fs';
+import path from 'node:path';
 
 (async () => {
     // TODO: update these lines to use your own key and cert
-    const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-    const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+    const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+    const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
-    const server = new ProxyChain.Server({
+    const server = new Server({
         // Main difference between 'http' and 'https' is additional event listening:
         //
         // http
@@ -208,9 +206,9 @@ curl --proxy-insecure -x https://localhost:8443 -k https://example.com
 You can provide custom HTTP/HTTPS agents to enable connection pooling and reuse with upstream proxies. This is particularly useful for maintaining sticky IP addresses or reducing connection overhead:
 
 ```javascript
-const http = require('http');
-const https = require('https');
-const ProxyChain = require('proxy-chain');
+import http from 'node:http';
+import https from 'node:https';
+import { Server } from 'proxy-chain';
 
 // Create agents with keepAlive to enable connection pooling
 const httpAgent = new http.Agent({
@@ -223,7 +221,7 @@ const httpsAgent = new https.Agent({
     maxSockets: 10,
 });
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request }) => {
         return {
@@ -237,9 +235,8 @@ const server = new ProxyChain.Server({
     },
 });
 
-server.listen(() => {
-    console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 **Note:** Custom agents are only supported for HTTP and HTTPS upstream proxies. SOCKS upstream proxies use direct socket connections and do not support custom agents.
@@ -309,12 +306,12 @@ The class constructor has the following parameters: `RequestError(body, statusCo
 By default, the response will have `Content-Type: text/plain; charset=utf-8`.
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server, RequestError } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp, connectionId }) => {
         if (username !== 'bob') {
-           throw new ProxyChain.RequestError('Only Bob can use this proxy!', 400);
+           throw new RequestError('Only Bob can use this proxy!', 400);
         }
     },
 });
@@ -379,9 +376,9 @@ with the following properties:
 Here is a simple example:
 
 ```javascript
-const ProxyChain = require('proxy-chain');
+import { Server } from 'proxy-chain';
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         return {
@@ -395,9 +392,8 @@ const server = new ProxyChain.Server({
     },
 });
 
-server.listen(() => {
-  console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 ## Routing CONNECT to another HTTP server
@@ -406,14 +402,14 @@ While `customResponseFunction` enables custom handling methods such as `GET` and
 It's possible to route those requests differently using the `customConnectServer` option. It accepts an instance of Node.js HTTP server.
 
 ```javascript
-const http = require('http');
-const ProxyChain = require('proxy-chain');
+import http from 'node:http';
+import { Server } from 'proxy-chain';
 
 const exampleServer = http.createServer((request, response) => {
     response.end('Hello from a custom server!');
 });
 
-const server = new ProxyChain.Server({
+const server = new Server({
     port: 8000,
     prepareRequestFunction: ({ request, username, password, hostname, port, isHttp }) => {
         if (request.url.toLowerCase() === 'example.com:80') {
@@ -426,9 +422,8 @@ const server = new ProxyChain.Server({
     },
 });
 
-server.listen(() => {
-  console.log(`Proxy server is listening on port ${server.port}`);
-});
+await server.listen();
+console.log(`Proxy server is listening on port ${server.port}`);
 ```
 
 In the example above, all CONNECT tunnels to `example.com` are overridden.
@@ -437,8 +432,9 @@ This is an unsecure server, so it accepts only `http:` requests.
 In order to intercept `https:` requests, `https.createServer` should be used instead, along with a self signed certificate.
 
 ```javascript
-const https = require('https');
-const fs = require('fs');
+import https from 'node:https';
+import fs from 'node:fs';
+
 const key = fs.readFileSync('./test/ssl.key');
 const cert = fs.readFileSync('./test/ssl.crt');
 
@@ -452,17 +448,16 @@ const exampleServer = https.createServer({
 
 ## Closing the server
 
-To shut down the proxy server, call the `close([destroyConnections], [callback])` function. For example:
+To shut down the proxy server, call the `close([destroyConnections])` function. For example:
 
 ```javascript
-server.close(true, () => {
-  console.log('Proxy server was closed.');
-});
+await server.close(true);
+console.log('Proxy server was closed.');
 ```
 
 The `closeConnections` parameter indicates whether pending proxy connections should be forcibly closed.
 If it's `false`, the function will wait until all connections are closed, which can take a long time.
-If the `callback` parameter is omitted, the function returns a promise.
+The function returns a promise.
 
 
 ## Accessing the CONNECT response headers for proxy tunneling
@@ -504,7 +499,7 @@ server.on('tunnelConnectFailed', ({ proxyChainId, response, socket, head, custom
 The package also provides several utility functions.
 
 
-### `anonymizeProxy({ url, port }, callback)`
+### `anonymizeProxy({ url, port })`
 
 Parses and validates a HTTP/HTTPS proxy URL. If the proxy requires authentication,
 then the function starts an open local proxy server that forwards to the proxy.
@@ -513,21 +508,20 @@ The port (on which the local proxy server will start) can be set via the `port` 
 For HTTPS proxy with self-signed certificate, set `ignoreProxyCertificate` property of the first argument to `true` to ignore certificate errors in
 proxy requests.
 
-The function takes an optional callback that receives the anonymous proxy URL.
-If no callback is supplied, the function returns a promise that resolves to a String with
-anonymous proxy URL or the original URL if it was already anonymous.
+The function returns a promise that resolves to a String with the anonymous proxy URL,
+or the original URL if it was already anonymous.
 
 The following example shows how you can use a proxy with authentication
 from headless Chrome and [Puppeteer](https://github.com/GoogleChrome/puppeteer).
 For details, read this [blog post](https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212).
 
 ```javascript
-const puppeteer = require('puppeteer');
-const proxyChain = require('proxy-chain');
+import puppeteer from 'puppeteer';
+import { anonymizeProxy, closeAnonymizedProxy } from 'proxy-chain';
 
 (async() => {
     const oldProxyUrl = 'http://bob:password123@proxy.example.com:8000';
-    const newProxyUrl = await proxyChain.anonymizeProxy(oldProxyUrl);
+    const newProxyUrl = await anonymizeProxy(oldProxyUrl);
 
     // Prints something like "http://127.0.0.1:45678"
     console.log(newProxyUrl);
@@ -543,11 +537,11 @@ const proxyChain = require('proxy-chain');
     await browser.close();
 
     // Clean up
-    await proxyChain.closeAnonymizedProxy(newProxyUrl, true);
+    await closeAnonymizedProxy(newProxyUrl, true);
 })();
 ```
 
-### `closeAnonymizedProxy(anonymizedProxyUrl, closeConnections, callback)`
+### `closeAnonymizedProxy(anonymizedProxyUrl, closeConnections)`
 
 Closes anonymous proxy previously started by `anonymizeProxy()`.
 If proxy was not found or was already closed, the function has no effect
@@ -556,10 +550,9 @@ and its result is `false`. Otherwise the result is `true`.
 The `closeConnections` parameter indicates whether pending proxy connections are forcibly closed.
 If it's `false`, the function will wait until all connections are closed, which can take a long time.
 
-The function takes an optional callback that receives the result Boolean from the function.
-If callback is not provided, the function returns a promise instead.
+The function returns a promise that resolves to a Boolean.
 
-### `createTunnel(proxyUrl, targetHost, options, callback)`
+### `createTunnel(proxyUrl, targetHost, options)`
 
 Creates a TCP tunnel to `targetHost` that goes through a HTTP/HTTPS proxy server
 specified by the `proxyUrl` parameter.
@@ -577,8 +570,7 @@ For example, this is useful if you want to access a certain service from a speci
 
 The tunnel should be eventually closed by calling the `closeTunnel()` function.
 
-The `createTunnel()` function accepts an optional Node.js-style callback that receives the path to the local endpoint.
-If no callback is supplied, the function returns a promise that resolves to a String with
+The `createTunnel()` function returns a promise that resolves to a String with
 the path to the local endpoint.
 
 For more information, read this [blog post](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff).
@@ -591,7 +583,7 @@ const host = await createTunnel('http://bob:pass123@proxy.example.com:8000', 'se
 console.log(host);
 ```
 
-### `closeTunnel(tunnelString, closeConnections, callback)`
+### `closeTunnel(tunnelString, closeConnections)`
 
 Closes tunnel previously started by `createTunnel()`.
 The result value is `false` if the tunnel was not found or was already closed, otherwise it is `true`.
@@ -599,8 +591,7 @@ The result value is `false` if the tunnel was not found or was already closed, o
 The `closeConnections` parameter indicates whether pending connections are forcibly closed.
 If it's `false`, the function will wait until all connections are closed, which can take a long time.
 
-The function takes an optional callback that receives the result of the function.
-If the callback is not provided, the function returns a promise instead.
+The function returns a promise that resolves to a Boolean.
 
 ### `listenConnectAnonymizedProxy(anonymizedProxyUrl, tunnelConnectRespondedCallback)`
 

@@ -3,8 +3,7 @@ import type http from 'node:http';
 import type net from 'node:net';
 import { URL } from 'node:url';
 
-import { Server, SOCKS_PROTOCOLS } from './server';
-import { nodeify } from './utils/nodeify';
+import { Server, SOCKS_PROTOCOLS } from './server.js';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};
@@ -22,7 +21,6 @@ export interface AnonymizeProxyOptions {
  */
 export const anonymizeProxy = async (
     options: string | AnonymizeProxyOptions,
-    callback?: (error: Error | null) => void,
 ): Promise<string> => {
     let proxyUrl: string;
     let port = 0;
@@ -52,37 +50,27 @@ export const anonymizeProxy = async (
 
     // If upstream proxy requires no password or if there is no need to ignore HTTPS proxy cert errors, return it directly
     if (!parsedProxyUrl.username && !parsedProxyUrl.password && (!ignoreProxyCertificate || parsedProxyUrl.protocol !== 'https:')) {
-        return nodeify(Promise.resolve(proxyUrl), callback);
+        return proxyUrl;
     }
 
-    let server: Server & { port: number };
+    const server = new Server({
+        // verbose: true,
+        port,
+        host: '127.0.0.1',
+        prepareRequestFunction: () => {
+            return {
+                requestAuthentication: false,
+                upstreamProxyUrl: proxyUrl,
+                ignoreUpstreamProxyCertificate: ignoreProxyCertificate,
+            };
+        },
+    }) as Server & { port: number };
 
-    const startServer = async () => {
-        return Promise.resolve().then(async () => {
-            server = new Server({
-                // verbose: true,
-                port,
-                host: '127.0.0.1',
-                prepareRequestFunction: () => {
-                    return {
-                        requestAuthentication: false,
-                        upstreamProxyUrl: proxyUrl,
-                        ignoreUpstreamProxyCertificate: ignoreProxyCertificate,
-                    };
-                },
-            }) as Server & { port: number };
+    await server.listen();
 
-            return server.listen();
-        });
-    };
-
-    const promise = startServer().then(() => {
-        const url = `http://127.0.0.1:${server.port}`;
-        anonymizedProxyUrlToServer[url] = server;
-        return url;
-    });
-
-    return nodeify(promise, callback);
+    const url = `http://127.0.0.1:${server.port}`;
+    anonymizedProxyUrlToServer[url] = server;
+    return url;
 };
 
 /**
@@ -94,7 +82,6 @@ export const anonymizeProxy = async (
 export const closeAnonymizedProxy = async (
     anonymizedProxyUrl: string,
     closeConnections: boolean,
-    callback?: (error: Error | null, result?: boolean) => void,
 ): Promise<boolean> => {
     if (typeof anonymizedProxyUrl !== 'string') {
         throw new Error('The "anonymizedProxyUrl" parameter must be a string');
@@ -102,15 +89,13 @@ export const closeAnonymizedProxy = async (
 
     const server = anonymizedProxyUrlToServer[anonymizedProxyUrl];
     if (!server) {
-        return nodeify(Promise.resolve(false), callback);
+        return false;
     }
 
     delete anonymizedProxyUrlToServer[anonymizedProxyUrl];
 
-    const promise = server.close(closeConnections).then(() => {
-        return true;
-    });
-    return nodeify(promise, callback);
+    await server.close(closeConnections);
+    return true;
 };
 
 type Callback = ({

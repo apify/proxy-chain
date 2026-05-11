@@ -1,11 +1,11 @@
-const http = require('http');
-const https = require('https');
-const util = require('util');
-const express = require('express');
-const bodyParser = require('body-parser');
-const WebSocket = require('ws');
-const basicAuth = require('basic-auth');
-const _ = require('underscore');
+import http from 'node:http';
+import https from 'node:https';
+import util from 'node:util';
+import express from 'express';
+import bodyParser from 'body-parser';
+import { WebSocketServer } from 'ws';
+import basicAuth from 'basic-auth';
+import _ from 'underscore';
 
 /**
  * A HTTP server used for testing. It supports HTTPS and web sockets.
@@ -42,8 +42,12 @@ class TargetServer {
             this.httpServer = http.createServer(this.app);
         }
 
+        // Node.js 20+ enables HTTP keep-alive by default, which causes connection
+        // tracking issues in tests. Disable keep-alive on the target server.
+        this.httpServer.keepAliveTimeout = 0;
+
         // Web socket server for upgraded HTTP connections
-        this.wsUpgServer = new WebSocket.Server({ server: this.httpServer });
+        this.wsUpgServer = new WebSocketServer({ server: this.httpServer });
         this.wsUpgServer.on('connection', this.onWsConnection.bind(this));
     }
 
@@ -189,4 +193,4 @@ class TargetServer {
     }
 }
 
-exports.TargetServer = TargetServer;
+export { TargetServer };

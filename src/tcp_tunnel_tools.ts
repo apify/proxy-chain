@@ -1,8 +1,7 @@
 import net from 'node:net';
 import { URL } from 'node:url';
 
-import { chain } from './chain';
-import { nodeify } from './utils/nodeify';
+import { chain } from './chain.js';
 
 const runningServers: Record<string, { server: net.Server, connections: Set<net.Socket> }> = {};
 
@@ -23,7 +22,6 @@ export async function createTunnel(
         verbose?: boolean;
         ignoreProxyCertificate?: boolean;
     },
-    callback?: (error: Error | null, result?: string) => void,
 ): Promise<string> {
     const parsedProxyUrl = new URL(proxyUrl);
     if (!['http:', 'https:'].includes(parsedProxyUrl.protocol)) {
@@ -94,42 +92,32 @@ export async function createTunnel(
         });
     });
 
-    return nodeify(promise, callback);
+    return promise;
 }
 
 export async function closeTunnel(
     serverPath: string,
-    closeConnections: boolean | undefined,
-    callback: (error: Error | null, result?: boolean) => void,
+    closeConnections?: boolean,
 ): Promise<boolean> {
     const { hostname, port } = new URL(`tcp://${serverPath}`);
     if (!hostname) throw new Error('serverPath must contain hostname');
     if (!port) throw new Error('serverPath must contain port');
 
-    const promise = new Promise((resolve) => {
-        if (!runningServers[serverPath]) {
-            resolve(false);
-            return;
-        }
-        if (!closeConnections) {
-            resolve(true);
-            return;
-        }
-        for (const connection of runningServers[serverPath].connections) {
+    const entry = runningServers[serverPath];
+    if (!entry) return false;
+
+    if (closeConnections) {
+        for (const connection of entry.connections) {
             connection.destroy();
         }
-        resolve(true);
-    })
-        .then(async (serverExists) => new Promise<boolean>((resolve) => {
-            if (!serverExists) {
-                resolve(false);
-                return;
-            }
-            runningServers[serverPath].server.close(() => {
-                delete runningServers[serverPath];
-                resolve(true);
-            });
-        }));
+    }
 
-    return nodeify(promise, callback);
+    await new Promise<void>((resolve) => {
+        entry.server.close(() => {
+            delete runningServers[serverPath];
+            resolve();
+        });
+    });
+
+    return true;
 }

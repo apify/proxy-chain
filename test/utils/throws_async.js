@@ -1,4 +1,4 @@
-const { expect } = require('chai');
+import { expect } from 'chai';
 
 /**
  * Expect an async function to throw
@@ -22,4 +22,4 @@ const expectThrowsAsync = async (func, errorMessage) => {
     }
 };
 
-exports.expectThrowsAsync = expectThrowsAsync;
+export { expectThrowsAsync };

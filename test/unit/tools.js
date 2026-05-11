@@ -1,8 +1,7 @@
-const { expect } = require('chai');
-const { redactUrl } = require('../src/utils/redact_url');
-const { isHopByHopHeader } = require('../src/utils/is_hop_by_hop_header');
-const { parseAuthorizationHeader } = require('../src/utils/parse_authorization_header');
-const { nodeify } = require('../src/utils/nodeify');
+import { expect } from 'chai';
+import { redactUrl } from '../../src/utils/redact_url.js';
+import { isHopByHopHeader } from '../../src/utils/is_hop_by_hop_header.js';
+import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
 
 describe('tools.redactUrl()', () => {
     it('works', () => {
@@ -133,55 +132,5 @@ describe('tools.parseAuthorizationHeader()', () => {
             type: '',
             data: '',
         });
-    });
-});
-
-const asyncFunction = async (throwError) => {
-    if (throwError) throw new Error('Test error');
-    return 123;
-};
-
-describe('tools.nodeify()', () => {
-    it('works', async () => {
-        {
-            // Test promised result
-            const promise = asyncFunction(false);
-            const result = await nodeify(promise, null);
-            expect(result).to.eql(123);
-        }
-
-        {
-            // Test promised exception
-            const promise = asyncFunction(true);
-            try {
-                await nodeify(promise, null);
-                throw new Error('This should not be reached!');
-            } catch (e) {
-                expect(e.message).to.eql('Test error');
-            }
-        }
-
-        {
-            // Test callback result
-            const promise = asyncFunction(false);
-            await new Promise((resolve) => {
-                nodeify(promise, (error, result) => {
-                    expect(result).to.eql(123);
-                    resolve();
-                });
-            });
-        }
-
-        {
-            // Test callback error
-            const promise = asyncFunction(true);
-            await new Promise((resolve) => {
-                nodeify(promise, (error, result) => {
-                    expect(result, undefined);
-                    expect(error.message).to.eql('Test error');
-                    resolve();
-                });
-            });
-        }
     });
 });

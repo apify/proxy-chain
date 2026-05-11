@@ -1,17 +1,17 @@
-const fs = require('fs');
-const path = require('path');
-const http = require('http');
-const https = require('https');
-const { expect } = require('chai');
-const portastic = require('portastic');
-const proxy = require('proxy');
-const request = require('request');
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import https from 'node:https';
+import { expect } from 'chai';
+import portastic from 'portastic';
+import proxy from 'proxy';
+import request from 'request';
 
-const { Server } = require('../src/index');
-const { TargetServer } = require('./utils/target_server');
+import { Server } from '../../src/index.js';
+import { TargetServer } from '../utils/target_server.js';
 
-const sslKey = fs.readFileSync(path.join(__dirname, 'ssl.key'));
-const sslCrt = fs.readFileSync(path.join(__dirname, 'ssl.crt'));
+const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
+const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 describe('HTTP Agent Support', () => {
     let mainProxyServer;
@@ -48,10 +48,10 @@ describe('HTTP Agent Support', () => {
         mainProxyServerPort = freePorts.shift();
     });
 
-    after(() => {
-        if (targetServer) targetServer.close();
-        if (upstreamProxyServer) upstreamProxyServer.close();
-        if (mainProxyServer) mainProxyServer.close(true);
+    after(async () => {
+        if (targetServer) await targetServer.close();
+        if (upstreamProxyServer) await new Promise((resolve) => upstreamProxyServer.close(resolve));
+        if (mainProxyServer) await mainProxyServer.close(true);
     });
 
     it('httpAgent smoke test - no exceptions', async () => {
@@ -238,7 +238,7 @@ describe('HTTP Agent Support', () => {
 
      it('pools connections with HTTP upstream proxy', async () => {
         if (mainProxyServer) await mainProxyServer.close(true);
-        if (upstreamProxyServer) upstreamProxyServer.close();
+        if (upstreamProxyServer) await new Promise((resolve) => upstreamProxyServer.close(resolve));
 
         let httpUpstreamConnectionCount = 0;
 

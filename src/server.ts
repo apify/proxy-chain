@@ -8,24 +8,23 @@ import type net from 'node:net';
 import { URL } from 'node:url';
 import util from 'node:util';
 
-import type { HandlerOpts as ChainOpts } from './chain';
-import { chain } from './chain';
-import { chainSocks } from './chain_socks';
-import { customConnect } from './custom_connect';
-import type { HandlerOpts as CustomResponseOpts } from './custom_response';
-import { handleCustomResponse } from './custom_response';
-import { direct } from './direct';
-import type { HandlerOpts as ForwardOpts } from './forward';
-import { forward } from './forward';
-import { forwardSocks } from './forward_socks';
-import { RequestError } from './request_error';
-import type { Socket, TLSSocket } from './socket';
-import { badGatewayStatusCodes } from './statuses';
-import { getTargetStats } from './utils/count_target_bytes';
-import { nodeify } from './utils/nodeify';
-import { normalizeUrlPort } from './utils/normalize_url_port';
-import { parseAuthorizationHeader } from './utils/parse_authorization_header';
-import { redactUrl } from './utils/redact_url';
+import type { HandlerOpts as ChainOpts } from './chain.js';
+import { chain } from './chain.js';
+import { chainSocks } from './chain_socks.js';
+import { customConnect } from './custom_connect.js';
+import type { HandlerOpts as CustomResponseOpts } from './custom_response.js';
+import { handleCustomResponse } from './custom_response.js';
+import { direct } from './direct.js';
+import type { HandlerOpts as ForwardOpts } from './forward.js';
+import { forward } from './forward.js';
+import { forwardSocks } from './forward_socks.js';
+import { RequestError } from './request_error.js';
+import type { Socket, TLSSocket } from './socket.js';
+import { badGatewayStatusCodes } from './statuses.js';
+import { getTargetStats } from './utils/count_target_bytes.js';
+import { normalizeUrlPort } from './utils/normalize_url_port.js';
+import { parseAuthorizationHeader } from './utils/parse_authorization_header.js';
+import { redactUrl } from './utils/redact_url.js';
 
 export const SOCKS_PROTOCOLS = ['socks:', 'socks4:', 'socks4a:', 'socks5:', 'socks5h:'];
 
@@ -45,7 +44,7 @@ const HTTPS_DEFAULT_OPTIONS = {
     // Disable TLS 1.0 and 1.1 (deprecated, insecure).
     // All other TLS settings use Node.js defaults for cipher selection (automatically updated).
     minVersion: 'TLSv1.2',
-} as const;
+} as const satisfies https.ServerOptions;
 
 /**
  * Connection statistics for bandwidth tracking.
@@ -666,12 +665,10 @@ export class Server extends EventEmitter {
     /**
      * Starts listening at a port specified in the constructor.
      */
-    async listen(callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
-        const promise = new Promise<void>((resolve, reject) => {
-            // Unfortunately server.listen() is not a normal function that fails on error,
-            // so we need this trickery
+    async listen(): Promise<void> {
+        return new Promise((resolve, reject) => {
             const onError = (error: NodeJS.ErrnoException) => {
-                this.log(null, `Listen failed: ${error}`);
+                this.log(null, `Listen error: ${error}`);
                 removeListeners();
                 reject(error);
             };
@@ -690,8 +687,6 @@ export class Server extends EventEmitter {
             this.server.on('listening', onListening);
             this.server.listen(this.port, this.host);
         });
-
-        return nodeify(promise, callback);
     }
 
     /**
@@ -751,12 +746,7 @@ export class Server extends EventEmitter {
      * Closes the proxy server.
      * @param closeConnections If true, pending proxy connections are forcibly closed.
      */
-    async close(closeConnections: boolean, callback?: (error: NodeJS.ErrnoException | null) => void): Promise<void> {
-        if (typeof closeConnections === 'function') {
-            callback = closeConnections;
-            closeConnections = false;
-        }
-
+    async close(closeConnections = false): Promise<void> {
         if (closeConnections) {
             this.closeConnections();
         }
@@ -765,10 +755,7 @@ export class Server extends EventEmitter {
             const { server } = this;
             // @ts-expect-error Let's make sure we can't access the server anymore.
             this.server = null;
-            const promise = util.promisify(server.close).bind(server)();
-            return nodeify(promise, callback);
+            await util.promisify(server.close).bind(server)();
         }
-
-        return nodeify(Promise.resolve(), callback);
     }
 }

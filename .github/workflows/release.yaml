@@ -1,58 +1,58 @@
 name: Check & Release
 
 on:
-  # Push to master will deploy a beta version
-  push:
-    branches:
-      - master
-  # A release via GitHub releases will deploy a latest version
-  release:
-    types: [published]
+    # Push to master will deploy a beta version
+    push:
+        branches:
+            - master
+    # A release via GitHub releases will deploy a latest version
+    release:
+        types: [published]
 
 # Necessary permissions for publishing to NPM with OIDC
 permissions:
-  contents: write
-  id-token: write
+    contents: write
+    id-token: write
 
 jobs:
-  lint_and_test:
-    name: Lint and test
-    uses: ./.github/workflows/check.yaml
+    lint_and_test:
+        name: Lint and test
+        uses: ./.github/workflows/check.yaml
 
-  deploy:
-    name: Publish to NPM
-    needs: [lint_and_test]
-    runs-on: ubuntu-22.04
+    deploy:
+        name: Publish to NPM
+        needs: [lint_and_test]
+        runs-on: ubuntu-24.04
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
 
-      - name: Use Node.js 24
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
+            - name: Use Node.js 24
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
 
-      - name: Install dependencies
-        run: npm install
+            - name: Install dependencies
+              run: npm install
 
-      # Determine if this is a beta or latest release
-      - name: Get release tag
-        id: get_release_tag
-        run: echo "release_tag=$(if [ ${{ github.event_name }} = release ]; then echo latest; else echo beta; fi)" >> $GITHUB_OUTPUT
+            # Determine if this is a beta or latest release
+            - name: Get release tag
+              id: get_release_tag
+              run: echo "release_tag=$(if [ ${{ github.event_name }} = release ]; then echo latest; else echo beta; fi)" >> $GITHUB_OUTPUT
 
-      # Check version consistency and increment pre-release version number for beta only.
-      - name: Bump pre-release version
-        if: steps.get_release_tag.outputs.release_tag == 'beta'
-        run: node ./.github/scripts/before-beta-release.js
+            # Check version consistency and increment pre-release version number for beta only.
+            - name: Bump pre-release version
+              if: steps.get_release_tag.outputs.release_tag == 'beta'
+              run: node ./.github/scripts/before-beta-release.cjs
 
-      - name: Publish to NPM
-        run: npm publish --tag ${{ steps.get_release_tag.outputs.release_tag }}
+            - name: Publish to NPM
+              run: npm publish --tag ${{ steps.get_release_tag.outputs.release_tag }}
 
-      # Latest version is tagged by the release process so we only tag beta here.
-      - name: Tag version
-        if: steps.get_release_tag.outputs.release_tag == 'beta'
-        run: |
-          git_tag=v`node -p "require('./package.json').version"`
-          git tag $git_tag
-          git push origin $git_tag
+            # Latest version is tagged by the release process so we only tag beta here.
+            - name: Tag version
+              if: steps.get_release_tag.outputs.release_tag == 'beta'
+              run: |
+                  git_tag=v`node -p "require('./package.json').version"`
+                  git tag $git_tag
+                  git push origin $git_tag

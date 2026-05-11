@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:18.20.8-bookworm
+ARG NODE_IMAGE=node:20.19.6-bookworm
 FROM ${NODE_IMAGE}
 
 RUN apt-get update && apt-get install -y --no-install-recommends chromium \
