@@ -18,8 +18,8 @@ pkgJson.version = nextVersion;
 fs.writeFileSync(PKG_JSON_PATH, `${JSON.stringify(pkgJson, null, 2)}\n`);
 
 function getNextVersion(version) {
-    // `pnpm view` matches `npm view`/`npm show` semantics and is safe under our
-    // devEngines `onFail: error` pin (npm CLI would be blocked).
+    // `pnpm view` matches `npm view`/`npm show` semantics; using pnpm here keeps
+    // the toolchain consistent with the rest of the workflow.
     const versionString = execSync(`pnpm view ${PACKAGE_NAME} versions --json`, { encoding: 'utf8' });
     const versions = JSON.parse(versionString);
 

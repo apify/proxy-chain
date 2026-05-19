@@ -1,6 +1,5 @@
 # 24-hour quarantine on newly published versions to blunt supply-chain attacks
 # (compromised packages typically get yanked within hours of discovery).
-# This is the primary motivation for migrating off npm — see issue #658.
 # Excludes are scopes we publish ourselves and trust on the same release cadence.
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
@@ -18,7 +17,9 @@ allowBuilds:
   # core-js' postinstall only prints a donation banner; no functional impact.
   core-js: false
 
-# pnpm 11's default is `true`, which fails `pnpm install --frozen-lockfile` whenever a new
-# build-script transitive lands. We keep the security benefit (only allowlisted scripts run)
-# without making installs flaky on every dependency bump.
+# When `true`, `pnpm install --frozen-lockfile` fails (ERR_PNPM_IGNORED_BUILDS)
+# whenever a new build-script transitive lands that isn't in `allowBuilds`. We
+# pin to `false` so the default warning is enough — we still get the security
+# benefit (only allowlisted scripts run) without making installs flaky on every
+# dependency bump.
 strictDepBuilds: false
