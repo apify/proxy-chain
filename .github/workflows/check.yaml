@@ -91,6 +91,13 @@ jobs:
             - name: Install pnpm and dependencies
               uses: apify/actions/pnpm-install@v1.1.2
 
+            # pnpm caches the package store but not puppeteer's browser cache
+            # (`~/.cache/puppeteer/`). On warm-cache CI runs, pnpm just symlinks
+            # from the store and skips re-running `postinstall`, so the Chromium
+            # download never happens. `pnpm rebuild` forces the script to run.
+            - name: Ensure puppeteer Chromium is downloaded
+              run: pnpm rebuild puppeteer
+
             - name: Add localhost-test to Linux hosts file
               run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 
@@ -145,6 +152,10 @@ jobs:
 
             - name: Install pnpm and dependencies
               uses: apify/actions/pnpm-install@v1.1.2
+
+            # See note on the Node E2E job — same fix needed here.
+            - name: Ensure puppeteer Chromium is downloaded
+              run: pnpm rebuild puppeteer
 
             - name: Add localhost-test to Linux hosts file
               run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
