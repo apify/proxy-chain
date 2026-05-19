@@ -1,4 +1,4 @@
-# 3.0.0 / 2026-05-05
+# 3.0.0 / 2026-05-19
 
 This is a major release that modernizes the codebase. The runtime behavior of the
 proxy server itself is unchanged; the breaking changes are about how you import,
@@ -24,8 +24,17 @@ package, and call the library.
 - Upgraded TypeScript to v5 and adopted `NodeNext` module resolution with
   `verbatimModuleSyntax`.
   See [#655](https://github.com/apify/proxy-chain/pull/655).
+- Added Bun runtime support. The library now loads cleanly under Bun and is
+  validated on every PR via a dedicated `Unit tests (Bun)` job, plus an
+  `E2E tests (Bun, compatible)` job that runs a curated Bun-safe subset of the
+  e2e suite. A `full` toggle for running the entire e2e suite under Bun is
+  available via workflow dispatch.
+  See [#650](https://github.com/apify/proxy-chain/pull/650).
 - Internal: removed the unused `typeSocket` assertion helper.
   See [#653](https://github.com/apify/proxy-chain/pull/653).
+- Internal: reorganized tests into `test/unit/` and `test/e2e/` directories
+  and split the CI workflow into separate `unit`, `e2e`, and `lint` jobs.
+  See [#651](https://github.com/apify/proxy-chain/pull/651).
 
 # 2.0.1 / 2022-05-02
 
