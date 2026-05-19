@@ -37,11 +37,11 @@ jobs:
               with:
                   node-version: 24
 
-            - name: Install Dependencies
-              run: npm install
+            - name: Install pnpm and dependencies
+              uses: apify/actions/pnpm-install@v1.1.2
 
             - name: Lint code
-              run: npm run lint
+              run: pnpm run lint
 
     unit:
         name: Unit tests (Node.js ${{ matrix.node-version }})
@@ -51,7 +51,13 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                node-version: [20, 22, 24]
+                # pnpm 11 requires Node ≥22, so Node 20 from the previous matrix is dropped.
+                # Node 26 is intentionally NOT here yet: a pre-existing tsx + yargs (16.x
+                # CJS bin) + Node 26 ESM-loader incompatibility breaks `mocha` under the
+                # repo's `node-option: ["import=tsx"]` config. Reproducible on `master`
+                # with plain `npm install`, so it's not a migration regression — but the
+                # fix belongs in a separate change.
+                node-version: [22, 24]
 
         steps:
             - name: Checkout repository
@@ -62,11 +68,11 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
 
-            - name: Install Dependencies
-              run: npm install
+            - name: Install pnpm and dependencies
+              uses: apify/actions/pnpm-install@v1.1.2
 
             - name: Run unit tests
-              run: npm run test:unit
+              run: pnpm run test:unit
 
     e2e:
         name: E2E tests (Node.js 24)
@@ -82,14 +88,14 @@ jobs:
               with:
                   node-version: 24
 
-            - name: Install Dependencies
-              run: npm install
+            - name: Install pnpm and dependencies
+              uses: apify/actions/pnpm-install@v1.1.2
 
             - name: Add localhost-test to Linux hosts file
               run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 
             - name: Run E2E tests
-              run: npm run test:e2e
+              run: pnpm run test:e2e
 
     bun_unit:
         name: Unit tests (Bun)
@@ -111,11 +117,11 @@ jobs:
               with:
                   bun-version: latest
 
-            - name: Install Dependencies
-              run: npm install
+            - name: Install pnpm and dependencies
+              uses: apify/actions/pnpm-install@v1.1.2
 
             - name: Run unit tests with Bun
-              run: npm run test:bun
+              run: pnpm run test:bun
 
     bun_e2e:
         name: E2E tests (Bun, ${{ inputs.bun_e2e_mode || 'compatible' }})
@@ -137,11 +143,11 @@ jobs:
               with:
                   bun-version: latest
 
-            - name: Install Dependencies
-              run: npm install
+            - name: Install pnpm and dependencies
+              uses: apify/actions/pnpm-install@v1.1.2
 
             - name: Add localhost-test to Linux hosts file
               run: sudo echo "127.0.0.1 localhost-test" | sudo tee -a /etc/hosts
 
             - name: Run E2E tests (Bun, ${{ inputs.bun_e2e_mode || 'compatible' }})
-              run: npm run test:bun:e2e:${{ inputs.bun_e2e_mode || 'compatible' }}
+              run: pnpm run test:bun:e2e:${{ inputs.bun_e2e_mode || 'compatible' }}

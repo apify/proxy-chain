@@ -32,9 +32,10 @@ jobs:
               uses: actions/setup-node@v6
               with:
                   node-version: 24
+                  registry-url: 'https://registry.npmjs.org'
 
-            - name: Install dependencies
-              run: npm install
+            - name: Install pnpm and dependencies
+              uses: apify/actions/pnpm-install@v1.1.2
 
             # Determine if this is a beta or latest release
             - name: Get release tag
@@ -46,8 +47,12 @@ jobs:
               if: steps.get_release_tag.outputs.release_tag == 'beta'
               run: node ./.github/scripts/before-beta-release.cjs
 
+            # `pnpm publish` honours the dist-tag flag and is safe under our devEngines
+            # `onFail: error` pin (`npm publish` would be rejected). `--no-git-checks`
+            # skips pnpm's working-tree/branch guards — release events are validated by
+            # the workflow trigger upstream.
             - name: Publish to NPM
-              run: npm publish --tag ${{ steps.get_release_tag.outputs.release_tag }}
+              run: pnpm publish --tag ${{ steps.get_release_tag.outputs.release_tag }} --no-git-checks
 
             # Latest version is tagged by the release process so we only tag beta here.
             - name: Tag version
