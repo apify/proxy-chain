@@ -18,10 +18,12 @@ pkgJson.version = nextVersion;
 fs.writeFileSync(PKG_JSON_PATH, `${JSON.stringify(pkgJson, null, 2)}\n`);
 
 function getNextVersion(version) {
-    // `pnpm view` matches `npm view`/`npm show` semantics; using pnpm here keeps
-    // the toolchain consistent with the rest of the workflow.
-    const versionString = execSync(`pnpm view ${PACKAGE_NAME} versions --json`, { encoding: 'utf8' });
-    const versions = JSON.parse(versionString);
+    // Query the registry directly: `pnpm view` shells to `npm view` under the hood,
+    // and npm 11+ enforces `devEngines.packageManager` even on read-only commands —
+    // so any package-manager CLI here trips EBADDEVENGINES. curl bypasses both.
+    const registryUrl = `https://registry.npmjs.org/${PACKAGE_NAME}`;
+    const json = execSync(`curl -fsSL ${registryUrl}`, { encoding: 'utf8' });
+    const versions = Object.keys(JSON.parse(json).versions);
 
     if (versions.some((v) => v === VERSION)) {
         // eslint-disable-next-line no-console
