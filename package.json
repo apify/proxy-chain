@@ -42,7 +42,7 @@
         "build:watch": "tsc -w",
         "build": "tsc",
         "clean": "rimraf dist",
-        "prepublishOnly": "npm run build",
+        "prepublishOnly": "pnpm run build",
         "local-proxy": "tsx test/utils/run_locally.js",
         "test": "nyc cross-env NODE_OPTIONS=--insecure-http-parser mocha 'test/unit/**/*.js' 'test/e2e/**/*.js'",
         "test:unit": "mocha 'test/unit/**/*.js'",
@@ -58,6 +58,14 @@
     "engines": {
         "node": ">=20.11"
     },
+    "devEngines": {
+        "packageManager": {
+            "name": "pnpm",
+            "version": "10.33.4",
+            "onFail": "error"
+        }
+    },
+    "packageManager": "pnpm@10.33.4",
     "devDependencies": {
         "@apify/eslint-config": "^1.0.0",
         "@apify/tsconfig": "^0.1.0",
