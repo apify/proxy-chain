@@ -62,7 +62,7 @@
         "packageManager": {
             "name": "pnpm",
             "version": "10.33.4",
-            "onFail": "error"
+            "onFail": "warn"
         }
     },
     "packageManager": "pnpm@10.33.4",
