@@ -95,8 +95,8 @@ const puppeteerGet = async (url, proxyUrl) => {
     ];
 
     const launchOpts = {
-        ignoreHTTPSErrors: true,
-        headless: 'new',
+        acceptInsecureCerts: true,
+        headless: true,
         args
     };
 
