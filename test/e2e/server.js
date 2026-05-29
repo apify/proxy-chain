@@ -67,21 +67,26 @@ const requestPromised = (opts) => {
 
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
-// Chromium occasionally fails to spawn under headless Docker (dbus/crashpad noise + ENOENT-ish exits).
-// Retry briefly so a single flaky launch doesn't fail the whole suite.
-const launchPuppeteer = async (puppeteer, launchOpts) => {
-    const MAX_ATTEMPTS = 3;
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        try {
-            return await puppeteer.launch(launchOpts);
-        } catch (error) {
-            if (attempt === MAX_ATTEMPTS) throw error;
-            await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
-        }
-    }
-};
+// Per-attempt budget for a single launch→navigate→read cycle. Kept well below
+// the puppeteer test timeout so a stuck attempt fails fast and leaves room to retry.
+const PUPPETEER_LAUNCH_TIMEOUT_MILLIS = 20 * 1000;
+const PUPPETEER_NAVIGATION_TIMEOUT_MILLIS = 20 * 1000;
+const PUPPETEER_MAX_ATTEMPTS = 3;
+// Test timeout for puppeteer cases, sized to fit every retry attempt (each bounded
+// by the launch + navigation budgets above) plus backoff, so the retry loop runs to
+// completion instead of being cut short by the suite's default 30s timeout.
+const PUPPETEER_TEST_TIMEOUT_MILLIS = 90 * 1000;
 
-// Opens web page in puppeteer and returns the HTML content
+// Opens web page in puppeteer and returns the HTML content.
+//
+// Chromium is flaky in CI: it occasionally fails to spawn (dbus/crashpad noise +
+// ENOENT-ish exits) or hangs on launch/navigation until the test times out. We
+// retry the whole launch→navigate→read cycle with a fresh browser so one bad
+// attempt doesn't fail the test, and bound every step with an explicit timeout so
+// a hang surfaces as a catchable rejection (the default launch/navigation timeouts
+// equal the mocha timeout, so a slow attempt kills the test before it can retry).
+// We also use the legacy `headless: true` mode rather than the `'new'` mode, which
+// in this Chromium version is markedly slower and flakier to start in CI.
 const puppeteerGet = async (url, proxyUrl) => {
     const { default: puppeteer } = await import('puppeteer');
 
@@ -96,8 +101,10 @@ const puppeteerGet = async (url, proxyUrl) => {
 
     const launchOpts = {
         ignoreHTTPSErrors: true,
-        headless: 'new',
-        args
+        headless: true,
+        args,
+        timeout: PUPPETEER_LAUNCH_TIMEOUT_MILLIS,
+        protocolTimeout: PUPPETEER_LAUNCH_TIMEOUT_MILLIS + PUPPETEER_NAVIGATION_TIMEOUT_MILLIS,
     };
 
     if (parsed) {
@@ -113,25 +120,31 @@ const puppeteerGet = async (url, proxyUrl) => {
         }
     }
 
-    const browser = await launchPuppeteer(puppeteer, launchOpts);
+    let lastError;
+    for (let attempt = 1; attempt <= PUPPETEER_MAX_ATTEMPTS; attempt++) {
+        let browser;
+        try {
+            browser = await puppeteer.launch(launchOpts);
+            const page = await browser.newPage();
 
-    try {
-        const page = await browser.newPage();
+            if (parsed) {
+                await page.authenticate({
+                    username: decodeURIComponent(parsed.username),
+                    password: decodeURIComponent(parsed.password),
+                });
+            }
 
-        if (parsed) {
-            await page.authenticate({
-                username: decodeURIComponent(parsed.username),
-                password: decodeURIComponent(parsed.password),
-            });
+            const response = await page.goto(url, { timeout: PUPPETEER_NAVIGATION_TIMEOUT_MILLIS });
+            return await response.text();
+        } catch (error) {
+            lastError = error;
+        } finally {
+            if (browser) await browser.close().catch(() => {});
         }
-
-        const response = await page.goto(url);
-        const text = await response.text();
-
-        return text;
-    } finally {
-        await browser.close();
+        await wait(500 * attempt);
     }
+
+    throw lastError;
 };
 
 // Opens web page in curl and returns the HTML content.
@@ -912,7 +925,8 @@ const createTestSuite = ({
         const skipPuppeteerOnNode14 = isNode14 && mainProxyServerType === 'https' && useUpstreamProxy && !mainProxyAuth;
 
         if ((!mainProxyAuth || (mainProxyAuth.username && mainProxyAuth.password)) && !skipPuppeteerOnNode14) {
-            it('handles GET request using puppeteer', async () => {
+            it('handles GET request using puppeteer', async function () {
+                this.timeout(PUPPETEER_TEST_TIMEOUT_MILLIS);
                 const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const response = await puppeteerGet(targetUrl, mainProxyUrl);
                 expect(response).to.contain('Hello world!');
@@ -920,7 +934,8 @@ const createTestSuite = ({
         }
 
         if (!useSsl && mainProxyAuth && mainProxyAuth.username && mainProxyAuth.password) {
-            it('handles GET request using puppeteer with invalid credentials', async () => {
+            it('handles GET request using puppeteer with invalid credentials', async function () {
+                this.timeout(PUPPETEER_TEST_TIMEOUT_MILLIS);
                 const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
                 const response = await puppeteerGet(targetUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`);
