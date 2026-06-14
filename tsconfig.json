@@ -5,7 +5,9 @@
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "target": "ES2022",
-        "verbatimModuleSyntax": true
+        "verbatimModuleSyntax": true,
+        "declarationMap": false,
+        "sourceMap": false
     },
     "include": ["src"]
 }
