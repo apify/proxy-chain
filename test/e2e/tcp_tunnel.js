@@ -6,6 +6,8 @@ import proxy from 'proxy';
 import { createTunnel, closeTunnel } from '../../src/index.js';
 import { expectThrowsAsync } from '../utils/throws_async.js';
 
+const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
+
 const destroySocket = (socket) => new Promise((resolve) => {
     if (!socket || socket.destroyed) return resolve();
     socket.once('close', () => resolve());
