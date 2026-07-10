@@ -1,11 +1,17 @@
 {
     "extends": "@apify/tsconfig",
     "compilerOptions": {
+        "rootDir": ".",
         "outDir": "dist",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "target": "ES2022",
-        "verbatimModuleSyntax": true
+        "verbatimModuleSyntax": true,
+        "declaration": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
     },
-    "include": ["src"]
+    "include": ["src", "forwarder.ts"]
 }

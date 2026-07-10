@@ -1,0 +1,38 @@
+services:
+  proxy-server:
+    build: .
+    image: proxy-server:latest
+    container_name: proxy-server
+    ports:
+      - "3128:3128"
+    environment:
+      # 快代理 DPS 凭证：默认由 application-dev.yml（Nacos 共享配置）提供，此处环境变量仅作可选覆盖
+      KUAIDAILI_SECRET_ID: ${KUAIDAILI_SECRET_ID:-}
+      KUAIDAILI_SECRET_KEY: ${KUAIDAILI_SECRET_KEY:-}
+      KUAIDAILI_PROXY_USERNAME: ${KUAIDAILI_PROXY_USERNAME:-}
+      KUAIDAILI_PROXY_PASSWORD: ${KUAIDAILI_PROXY_PASSWORD:-}
+      KUAIDAILI_API_ENDPOINT: "https://dps.kdlapi.com/api/getdps/"
+      FORWARDER_PORT: "3128"
+      REFRESH_INTERVAL_MS: "600000"
+      IDLE_TIMEOUT_MS: "1200000"
+      # Nacos 配置中心 & 服务注册
+      NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-172.16.11.229:38848}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-dev}
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      NACOS_CONFIG_DATA_ID: ${NACOS_CONFIG_DATA_ID:-proxy-server-dev.yaml}
+      NACOS_CONFIG_GROUP: ${NACOS_CONFIG_GROUP:-DEFAULT_GROUP}
+      NACOS_SERVICE_NAME: ${NACOS_SERVICE_NAME:-proxy-server}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3128/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"

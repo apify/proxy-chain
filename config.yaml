@@ -1,0 +1,13 @@
+# proxy-server 配置文件
+# 本地回退配置 -- Nacos 不可用时使用此文件
+# 快代理 DPS 凭证由 application-dev.yml（Nacos 共享配置）提供，或由 KUAIDAILI_* 环境变量覆盖，
+# 本地回退文件不再保存凭证，避免与集中配置重复。
+
+log:
+  level: info
+
+forwarder:
+  port: 3128
+  refreshIntervalMs: 600000
+  tokenTtlMs: 3000000
+  idleTimeoutMs: 1200000
