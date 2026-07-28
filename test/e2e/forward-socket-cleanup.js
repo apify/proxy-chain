@@ -55,13 +55,18 @@ describe('forward() socket cleanup', () => {
         );
 
         // Wait until the outbound socket to the target actually exists.
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
             const interval = setInterval(() => {
                 if (targetSocket) {
                     clearInterval(interval);
+                    clearTimeout(timeout);
                     resolve();
                 }
             }, 5);
+            const timeout = setTimeout(() => {
+                clearInterval(interval);
+                reject(new Error('Timed out waiting for httpAgent.createConnection() to be called - the outbound socket was never created.'));
+            }, 2000);
         });
 
         expect(targetSocket.destroyed).to.be.false;
