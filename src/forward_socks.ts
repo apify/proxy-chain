@@ -91,6 +91,15 @@ export const forwardSocks = async (
 
     // Can't use pipeline here as it automatically destroys the streams
     request.pipe(client);
+
+    // Mirrors chain.ts: if the client-facing side goes away before the
+    // upstream request/response completes (e.g. server.close(true) during
+    // shutdown, or the client disconnecting early), destroy the outbound
+    // request/socket too, so it isn't left dangling indefinitely.
+    response.on('close', () => {
+        client.destroy();
+    });
+
     client.on('error', (error: NodeJS.ErrnoException) => {
         if (response.headersSent) {
             resolve();

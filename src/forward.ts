@@ -135,6 +135,18 @@ export const forward = async (
 
     // Can't use pipeline here as it automatically destroys the streams
     request.pipe(client);
+
+    // Mirrors chain.ts: if the client-facing side goes away before the
+    // upstream request/response completes (e.g. server.close(true) during
+    // shutdown, or the client disconnecting early), destroy the outbound
+    // request/socket too, so it isn't left dangling indefinitely.
+    // This runs before the byte-counting `close` handler registered above
+    // (it's added later, asynchronously, once a socket exists) - that's fine,
+    // since destroy() doesn't affect the already-recorded bytesRead/bytesWritten.
+    response.on('close', () => {
+        client.destroy();
+    });
+
     client.on('error', (error: NodeJS.ErrnoException) => {
         if (response.headersSent) {
             resolve();
