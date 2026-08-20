@@ -30,10 +30,10 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
             - name: Use Node.js 24
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
               with:
                   node-version: 24
 
@@ -61,10 +61,10 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
             - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
               with:
                   node-version: ${{ matrix.node-version }}
 
@@ -81,10 +81,10 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
             - name: Use Node.js 24
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
               with:
                   node-version: 24
 
@@ -112,15 +112,15 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
             - name: Use Node.js 24
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
               with:
                   node-version: 24
 
             - name: Install Bun
-              uses: oven-sh/setup-bun@v2
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
               with:
                   bun-version: latest
 
@@ -138,15 +138,15 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
             - name: Use Node.js 24
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
               with:
                   node-version: 24
 
             - name: Install Bun
-              uses: oven-sh/setup-bun@v2
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
               with:
                   bun-version: latest
 
