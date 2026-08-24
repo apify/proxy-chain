@@ -2,6 +2,7 @@ import net from 'node:net';
 import { expect, assert } from 'chai';
 import http from 'node:http';
 import proxy from 'proxy';
+import portastic from 'portastic';
 
 import { createTunnel, closeTunnel } from '../../src/index.js';
 import { expectThrowsAsync } from '../utils/throws_async.js';
@@ -22,8 +23,8 @@ const serverListen = (server, port) => new Promise((resolve, reject) => {
     });
 });
 
-const connect = (port) => new Promise((resolve, reject) => {
-    const socket = net.connect({ port }, (err) => {
+const connect = (host, port) => new Promise((resolve, reject) => {
+    const socket = net.connect({ host, port }, (err) => {
         if (err) return reject(err);
         return resolve(socket);
     });
@@ -49,6 +50,70 @@ describe('tcp_tunnel.createTunnel', () => {
         expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', 'whatever'); }, 'Missing target port');
         expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', 'whatever:'); }, 'Missing target port');
         expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /Invalid URL/);
+    });
+    it('throws error if the port option is not a valid port number', async () => {
+        const proxyUrl = 'http://user:password@whatever.com:12';
+        const invalidPorts = [-1, 65536, 1.5, '8080'];
+
+        for (const port of invalidPorts) {
+            await expectThrowsAsync(
+                async () => { await createTunnel(proxyUrl, 'localhost:9000', { port }); },
+                'The "port" option must be an integer between 0 and 65535',
+            );
+        }
+    });
+    // Regression guard for GHSA-5vwf-g8jp-pgj3: createTunnel() used to bind the unspecified address.
+    describe('listener address', () => {
+        // createTunnel() only parses the URLs, it never dials them, so these need no servers.
+        const PROXY_URL = 'http://owner:s3cr3t@127.0.0.1:1';
+        const TARGET = '127.0.0.1:1';
+
+        let tunnel;
+
+        afterEach(async () => {
+            if (tunnel) await closeTunnel(tunnel, true);
+            tunnel = undefined;
+        });
+
+        it('binds a loopback address by default', async () => {
+            tunnel = await createTunnel(PROXY_URL, TARGET);
+
+            expect(tunnel).to.match(/^127\.0\.0\.1:\d+$/);
+        });
+        it('honours an explicit IPv6 hostname and brackets the returned endpoint', async () => {
+            tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '::1' });
+
+            expect(tunnel).to.match(/^\[::1\]:\d+$/);
+        });
+        it('warns when binding a non-loopback address, but still binds it', async () => {
+            const warnings = [];
+            const onWarning = (warning) => warnings.push(warning);
+            process.on('warning', onWarning);
+
+            try {
+                tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '0.0.0.0' });
+            } finally {
+                // Warnings are emitted on the next tick.
+                await new Promise((resolve) => setImmediate(resolve));
+                process.off('warning', onWarning);
+            }
+
+            expect(tunnel).to.match(/^0\.0\.0\.0:\d+$/);
+            expect(warnings.map((warning) => warning.name)).to.include('ProxyChainSecurityWarning');
+        });
+        it('falls back to loopback when the hostname is blank', async () => {
+            tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '' });
+
+            expect(tunnel).to.match(/^127\.0\.0\.1:\d+$/);
+        });
+        it('honours an explicit port', async () => {
+            const [port] = await portastic.find({ min: 50750, max: 51000 });
+            assert.isDefined(port, 'no free port in the test range');
+
+            tunnel = await createTunnel(PROXY_URL, TARGET, { port });
+
+            expect(tunnel).to.equal(`127.0.0.1:${port}`);
+        });
     });
     it('correctly tunnels to tcp service and then is able to close the connection', () => {
         const proxyServerConnections = [];
@@ -129,9 +194,11 @@ describe('tcp_tunnel.createTunnel', () => {
             .then((newTunnel) => {
                 tunnel = newTunnel;
 
-                const { port } = new URL(`connect://${newTunnel}`);
+                // Dial the host createTunnel() returned, not `localhost` - that
+                // resolves to whichever family getaddrinfo happens to prefer.
+                const { hostname, port } = new URL(`connect://${newTunnel}`);
 
-                return connect(port);
+                return connect(hostname, port);
             })
             .then((connection) => {
                 connection.setEncoding('utf8');
