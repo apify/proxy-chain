@@ -1,0 +1,20 @@
+# Two hosts on one bridge network: the attacker reaches the victim's tunnel over a real
+# network boundary, so nothing about the result depends on the host's routing or firewall.
+name: ghsa-5vwf-g8jp-pgj3
+
+services:
+  victim:
+    build:
+      context: ../..
+      dockerfile: scripts/repro/Dockerfile
+    command: node --import tsx scripts/repro/victim.js
+    environment:
+      TUNNEL_HOSTNAME: ${TUNNEL_HOSTNAME:-}
+
+  attacker:
+    build:
+      context: ../..
+      dockerfile: scripts/repro/Dockerfile
+    command: node --import tsx scripts/repro/attacker.js
+    depends_on:
+      - victim
