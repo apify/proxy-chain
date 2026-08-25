@@ -1,6 +1,6 @@
 import http from 'node:http';
 import net from 'node:net';
-import { expect } from 'chai';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Server } from '../../src/index.js';
 
@@ -69,7 +69,7 @@ describe('forward() socket cleanup', () => {
             }, 2000);
         });
 
-        expect(targetSocket.destroyed).to.be.false;
+        expect(targetSocket.destroyed).toBe(false);
 
         // Simulate the client (browser) disappearing while the target is
         // still hanging - e.g. graceful shutdown via server.close(true),
@@ -82,6 +82,6 @@ describe('forward() socket cleanup', () => {
             targetSocket.once('close', resolve);
         });
 
-        expect(targetSocket.destroyed).to.be.true;
+        expect(targetSocket.destroyed).toBe(true);
     });
 });

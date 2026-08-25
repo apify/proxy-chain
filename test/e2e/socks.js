@@ -1,10 +1,10 @@
 import portastic from 'portastic';
 import socksv5 from 'socksv5';
 import { gotScraping } from 'got-scraping';
-import { expect } from 'chai';
+import { afterEach, describe, expect, it } from 'vitest';
 import * as ProxyChain from '../../src/index.js';
 
-describe('SOCKS protocol', () => {
+describe('SOCKS protocol', { timeout: 10_000 }, () => {
     let socksServer;
     let proxyServer;
     let anonymizeProxyUrl;
@@ -34,8 +34,8 @@ describe('SOCKS protocol', () => {
         });
         await proxyServer.listen();
         const response = await gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
-        expect(response.body).to.contain('Example Domain');
-    }).timeout(10 * 1000);
+        expect(response.body).toContain('Example Domain');
+    });
 
     it('work with auth', async () => {
         const ports = await portastic.find({ min: 50250, max: 50500 });
@@ -58,8 +58,8 @@ describe('SOCKS protocol', () => {
         });
         await proxyServer.listen();
         const response = await gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
-        expect(response.body).to.contain('Example Domain');
-    }).timeout(10 * 1000);
+        expect(response.body).toContain('Example Domain');
+    });
 
     it('works with anonymizeProxy', async () => {
         const ports = await portastic.find({ min: 50500, max: 50750 });
@@ -77,6 +77,6 @@ describe('SOCKS protocol', () => {
             url: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}`,
         });
         const response = await gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizeProxyUrl });
-        expect(response.body).to.contain('Example Domain');
-    }).timeout(10 * 1000);
+        expect(response.body).toContain('Example Domain');
+    });
 });

@@ -4,7 +4,7 @@ import path from 'node:path';
 import tls from 'node:tls';
 import util from 'node:util';
 import request from 'request';
-import { expect } from 'chai';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Server } from '../../src/index.js';
 import { TargetServer } from '../utils/target_server.js';
 
@@ -17,20 +17,22 @@ const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 const requestPromised = util.promisify(request);
 
-describe('HTTPS proxy stress testing', function () {
-    this.timeout(60000);
+const STRESS_TIMEOUT_MILLIS = 60_000;
 
+vi.setConfig({ testTimeout: STRESS_TIMEOUT_MILLIS, hookTimeout: STRESS_TIMEOUT_MILLIS });
+
+describe('HTTPS proxy stress testing', () => {
     let server;
     let targetServer;
     let targetServerPort;
 
-    before(async () => {
+    beforeAll(async () => {
         targetServer = new TargetServer({ port: 0, useSsl: false });
         await targetServer.listen();
         targetServerPort = targetServer.httpServer.address().port;
     });
 
-    after(async () => {
+    afterAll(async () => {
         if (targetServer) await targetServer.close();
     });
 
@@ -40,8 +42,6 @@ describe('HTTPS proxy stress testing', function () {
             serverType: 'https',
             httpsOptions: { key: sslKey, cert: sslCrt },
         });
-        // Node.js 20+ enables HTTP keep-alive by default, which causes connection
-        // tracking issues in tests. Disable keep-alive on the proxy server.
         server.server.keepAliveTimeout = 0;
         await server.listen();
     });
@@ -75,7 +75,7 @@ describe('HTTPS proxy stress testing', function () {
         await Promise.all(promises);
 
         const successful = results.filter((r) => r.status === 200 && r.body === 'Hello world!');
-        expect(successful.length).to.equal(REQUESTS);
+        expect(successful).toHaveLength(REQUESTS);
     });
 
     // Not specific for https but still worth to have.
@@ -132,7 +132,7 @@ describe('HTTPS proxy stress testing', function () {
         await Promise.all(promises);
 
         const successful = results.filter((r) => r.success);
-        expect(successful.length).to.equal(TUNNEL_COUNT);
+        expect(successful).toHaveLength(TUNNEL_COUNT);
     });
 
     it('tracks accurate statistics for 100 concurrent requests', async () => {
@@ -157,13 +157,13 @@ describe('HTTPS proxy stress testing', function () {
         await Promise.all(promises);
         await new Promise((r) => setTimeout(r, 500));
 
-        expect(allStats.length).to.equal(REQUESTS);
+        expect(allStats).toHaveLength(REQUESTS);
 
         allStats.forEach((stats) => {
             // These are application-layer bytes only (no TLS overhead).
             // srcRxBytes > trgTxBytes because hop-by-hop headers (e.g., Proxy-Connection)
             // are stripped when forwarding the request to target.
-            expect(stats).to.be.deep.equal({ srcTxBytes: 174, srcRxBytes: 93, trgTxBytes: 71, trgRxBytes: 174 });
+            expect(stats).toStrictEqual({ srcTxBytes: 174, srcRxBytes: 93, trgTxBytes: 71, trgRxBytes: 174 });
         });
     });
 });

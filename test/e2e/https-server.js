@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import tls from 'node:tls';
-import { expect } from 'chai';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import http from 'node:http';
 import { Server } from '../../src/index.js';
 
@@ -11,9 +11,9 @@ const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
 const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
 
-it('handles TLS handshake failures gracefully and continues accepting connections', async function () {
-    this.timeout(10000);
+vi.setConfig({ testTimeout: 10_000 });
 
+it('handles TLS handshake failures gracefully and continues accepting connections', async () => {
     const tlsErrors = [];
     let server;
     let badSocket;
@@ -74,7 +74,7 @@ it('handles TLS handshake failures gracefully and continues accepting connection
 
         await wait(100);
 
-        expect(badSocketErrorOccurred).to.equal(true);
+        expect(badSocketErrorOccurred).toBe(true);
 
         // Make a valid TLS connection to prove server still works.
         goodSocket = tls.connect({
@@ -109,7 +109,7 @@ it('handles TLS handshake failures gracefully and continues accepting connection
             });
         });
 
-        expect(goodSocketConnected).to.equal(true, 'Good socket should have connected');
+        expect(goodSocketConnected, 'Good socket should have connected').toBe(true);
 
         // Write the CONNECT request to local target server.
         goodSocket.write(`CONNECT 127.0.0.1:${targetPort} HTTP/1.1\r\nHost: 127.0.0.1:${targetPort}\r\n\r\n`);
@@ -139,12 +139,12 @@ it('handles TLS handshake failures gracefully and continues accepting connection
 
         await wait(100);
 
-        expect(response).to.be.equal('HTTP/1.1 200 Connection Established\r\n\r\n');
+        expect(response).toBe('HTTP/1.1 200 Connection Established\r\n\r\n');
 
-        expect(tlsErrors.length).to.be.equal(1);
-        expect(tlsErrors[0].library).to.be.equal('SSL routines');
+        expect(tlsErrors).toHaveLength(1);
+        expect(tlsErrors[0].library).toBe('SSL routines');
         // Error message varies by OpenSSL version: 'unsupported protocol' (Node 20) vs 'unexpected message' (Node 22+)
-        expect(['unsupported protocol', 'unexpected message']).to.include(tlsErrors[0].reason);
+        expect(['unsupported protocol', 'unexpected message']).toContain(tlsErrors[0].reason);
     } finally {
         if (badSocket && !badSocket.destroyed) {
             badSocket.destroy();
@@ -183,9 +183,7 @@ describe('HTTPS proxy server resource cleanup', () => {
         }
     });
 
-    it('cleans up connections when client disconnects abruptly', async function () {
-        this.timeout(5000);
-
+    it('cleans up connections when client disconnects abruptly', async () => {
         const closedConnections = [];
         server.on('connectionClosed', ({ connectionId }) => {
             closedConnections.push(connectionId);
@@ -202,8 +200,7 @@ describe('HTTPS proxy server resource cleanup', () => {
         // Small delay to ensure server-side connection registration completes.
         await wait(100);
 
-        const connectionsBefore = server.getConnectionIds().length;
-        expect(connectionsBefore).to.equal(1);
+        expect(server.getConnectionIds()).toHaveLength(1);
 
         // Abruptly destroy the connection (simulating client crash).
         socket.destroy();
@@ -211,13 +208,11 @@ describe('HTTPS proxy server resource cleanup', () => {
         await new Promise((resolve) => socket.on('close', resolve));
         await wait(100);
 
-        expect(server.getConnectionIds()).to.be.empty;
-        expect(closedConnections.length).to.equal(1);
+        expect(server.getConnectionIds()).toHaveLength(0);
+        expect(closedConnections).toHaveLength(1);
     });
 
-    it('cleans up when client closes immediately after CONNECT 200', async function () {
-        this.timeout(5000);
-
+    it('cleans up when client closes immediately after CONNECT 200', async () => {
         const closedConnections = [];
         server.on('connectionClosed', ({ connectionId, stats }) => {
             closedConnections.push({ connectionId, stats });
@@ -250,13 +245,11 @@ describe('HTTPS proxy server resource cleanup', () => {
         await new Promise((resolve) => socket.on('close', resolve));
         await wait(500);
 
-        expect(server.getConnectionIds()).to.be.empty;
-        expect(closedConnections.length).to.equal(1);
+        expect(server.getConnectionIds()).toHaveLength(0);
+        expect(closedConnections).toHaveLength(1);
     });
 
-    it('handles multiple HTTP requests over single TLS connection (keep-alive)', async function () {
-        this.timeout(10000);
-
+    it('handles multiple HTTP requests over single TLS connection (keep-alive)', async () => {
         const targetServer = http.createServer((_, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end('Hello world!');
@@ -298,8 +291,8 @@ describe('HTTPS proxy server resource cleanup', () => {
                 responses.push(response);
 
                 // Verify keep-alive: socket still alive, exactly one connection.
-                expect(socket.destroyed).to.equal(false);
-                expect(server.getConnectionIds().length).to.equal(1);
+                expect(socket.destroyed).toBe(false);
+                expect(server.getConnectionIds()).toHaveLength(1);
             }
 
             socket.destroy();
@@ -307,21 +300,19 @@ describe('HTTPS proxy server resource cleanup', () => {
             // Wait a bit for socket cleanup.
             await wait(100);
 
-            expect(server.getConnectionIds().length).to.equal(0);
+            expect(server.getConnectionIds()).toHaveLength(0);
 
-            expect(responses.length).to.equal(3);
+            expect(responses).toHaveLength(3);
             responses.forEach((r) => {
-                expect(r).to.include('200 OK');
-                expect(r).to.include('Hello world');
+                expect(r).toContain('200 OK');
+                expect(r).toContain('Hello world');
             });
         } finally {
             await new Promise((resolve) => targetServer.close(resolve));
         }
     });
 
-    it('handles multiple sequential TLS failures without leaking connections', async function () {
-        this.timeout(10000);
-
+    it('handles multiple sequential TLS failures without leaking connections', async () => {
         const tlsErrors = [];
         server.on('tlsError', ({ error }) => tlsErrors.push(error));
 
@@ -342,8 +333,8 @@ describe('HTTPS proxy server resource cleanup', () => {
 
         await wait(200);
 
-        expect(tlsErrors.length).to.equal(10);
-        expect(server.getConnectionIds()).to.be.empty;
+        expect(tlsErrors).toHaveLength(10);
+        expect(server.getConnectionIds()).toHaveLength(0);
 
         // Verify server still works.
         const goodSocket = tls.connect({

@@ -9,7 +9,3 @@ updates:
   - dependency-name: eslint-plugin-promise
     versions:
     - 5.1.0
-  - dependency-name: sinon
-    versions:
-    - 10.0.0
-    - 10.0.1

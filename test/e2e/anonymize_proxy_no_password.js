@@ -1,5 +1,5 @@
 import _ from 'underscore';
-import { expect, assert } from 'chai';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import proxy from 'proxy';
 import http from 'node:http';
 import util from 'node:util';
@@ -18,7 +18,7 @@ const proxyAuth = { scheme: 'Basic', username: 'username', password: '' };
 let wasProxyCalled = false;
 
 // Setup local proxy server and web server for the tests
-before(async () => {
+beforeAll(async () => {
     const freePorts = await portastic.find({ min: 50000, max: 50100 });
 
     await new Promise((resolve, reject) => {
@@ -57,12 +57,11 @@ before(async () => {
     });
 });
 
-after(async function () {
-    this.timeout(5 * 1000);
+afterAll(async () => {
     await new Promise((resolve) => expressServer.close(resolve));
 
     if (proxyServer) await util.promisify(proxyServer.close.bind(proxyServer))();
-});
+}, 5_000);
 
 const requestPromised = (opts) => {
     // console.log('requestPromised');
@@ -73,25 +72,22 @@ const requestPromised = (opts) => {
             if (response.statusCode !== 200) {
                 return reject(new Error(`Received invalid response code: ${response.statusCode}`));
             }
-            if (opts.expectBodyContainsText) expect(body).to.contain(opts.expectBodyContainsText);
+            if (opts.expectBodyContainsText) expect(body).toContain(opts.expectBodyContainsText);
             resolve();
         });
     });
 };
 
-
-describe('utils.anonymizeProxyNoPassword', function () {
-    // Need larger timeout for Travis CI
-    this.timeout(5 * 1000);
+describe('utils.anonymizeProxyNoPassword', { timeout: 5_000 }, () => {
     it('anonymizes authenticated with no password upstream proxy', async () => {
         const [proxyUrl1, proxyUrl2] = await Promise.all([
             anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
             anonymizeProxy(`http://${proxyAuth.username}:${proxyAuth.password}@127.0.0.1:${proxyPort}`),
         ]);
 
-        expect(proxyUrl1).to.not.contain(`${proxyPort}`);
-        expect(proxyUrl2).to.not.contain(`${proxyPort}`);
-        expect(proxyUrl1).to.not.equal(proxyUrl2);
+        expect(proxyUrl1).not.toContain(`${proxyPort}`);
+        expect(proxyUrl2).not.toContain(`${proxyPort}`);
+        expect(proxyUrl1).not.toBe(proxyUrl2);
 
         // Test call through proxy 1
         wasProxyCalled = false;
@@ -100,7 +96,7 @@ describe('utils.anonymizeProxyNoPassword', function () {
             proxy: proxyUrl1,
             expectBodyContainsText: 'Hello World!',
         });
-        expect(wasProxyCalled).to.equal(true);
+        expect(wasProxyCalled).toBe(true);
 
         // Test call through proxy 2
         wasProxyCalled = false;
@@ -109,7 +105,7 @@ describe('utils.anonymizeProxyNoPassword', function () {
             proxy: proxyUrl2,
             expectBodyContainsText: 'Hello World!',
         });
-        expect(wasProxyCalled).to.equal(true);
+        expect(wasProxyCalled).toBe(true);
 
         // Test again call through proxy 1
         wasProxyCalled = false;
@@ -118,29 +114,23 @@ describe('utils.anonymizeProxyNoPassword', function () {
             proxy: proxyUrl1,
             expectBodyContainsText: 'Hello World!',
         });
-        expect(wasProxyCalled).to.equal(true);
+        expect(wasProxyCalled).toBe(true);
 
         const closed1 = await closeAnonymizedProxy(proxyUrl1, true);
-        expect(closed1).to.eql(true);
+        expect(closed1).toBe(true);
 
-        // Test proxy is really closed
-        try {
-            await requestPromised({ uri: proxyUrl1 });
-            assert.fail();
-        } catch (err) {
-            // Node.js 20+ may return 'socket hang up' instead of 'ECONNREFUSED'
-            const validErrors = ['ECONNREFUSED', 'socket hang up'];
-            expect(validErrors.some((e) => err.message.includes(e))).to.equal(true);
-        }
+        // Test proxy is really closed. Node.js 20+ may report 'socket hang up'
+        // instead of 'ECONNREFUSED'.
+        await expect(requestPromised({ uri: proxyUrl1 })).rejects.toThrow(/ECONNREFUSED|socket hang up/);
 
         const closed2 = await closeAnonymizedProxy(proxyUrl2, true);
-        expect(closed2).to.eql(true);
+        expect(closed2).toBe(true);
 
         // Test the second-time call to close
         const closed1Again = await closeAnonymizedProxy(proxyUrl1, true);
-        expect(closed1Again).to.eql(false);
+        expect(closed1Again).toBe(false);
 
         const closed2Again = await closeAnonymizedProxy(proxyUrl2, false);
-        expect(closed2Again).to.eql(false);
+        expect(closed2Again).toBe(false);
     });
 });
