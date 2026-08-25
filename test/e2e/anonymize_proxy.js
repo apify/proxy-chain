@@ -9,6 +9,7 @@ import request from 'request';
 import express from 'express';
 
 import { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } from '../../src/index.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 let expressServer;
 let proxyServer;
@@ -31,7 +32,7 @@ const serverListen = (server, port) => new Promise((resolve, reject) => {
 beforeAll(() => {
     // Find free port for the proxy
     let freePorts;
-    return portastic.find({ min: 50000, max: 50100 })
+    return portastic.find(PORT_RANGES.anonymizeProxy)
         .then((result) => {
             freePorts = result;
             return new Promise((resolve, reject) => {

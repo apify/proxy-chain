@@ -3,6 +3,7 @@ import socksv5 from 'socksv5';
 import { gotScraping } from 'got-scraping';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as ProxyChain from '../../src/index.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 describe('SOCKS protocol', { timeout: 10_000 }, () => {
     let socksServer;
@@ -16,7 +17,7 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
     });
 
     it('works without auth', async () => {
-        const ports = await portastic.find({ min: 50000, max: 50250 });
+        const ports = await portastic.find(PORT_RANGES.socksNoAuth);
         const [socksPort, proxyPort] = ports;
         socksServer = socksv5.createServer((info, accept) => {
             accept();
@@ -38,7 +39,7 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
     });
 
     it('work with auth', async () => {
-        const ports = await portastic.find({ min: 50250, max: 50500 });
+        const ports = await portastic.find(PORT_RANGES.socksAuth);
         const [socksPort, proxyPort] = ports;
         socksServer = socksv5.createServer((info, accept) => {
             accept();
@@ -62,7 +63,7 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
     });
 
     it('works with anonymizeProxy', async () => {
-        const ports = await portastic.find({ min: 50500, max: 50750 });
+        const ports = await portastic.find(PORT_RANGES.socksAnonymize);
         const [socksPort, proxyPort] = ports;
         socksServer = socksv5.createServer((info, accept) => {
             accept();

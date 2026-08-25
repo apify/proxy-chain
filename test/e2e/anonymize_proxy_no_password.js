@@ -9,6 +9,7 @@ import request from 'request';
 import express from 'express';
 
 import { anonymizeProxy, closeAnonymizedProxy } from '../../src/index.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 let expressServer;
 let proxyServer;
@@ -19,7 +20,7 @@ let wasProxyCalled = false;
 
 // Setup local proxy server and web server for the tests
 beforeAll(async () => {
-    const freePorts = await portastic.find({ min: 50000, max: 50100 });
+    const freePorts = await portastic.find(PORT_RANGES.anonymizeProxyNoPassword);
 
     await new Promise((resolve, reject) => {
         const httpServer = http.createServer();

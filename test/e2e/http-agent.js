@@ -9,6 +9,7 @@ import request from 'request';
 
 import { Server } from '../../src/index.js';
 import { TargetServer } from '../utils/target_server.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
@@ -22,7 +23,7 @@ describe('HTTP Agent Support', () => {
 
     beforeAll(async () => {
         // Get free ports
-        const freePorts = await portastic.find({ min: 50000, max: 50100 });
+        const freePorts = await portastic.find(PORT_RANGES.httpAgentHttp);
 
         // Setup target server
         const targetServerPort = freePorts.shift();
@@ -164,8 +165,8 @@ describe('HTTP Agent Support', () => {
         const originalTargetServerUrl = targetServerUrl;
         await targetServer.close();
 
-        // Setup HTTPS target server on new port. Use different range to avoid conflicts with http server
-        const httpsFreePorts = await portastic.find({ min: 50100, max: 50200 });
+        // Setup HTTPS target server on its own port window, so it cannot collide with the http one.
+        const httpsFreePorts = await portastic.find(PORT_RANGES.httpAgentHttps);
         const httpsTargetPort = httpsFreePorts.shift();
 
         targetServer = new TargetServer({

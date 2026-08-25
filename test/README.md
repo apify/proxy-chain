@@ -11,8 +11,9 @@ The test suite is split into two directories:
 Shared helpers live in `test/utils/`.
 
 Tests run on [Vitest](https://vitest.dev) (`vitest.config.ts`). Each directory is
-its own project, selectable with `--project`. The `e2e` files bind real servers on
-the same port range, so that project runs its files serially.
+its own project, selectable with `--project`. The `e2e` files bind real servers,
+so each one scans for free ports in its own disjoint window - see
+`test/utils/port_ranges.js`.
 
 ## Docker (recommended)
 

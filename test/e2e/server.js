@@ -19,6 +19,7 @@ import { gotScraping } from 'got-scraping';
 import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
 import { Server, RequestError } from '../../src/index.js';
 import { TargetServer } from '../utils/target_server.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 /*
 TODO - add following tests:
@@ -221,7 +222,7 @@ const createTestSuite = ({
         let counter = 0;
 
         beforeAll(() => {
-            return portastic.find({ min: 50000, max: 50500 }).then((ports) => {
+            return portastic.find(PORT_RANGES.server).then((ports) => {
                 freePorts = ports;
 
                 // Setup target HTTP server
