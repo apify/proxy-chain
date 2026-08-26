@@ -23,29 +23,29 @@ to have a consistent Linux environment for running tests.
 1. Run all tests
 
     ```bash
-    npm run test:docker
+    pnpm run test:docker
     ```
 
 2. Run a specific test file
 
     ```bash
-    npm run test:docker test/e2e/server.js
+    pnpm run test:docker test/e2e/server.js
     ```
 
 3. Run all `direct ipv6` test cases across all tests
 
     ```bash
-    npm run test:docker test/e2e/server.js -- -t "direct ipv6"
+    pnpm run test:docker test/e2e/server.js -- -t "direct ipv6"
     ```
 
 4. Run the suite on Bun (the image ships both runtimes)
 
     ```bash
-    npm run test:docker:bun                    # unit + the supported e2e subset
-    npm run test:docker:bun:unit               # unit only
-    npm run test:docker:bun:e2e:compatible     # the supported e2e subset only
-    npm run test:docker:bun:e2e:full           # the whole e2e suite only
-    npm run test:docker:bun:full               # unit + the whole e2e suite
+    pnpm run test:docker:bun                    # unit + the supported e2e subset
+    pnpm run test:docker:bun:unit               # unit only
+    pnpm run test:docker:bun:e2e:compatible     # the supported e2e subset only
+    pnpm run test:docker:bun:e2e:full           # the whole e2e suite only
+    pnpm run test:docker:bun:full               # unit + the whole e2e suite
     ```
 
     The e2e tests Bun doesn't support stall until their per-test timeout
@@ -55,11 +55,11 @@ to have a consistent Linux environment for running tests.
     All targets take the same trailing arguments as `test:docker`:
 
     ```bash
-    npm run test:docker:bun:e2e:full test/e2e/tcp_tunnel.js -- -t "throws error"
+    pnpm run test:docker:bun:e2e:full test/e2e/tcp_tunnel.js -- -t "throws error"
     ```
 
-    The container entrypoint is `npm run`, so any script from `package.json`
-    works — e.g. `npm run docker:run -- test:bun:e2e:full`.
+    The container entrypoint is `pnpm run`, so any script from `package.json`
+    works — e.g. `pnpm run docker:run -- test:bun:e2e:full`.
 
 Note: for test in Docker no changes in `/etc/hosts` needed.
 
@@ -88,25 +88,25 @@ Note: for test in Docker no changes in `/etc/hosts` needed.
 1. Run all tests (unit + e2e)
 
     ```bash
-    npm test
+    pnpm test
     ```
 
 2. Run only unit tests
 
     ```bash
-    npm run test:unit
+    pnpm run test:unit
     ```
 
 3. Run only e2e tests
 
     ```bash
-    npm run test:e2e
+    pnpm run test:e2e
     ```
 
 4. Run a specific test file
 
     ```bash
-    npm test test/e2e/anonymize_proxy.js
+    pnpm test test/e2e/anonymize_proxy.js
     ```
 
 ### Run tests with Bun
@@ -116,25 +116,25 @@ https://bun.com, then run:
 
 ```bash
 # Unit tests (always green on Bun, gates every PR)
-npm run test:bun
+pnpm run test:bun
 
 # E2E tests — curated subset known to pass on Bun
-npm run test:bun:e2e:compatible
+pnpm run test:bun:e2e:compatible
 
 # E2E tests — entire suite (some tests rely on Node-only HTTP semantics
 # such as HTTP/1.1 pipelining and stream.pipeline behaviour that current
 # Bun releases don't fully emulate; expect failures)
-npm run test:bun:e2e:full
+pnpm run test:bun:e2e:full
 
 # Everything (unit + full e2e); same expected failures as above
-npm run test:bun:all
+pnpm run test:bun:all
 
 # Everything Bun is known to support (unit + `compatible` e2e)
-npm run test:bun:supported
+pnpm run test:bun:supported
 ```
 
 Or in Docker, for a consistent Linux environment — see the Docker section
-above (`npm run test:docker:bun`).
+above (`pnpm run test:docker:bun`).
 
 In CI, `bun_unit` and `bun_e2e` (in `compatible` mode) run on every PR.
 The full Bun e2e suite is opt-in: trigger the **Check** workflow via

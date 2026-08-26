@@ -15,12 +15,14 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /home/node
 
-COPY --chown=node:node package*.json ./
-RUN npm --quiet set progress=false && npm install
+RUN corepack enable
+
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY --chown=node:node . .
 
 USER node
 
 # Any package.json script can be selected, e.g. `docker run <image> test:bun`.
-ENTRYPOINT [ "npm", "run" ]
+ENTRYPOINT [ "pnpm", "run" ]
 CMD [ "test" ]
