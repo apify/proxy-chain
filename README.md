@@ -560,18 +560,23 @@ specified by the `proxyUrl` parameter.
 The optional `options` parameter is an object with the following properties:
 - `port: Number` - Enables specifying the local port to listen at. By default `0`,
    which means a random port will be selected.
-- `hostname: String` - Local hostname to listen at. By default `localhost`.
+- `hostname: String` - Local hostname to listen at. By default `127.0.0.1`.
 - `ignoreProxyCertificate` - For HTTPS proxy, ignore certificate errors in proxy requests. Useful for proxy with self-signed certificate. By default `false`.
 - `verbose: Boolean` - If `true`, the functions logs a lot. By default `false`.
 
-The result of the function is a local endpoint in a form of `hostname:port`.
+The result of the function is a local endpoint in a form of `hostname:port`,
+where `hostname` is the address the tunnel actually bound to. IPv6 addresses are
+bracketed, e.g. `[::1]:56836`.
+
 All TCP connections made to the local endpoint will be tunneled through the proxy to the target host and port.
 For example, this is useful if you want to access a certain service from a specific IP address.
 
-The tunnel should be eventually closed by calling the `closeTunnel()` function.
+The tunnel does not authenticate its clients and forwards the `proxyUrl`
+credentials upstream, which is why it listens on `127.0.0.1` by default. Only
+pass a non-loopback `hostname` if you restrict access to it by other means -
+doing so emits a `ProxyChainSecurityWarning` via `process.emitWarning()`.
 
-The `createTunnel()` function returns a promise that resolves to a String with
-the path to the local endpoint.
+The tunnel should be eventually closed by calling the `closeTunnel()` function.
 
 For more information, read this [blog post](https://blog.apify.com/tunneling-arbitrary-protocols-over-http-proxy-with-static-ip-address-b3a2222191ff).
 
@@ -579,7 +584,7 @@ Example:
 
 ```javascript
 const host = await createTunnel('http://bob:pass123@proxy.example.com:8000', 'service.example.com:356');
-// Prints something like "localhost:56836"
+// Prints something like "127.0.0.1:56836"
 console.log(host);
 ```
 

@@ -15,7 +15,7 @@ import { closeTunnel, createTunnel, redactUrl } from 'proxy-chain';
     const TARGET_HOST = 'www.example.com:443';
 
     // Create tunnel for the service, this call will start local tunnel and
-    // return a string in format localhost:<selected-port>.
+    // return a string in format 127.0.0.1:<selected-port>.
     // Here we set "port" to 9999, but you can use 0 to get a random port.
     // The "verbose" option causes a lot of logging
     const tunnelInfo = await createTunnel(PROXY_URL, TARGET_HOST, { port: 9999, verbose: true });

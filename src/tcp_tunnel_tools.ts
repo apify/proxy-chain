@@ -2,8 +2,21 @@ import net from 'node:net';
 import { URL } from 'node:url';
 
 import { chain } from './chain.js';
+import { validateListenPort } from './utils/validate_listen_port.js';
 
 const runningServers: Record<string, { server: net.Server, connections: Set<net.Socket> }> = {};
+
+// The tunnel does not authenticate its clients and forwards the proxyUrl credentials
+// upstream, so it must not be reachable off the local machine by default.
+const DEFAULT_LISTEN_HOSTNAME = '127.0.0.1';
+
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '::1', '0:0:0:0:0:0:0:1']);
+
+const isLoopbackHostname = (hostname: string) => {
+    const normalized = hostname.toLowerCase();
+
+    return LOOPBACK_HOSTNAMES.has(normalized) || normalized.startsWith('127.');
+};
 
 const getAddress = (server: net.Server) => {
     const { address: host, port, family } = server.address() as net.AddressInfo;
@@ -19,6 +32,8 @@ export async function createTunnel(
     proxyUrl: string,
     targetHost: string,
     options?: {
+        port?: number;
+        hostname?: string;
         verbose?: boolean;
         ignoreProxyCertificate?: boolean;
     },
@@ -38,7 +53,20 @@ export async function createTunnel(
         throw new Error('Missing target port');
     }
 
-    const verbose = options && options.verbose;
+    const listenPort = options?.port ?? 0;
+    const listenHostname = options?.hostname || DEFAULT_LISTEN_HOSTNAME;
+
+    validateListenPort(listenPort);
+
+    if (!isLoopbackHostname(listenHostname)) {
+        process.emitWarning(
+            `The tunnel is listening on "${listenHostname}", so it may be reachable from other machines.`
+            + ' It does not authenticate its clients and forwards the proxyUrl credentials upstream.',
+            'ProxyChainSecurityWarning',
+        );
+    }
+
+    const verbose = options?.verbose ?? false;
 
     const server: net.Server & { log?: (...args: unknown[]) => void } = net.createServer();
 
@@ -79,8 +107,7 @@ export async function createTunnel(
     const promise = new Promise<string>((resolve, reject) => {
         server.once('error', reject);
 
-        // Let the system pick a random listening port
-        server.listen(0, () => {
+        server.listen(listenPort, listenHostname, () => {
             const address = getAddress(server);
 
             server.off('error', reject);

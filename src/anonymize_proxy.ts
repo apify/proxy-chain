@@ -4,13 +4,14 @@ import type net from 'node:net';
 import { URL } from 'node:url';
 
 import { Server, SOCKS_PROTOCOLS } from './server.js';
+import { validateListenPort } from './utils/validate_listen_port.js';
 
 // Dictionary, key is value returned from anonymizeProxy(), value is Server instance.
 const anonymizedProxyUrlToServer: Record<string, Server> = {};
 
 export interface AnonymizeProxyOptions {
     url: string;
-    port: number;
+    port?: number;
     ignoreProxyCertificate?: boolean;
 }
 
@@ -30,13 +31,10 @@ export const anonymizeProxy = async (
         proxyUrl = options;
     } else {
         proxyUrl = options.url;
-        port = options.port;
+        // Port 0 tells the OS to pick a free ephemeral port, which we read back after `listen()`.
+        port = options.port ?? 0;
 
-        if (port < 0 || port > 65535) {
-            throw new Error(
-                'Invalid "port" option: only values equals or between 0-65535 are valid',
-            );
-        }
+        validateListenPort(port);
 
         if (options.ignoreProxyCertificate !== undefined) {
             ignoreProxyCertificate = options.ignoreProxyCertificate;
