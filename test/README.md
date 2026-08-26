@@ -35,7 +35,7 @@ to have a consistent Linux environment for running tests.
 3. Run all `direct ipv6` test cases across all tests
 
     ```bash
-    pnpm run test:docker test/e2e/server.js -- -t "direct ipv6"
+    pnpm run test:docker test/e2e/server.js -t "direct ipv6"
     ```
 
 4. Run the suite on Bun (the image ships both runtimes)
@@ -55,7 +55,7 @@ to have a consistent Linux environment for running tests.
     All targets take the same trailing arguments as `test:docker`:
 
     ```bash
-    pnpm run test:docker:bun:e2e:full test/e2e/tcp_tunnel.js -- -t "throws error"
+    pnpm run test:docker:bun:e2e:full test/e2e/tcp_tunnel.js -t "throws error"
     ```
 
     The container entrypoint is `pnpm run`, so any script from `package.json`
