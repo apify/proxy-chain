@@ -566,7 +566,7 @@ The optional `options` parameter is an object with the following properties:
 
 The result of the function is a local endpoint in a form of `hostname:port`,
 where `hostname` is the address the tunnel actually bound to. IPv6 addresses are
-bracketed, e.g. `[::1]:56836`. Pass this exact string to `closeTunnel()`.
+bracketed, e.g. `[::1]:56836`.
 
 All TCP connections made to the local endpoint will be tunneled through the proxy to the target host and port.
 For example, this is useful if you want to access a certain service from a specific IP address.
