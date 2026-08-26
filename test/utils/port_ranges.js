@@ -12,4 +12,5 @@ export const PORT_RANGES = {
     socksNoAuth: { min: 20500, max: 20599 },
     socksAuth: { min: 20600, max: 20699 },
     socksAnonymize: { min: 20700, max: 20799 },
+    tcpTunnelListener: { min: 20800, max: 20899 },
 };

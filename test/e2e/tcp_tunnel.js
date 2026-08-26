@@ -1,10 +1,11 @@
 import net from 'node:net';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import http from 'node:http';
 import proxy from 'proxy';
 import portastic from 'portastic';
 
 import { createTunnel, closeTunnel } from '../../src/index.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 const destroySocket = (socket) => new Promise((resolve) => {
     if (!socket || socket.destroyed) return resolve();
@@ -55,10 +56,8 @@ describe('tcp_tunnel.createTunnel', () => {
         const invalidPorts = [-1, 65536, 1.5, '8080'];
 
         for (const port of invalidPorts) {
-            await expectThrowsAsync(
-                async () => { await createTunnel(proxyUrl, 'localhost:9000', { port }); },
-                'The "port" option must be an integer between 0 and 65535',
-            );
+            await expect(createTunnel(proxyUrl, 'localhost:9000', { port }))
+                .rejects.toThrow('The "port" option must be an integer between 0 and 65535');
         }
     });
     // Regression guard for GHSA-5vwf-g8jp-pgj3: createTunnel() used to bind the unspecified address.
@@ -77,12 +76,12 @@ describe('tcp_tunnel.createTunnel', () => {
         it('binds a loopback address by default', async () => {
             tunnel = await createTunnel(PROXY_URL, TARGET);
 
-            expect(tunnel).to.match(/^127\.0\.0\.1:\d+$/);
+            expect(tunnel).toMatch(/^127\.0\.0\.1:\d+$/);
         });
         it('honours an explicit IPv6 hostname and brackets the returned endpoint', async () => {
             tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '::1' });
 
-            expect(tunnel).to.match(/^\[::1\]:\d+$/);
+            expect(tunnel).toMatch(/^\[::1\]:\d+$/);
         });
         it('warns when binding a non-loopback address, but still binds it', async () => {
             const warnings = [];
@@ -97,21 +96,21 @@ describe('tcp_tunnel.createTunnel', () => {
                 process.off('warning', onWarning);
             }
 
-            expect(tunnel).to.match(/^0\.0\.0\.0:\d+$/);
-            expect(warnings.map((warning) => warning.name)).to.include('ProxyChainSecurityWarning');
+            expect(tunnel).toMatch(/^0\.0\.0\.0:\d+$/);
+            expect(warnings.map((warning) => warning.name)).toContain('ProxyChainSecurityWarning');
         });
         it('falls back to loopback when the hostname is blank', async () => {
             tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '' });
 
-            expect(tunnel).to.match(/^127\.0\.0\.1:\d+$/);
+            expect(tunnel).toMatch(/^127\.0\.0\.1:\d+$/);
         });
         it('honours an explicit port', async () => {
-            const [port] = await portastic.find({ min: 50750, max: 51000 });
-            assert.isDefined(port, 'no free port in the test range');
+            const [port] = await portastic.find(PORT_RANGES.tcpTunnelListener);
+            expect(port, 'no free port in the test range').toBeDefined();
 
             tunnel = await createTunnel(PROXY_URL, TARGET, { port });
 
-            expect(tunnel).to.equal(`127.0.0.1:${port}`);
+            expect(tunnel).toBe(`127.0.0.1:${port}`);
         });
     });
     it('correctly tunnels to tcp service and then is able to close the connection', () => {
