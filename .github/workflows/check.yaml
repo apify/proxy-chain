@@ -51,13 +51,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                # pnpm 10 supports Node ≥18, so Node 20 stays in the matrix.
-                # Node 26 is intentionally NOT here yet: a pre-existing tsx + yargs (16.x
-                # CJS bin) + Node 26 ESM-loader incompatibility breaks `mocha` under the
-                # repo's `node-option: ["import=tsx"]` config. Reproducible on `master`
-                # with plain `npm install`, so it's not a migration regression — but the
-                # fix belongs in a separate change.
-                node-version: [20, 22, 24]
+                # pnpm 10 supports Node >=18, so Node 20 stays in the matrix.
+                node-version: [20, 22, 24, 26]
 
         steps:
             - name: Checkout repository

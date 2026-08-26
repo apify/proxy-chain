@@ -12,7 +12,7 @@ allowBuilds:
   # puppeteer downloads its Chromium binary in postinstall — required for the e2e
   # tests that drive headless Chrome through the proxy.
   puppeteer: true
-  # esbuild's postinstall installs the platform-specific binary — required by tsx.
+  # esbuild's postinstall installs the platform-specific binary — required by vitest and tsx.
   esbuild: true
   # core-js' postinstall only prints a donation banner; no functional impact.
   core-js: false

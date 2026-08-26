@@ -1,0 +1,6 @@
+# Without this, `COPY . .` overwrites the image's freshly installed node_modules
+# with the host's (wrong-platform esbuild/rollup/puppeteer binaries).
+node_modules
+dist
+coverage
+.git

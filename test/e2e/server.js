@@ -7,7 +7,7 @@ import tls from 'node:tls';
 import net from 'node:net';
 import dns from 'node:dns';
 import util from 'node:util';
-import { expect, assert } from 'chai';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import proxy from 'proxy';
 import http from 'node:http';
 import https from 'node:https';
@@ -19,6 +19,7 @@ import { gotScraping } from 'got-scraping';
 import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
 import { Server, RequestError } from '../../src/index.js';
 import { TargetServer } from '../utils/target_server.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 /*
 TODO - add following tests:
@@ -158,6 +159,8 @@ const curlGet = (url, proxyUrl, returnResponse) => {
     });
 };
 
+const TEST_SUITE_TIMEOUT_MILLIS = 30_000;
+
 /**
  * This function creates a function to test the proxy, with specific configuration options.
  * This is to avoid duplication of the code, since many of the tests are same for the specific configurations.
@@ -166,9 +169,7 @@ const curlGet = (url, proxyUrl, returnResponse) => {
 const createTestSuite = ({
     useSsl, useMainProxy, mainProxyAuth, mainProxyServerType, useUpstreamProxy, upstreamProxyAuth, testCustomResponse,
 }) => {
-    return function () {
-        this.timeout(30 * 1000);
-
+    return () => {
         let freePorts;
 
         let targetServerPort;
@@ -220,8 +221,8 @@ const createTestSuite = ({
 
         let counter = 0;
 
-        before(() => {
-            return portastic.find({ min: 50000, max: 50500 }).then((ports) => {
+        beforeAll(() => {
+            return portastic.find(PORT_RANGES.server).then((ports) => {
                 freePorts = ports;
 
                 // Setup target HTTP server
@@ -307,11 +308,11 @@ const createTestSuite = ({
                                 requestAuthentication: false,
                                 upstreamProxyUrl: null,
                             };
-                            // If prepareRequestFunction() will cause error, don't add to this test array as it will fail in after()
+                            // If prepareRequestFunction() will cause error, don't add to this test array as it will fail in afterAll()
                             let addToMainProxyServerConnectionIds = true;
 
-                            expect(request).to.be.an('object');
-                            expect(port).to.be.an('number');
+                            expect(request).toBeTypeOf('object');
+                            expect(port).toBeTypeOf('number');
 
                             // All the fake hostnames here have a .gov TLD, because without a TLD,
                             // the tests would fail on GitHub Actions. We assume nobody will register
@@ -345,8 +346,8 @@ const createTestSuite = ({
                             if (hostname === 'test-custom-response-simple.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = new URL(request.url);
-                                    expect(trgParsed.host).to.be.eql(hostname);
-                                    expect(trgParsed.pathname).to.be.eql('/some/path');
+                                    expect(trgParsed.host).toBe(hostname);
+                                    expect(trgParsed.pathname).toBe('/some/path');
                                     return {
                                         body: 'TEST CUSTOM RESPONSE SIMPLE',
                                     };
@@ -359,10 +360,10 @@ const createTestSuite = ({
                             if (hostname === 'test-custom-response-complex.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = new URL(request.url);
-                                    expect(trgParsed.hostname).to.be.eql(hostname);
-                                    expect(trgParsed.pathname).to.be.eql('/some/path');
-                                    expect(trgParsed.search).to.be.eql('?query=456');
-                                    expect(port).to.be.eql(1234);
+                                    expect(trgParsed.hostname).toBe(hostname);
+                                    expect(trgParsed.pathname).toBe('/some/path');
+                                    expect(trgParsed.search).toBe('?query=456');
+                                    expect(port).toBe(1234);
                                     return {
                                         statusCode: 201,
                                         headers: {
@@ -377,8 +378,8 @@ const createTestSuite = ({
                             if (hostname === 'test-custom-response-long.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = new URL(request.url);
-                                    expect(trgParsed.host).to.be.eql(hostname);
-                                    expect(trgParsed.pathname).to.be.eql('/');
+                                    expect(trgParsed.host).toBe(hostname);
+                                    expect(trgParsed.pathname).toBe('/');
                                     return {
                                         body: 'X'.repeat(5000000),
                                     };
@@ -388,8 +389,8 @@ const createTestSuite = ({
                             if (hostname === 'test-custom-response-promised.gov') {
                                 result.customResponseFunction = () => {
                                     const trgParsed = new URL(request.url);
-                                    expect(trgParsed.host).to.be.eql(hostname);
-                                    expect(trgParsed.pathname).to.be.eql('/some/path');
+                                    expect(trgParsed.host).toBe(hostname);
+                                    expect(trgParsed.pathname).toBe('/some/path');
                                     return Promise.resolve().then(() => {
                                         return {
                                             body: 'TEST CUSTOM RESPONSE PROMISED',
@@ -478,7 +479,7 @@ const createTestSuite = ({
                     mainProxyServer.server.keepAliveTimeout = 0;
 
                     mainProxyServer.on('connectionClosed', ({ connectionId, stats }) => {
-                        assert.include(mainProxyServer.getConnectionIds(), connectionId);
+                        expect(mainProxyServer.getConnectionIds()).toContain(connectionId);
                         mainProxyServerConnectionsClosed.push(connectionId);
                         const index = mainProxyServerConnectionIds.indexOf(connectionId);
                         mainProxyServerConnectionIds.splice(index, 1);
@@ -494,8 +495,8 @@ const createTestSuite = ({
 
                     // Ensure the port numbers are correct
                     if (mainProxyServer) {
-                        expect(mainProxyServer.port).to.be.eql(mainProxyServerPort);
-                        expect(mainProxyServer.server.address().port).to.be.eql(mainProxyServerPort);
+                        expect(mainProxyServer.port).toBe(mainProxyServerPort);
+                        expect(mainProxyServer.server.address().port).toBe(mainProxyServerPort);
                     }
 
                     if (useMainProxy) {
@@ -505,7 +506,7 @@ const createTestSuite = ({
                         mainProxyUrl = `${proxySchema}://${auth}127.0.0.1:${mainProxyServerPort}`;
                     }
                 });
-        });
+        }, TEST_SUITE_TIMEOUT_MILLIS);
 
         // Helper functions
 
@@ -525,24 +526,24 @@ const createTestSuite = ({
 
             if (useSsl) {
                 return promise.then(() => {
-                    assert.fail();
+                    expect.unreachable();
                 })
                     .catch((err) => {
-                        expect(err.message.slice(-3)).to.contain(`${expectedStatusCode}`);
+                        expect(err.message.slice(-3)).toContain(`${expectedStatusCode}`);
                     })
                     .finally(() => {
                         mainProxyServer.removeListener('requestFailed', onRequestFailed);
                     });
             }
             return promise.then((response) => {
-                expect(response.statusCode).to.eql(expectedStatusCode);
-                expect(response.headers['content-type']).to.eql('text/plain; charset=utf-8');
+                expect(response.statusCode).toBe(expectedStatusCode);
+                expect(response.headers['content-type']).toBe('text/plain; charset=utf-8');
                 if (expectedStatusCode === 500) {
-                    expect(requestError).to.have.own.property('message');
-                    expect(failedRequest).to.have.own.property('url');
+                    expect(requestError).toHaveProperty('message');
+                    expect(failedRequest).toHaveProperty('url');
                 } else {
-                    expect(requestError).to.eql(null);
-                    expect(failedRequest).to.eql(null);
+                    expect(requestError).toBe(null);
+                    expect(failedRequest).toBe(null);
                 }
                 return response;
             })
@@ -561,11 +562,11 @@ const createTestSuite = ({
                 return func()
                     .then(() => {
                         if (useMainProxy) {
-                            expect(mainCount).to.be.below(mainProxyServer.stats.connectRequestCount + mainProxyServer.stats.httpRequestCount);
+                            expect(mainCount).toBeLessThan(mainProxyServer.stats.connectRequestCount + mainProxyServer.stats.httpRequestCount);
                         }
 
                         if (useUpstreamProxy) {
-                            expect(upstreamCount).to.be.below(upstreamProxyRequestCount);
+                            expect(upstreamCount).toBeLessThan(upstreamProxyRequestCount);
                         }
                     });
             });
@@ -579,8 +580,8 @@ const createTestSuite = ({
                 try {
                     const response = await requestPromised(opts);
 
-                    expect(response.body).to.eql('Hello world!');
-                    expect(response.statusCode).to.eql(200);
+                    expect(response.body).toBe('Hello world!');
+                    expect(response.statusCode).toBe(200);
                 } finally {
                     upstreamProxyHostname = '127.0.0.1';
                 }
@@ -608,8 +609,8 @@ const createTestSuite = ({
                     },
                 });
 
-                expect(response.body).to.eql('Hello world!');
-                expect(response.statusCode).to.eql(200);
+                expect(response.body).toBe('Hello world!');
+                expect(response.statusCode).toBe(200);
             });
         } else if (!useSsl && process.versions.node.split('.')[0] >= 15 && mainProxyServerType !== 'https') {
             // Version check is required because HTTP/2 negotiation
@@ -634,8 +635,8 @@ const createTestSuite = ({
                     },
                 });
 
-                expect(response.body).to.eql('Hello world!');
-                expect(response.statusCode).to.eql(200);
+                expect(response.body).toBe('Hello world!');
+                expect(response.statusCode).toBe(200);
             });
         }
 
@@ -645,8 +646,8 @@ const createTestSuite = ({
                 opts.method = method;
                 return requestPromised(opts)
                     .then((response) => {
-                        expect(response.body).to.eql('Hello world!');
-                        expect(response.statusCode).to.eql(200);
+                        expect(response.body).toBe('Hello world!');
+                        expect(response.statusCode).toBe(200);
                     });
             });
         });
@@ -659,9 +660,9 @@ const createTestSuite = ({
                 opts.headers['Content-Type'] = 'text/my-test';
                 return requestPromised(opts)
                     .then((response) => {
-                        expect(response.body).to.eql(opts.body);
-                        expect(response.headers['content-type']).to.eql(opts.headers['Content-Type']);
-                        expect(response.statusCode).to.eql(200);
+                        expect(response.body).toBe(opts.body);
+                        expect(response.headers['content-type']).toBe(opts.headers['Content-Type']);
+                        expect(response.statusCode).toBe(200);
                     });
             });
         });
@@ -677,29 +678,29 @@ const createTestSuite = ({
                 // So we skip this test for Node 12+.
                 // Note that after Node.js introduced a stricter HTTP parsing as a security hotfix
                 // (https://snyk.io/blog/node-js-release-fixes-a-critical-http-security-vulnerability/)
-                // this test broke down so we had to add NODE_OPTIONS=--insecure-http-parser to "npm test" command
+                // this test broke down so we had to run Node with --insecure-http-parser (set in vitest.config.ts).
                 const skipInvalidHeaderValue = nodeMajorVersion >= 12;
 
                 const opts = getRequestOpts(`/get-non-standard-headers?skipInvalidHeaderValue=${skipInvalidHeaderValue ? '1' : '0'}`);
                 opts.method = 'GET';
                 return requestPromised(opts)
                     .then((response) => {
-                        expect(response.body).to.eql('Hello sir!');
-                        expect(response.statusCode).to.eql(200);
-                        expect(response.headers).to.be.an('object');
+                        expect(response.body).toBe('Hello sir!');
+                        expect(response.statusCode).toBe(200);
+                        expect(response.headers).toBeTypeOf('object');
 
                         // The server returns three headers:
                         //  'Invalid Header With Space': 'HeaderValue1',
                         //  'X-Normal-Header': 'HeaderValue2',
                         //  'Invalid-Header-Value': 'some\value',
                         // With HTTP proxy, the invalid headers should be removed, otherwise they should be present
-                        expect(response.headers['x-normal-header']).to.eql('HeaderValue2');
+                        expect(response.headers['x-normal-header']).toBe('HeaderValue2');
                         if (useMainProxy && !useSsl) {
-                            expect(response.headers['invalid header with space']).to.eql(undefined);
-                            expect(response.headers['invalid-header-value']).to.eql(undefined);
+                            expect(response.headers['invalid header with space']).toBe(undefined);
+                            expect(response.headers['invalid-header-value']).toBe(undefined);
                         } else {
-                            expect(response.headers['invalid header with space']).to.eql('HeaderValue1');
-                            expect(response.headers['invalid-header-value']).to.eql(skipInvalidHeaderValue ? undefined : 'some\value');
+                            expect(response.headers['invalid header with space']).toBe('HeaderValue1');
+                            expect(response.headers['invalid-header-value']).toBe(skipInvalidHeaderValue ? undefined : 'some\value');
                         }
                     });
             });
@@ -711,11 +712,11 @@ const createTestSuite = ({
                     return requestPromised(opts)
                         .then((response) => {
                             if (useMainProxy) {
-                                expect(response.statusCode).to.eql(592);
-                                expect(response.body).to.eql('Bad status!');
+                                expect(response.statusCode).toBe(592);
+                                expect(response.body).toBe('Bad status!');
                             } else {
-                                expect(response.statusCode).to.eql(55);
-                                expect(response.body).to.eql('Bad status!');
+                                expect(response.statusCode).toBe(55);
+                                expect(response.body).toBe('Bad status!');
                             }
                         });
                 });
@@ -727,11 +728,11 @@ const createTestSuite = ({
             opts.method = 'GET';
             return requestPromised(opts)
                 .then((response) => {
-                    expect(response.body).to.eql('Hooray!');
-                    expect(response.statusCode).to.eql(200);
-                    expect(response.headers).to.be.an('object');
+                    expect(response.body).toBe('Hooray!');
+                    expect(response.statusCode).toBe(200);
+                    expect(response.headers).toBeTypeOf('object');
 
-                    expect(response.headers['repeating-header']).to.eql('HeaderValue1, HeaderValue2');
+                    expect(response.headers['repeating-header']).toBe('HeaderValue1, HeaderValue2');
                 });
         });
 
@@ -779,7 +780,7 @@ const createTestSuite = ({
                     client.on('data', (data) => {
                         // console.log('received data: ' + data.toString());
                         try {
-                            expect(data.toString()).to.match(/^HTTP\/1\.1 200 OK/);
+                            expect(data.toString()).toMatch(/^HTTP\/1\.1 200 OK/);
                             client.end();
                         } catch (err) {
                             reject(err);
@@ -808,8 +809,8 @@ const createTestSuite = ({
 
                 request(opts, (error, response, body) => {
                     if (error) return reject(error);
-                    expect(response.statusCode).to.eql(200);
-                    expect(body).to.eql(DATA_CHUNKS_COMBINED);
+                    expect(response.statusCode).toBe(200);
+                    expect(body).toBe(DATA_CHUNKS_COMBINED);
                     resolve();
                 });
 
@@ -837,8 +838,8 @@ const createTestSuite = ({
             opts.method = 'GET';
             return requestPromised(opts)
                 .then((response) => {
-                    expect(response.body).to.match(/^a{1000000}$/);
-                    expect(response.statusCode).to.eql(200);
+                    expect(response.body).toMatch(/^a{1000000}$/);
+                    expect(response.statusCode).toBe(200);
                     const expectedSize = 1000000; // "a" takes one byte, so one 1 milion "a" should be 1MB
 
                     // this condition is here because some tests do not use prepareRequestFunction
@@ -854,8 +855,12 @@ const createTestSuite = ({
                             || mainProxyServerConnectionId2Stats[lastConnectionId];
 
                         // 5% range because network negotiation adds to network trafic
-                        expect(stats.srcTxBytes).to.be.within(expectedSize, expectedSize * 1.05);
-                        expect(stats.trgRxBytes).to.be.within(expectedSize, expectedSize * 1.05);
+                        const expectWithin5Percent = (value) => {
+                            expect(value).toBeGreaterThanOrEqual(expectedSize);
+                            expect(value).toBeLessThanOrEqual(expectedSize * 1.05);
+                        };
+                        expectWithin5Percent(stats.srcTxBytes);
+                        expectWithin5Percent(stats.trgRxBytes);
                     }
                 });
         };
@@ -868,8 +873,8 @@ const createTestSuite = ({
             const opts = getRequestOpts('/redirect-to-hello-world');
             return requestPromised(opts)
                 .then((response) => {
-                    expect(response.body).to.eql('Hello world!');
-                    expect(response.statusCode).to.eql(200);
+                    expect(response.body).toBe('Hello world!');
+                    expect(response.statusCode).toBe(200);
                 });
         });
 
@@ -882,8 +887,8 @@ const createTestSuite = ({
                     return requestPromised(opts);
                 })
                 .then((response) => {
-                    expect(response.body).to.eql('Unauthorized');
-                    expect(response.statusCode).to.eql(401);
+                    expect(response.body).toBe('Unauthorized');
+                    expect(response.statusCode).toBe(401);
                 })
                 .then(() => {
                     // Then test valid ones (passed as they are)
@@ -892,8 +897,8 @@ const createTestSuite = ({
                     return requestPromised(opts);
                 })
                 .then((response) => {
-                    expect(response.body).to.eql('OK');
-                    expect(response.statusCode).to.eql(200);
+                    expect(response.body).toBe('OK');
+                    expect(response.statusCode).toBe(200);
                 })
                 .then(() => {
                     // Then test URI encoded characters (must also work)
@@ -902,8 +907,8 @@ const createTestSuite = ({
                     return requestPromised(opts);
                 })
                 .then((response) => {
-                    expect(response.body).to.eql('OK');
-                    expect(response.statusCode).to.eql(200);
+                    expect(response.body).toBe('OK');
+                    expect(response.statusCode).toBe(200);
                 });
         });
 
@@ -915,7 +920,7 @@ const createTestSuite = ({
             it('handles GET request using puppeteer', async () => {
                 const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const response = await puppeteerGet(targetUrl, mainProxyUrl);
-                expect(response).to.contain('Hello world!');
+                expect(response).toContain('Hello world!');
             });
         }
 
@@ -924,7 +929,7 @@ const createTestSuite = ({
                 const targetUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const proxySchema = mainProxyServerType === 'https' ? 'https' : 'http';
                 const response = await puppeteerGet(targetUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`);
-                expect(response).to.contain('Proxy credentials required');
+                expect(response).toContain('Proxy credentials required');
             });
         }
 
@@ -934,7 +939,7 @@ const createTestSuite = ({
             _it('handles GET request from curl', async () => {
                 const curlUrl = `${useSsl ? 'https' : 'http'}://${LOCALHOST_TEST}:${targetServerPort}/hello-world`;
                 const output = await curlGet(curlUrl, mainProxyUrl, true);
-                expect(output).to.contain('Hello world!');
+                expect(output).toContain('Hello world!');
             });
         }
 
@@ -945,14 +950,10 @@ const createTestSuite = ({
                 // For SSL, we need to return curl's stderr to check what kind of error was there
                 const output = await curlGet(curlUrl, `${proxySchema}://bad:password@127.0.0.1:${mainProxyServerPort}`, !useSsl);
                 if (useSsl) {
-                    expect(output).to.contain.oneOf([
-                        // Old error message before dafdb20a26d0c890e83dea61a104b75408481ebd
-                        'Received HTTP code 407 from proxy after CONNECT',
-                        // and that after
-                        'CONNECT tunnel failed, response 407',
-                    ]);
+                    // The first alternative is the old wording, before dafdb20a26d0c890e83dea61a104b75408481ebd.
+                    expect(output).toMatch(/Received HTTP code 407 from proxy after CONNECT|CONNECT tunnel failed, response 407/);
                 } else {
-                    expect(output).to.contain('Proxy credentials required');
+                    expect(output).toContain('Proxy credentials required');
                 }
             });
         }
@@ -980,7 +981,7 @@ const createTestSuite = ({
                 });
             })
                 .then((data) => {
-                    expect(data).to.eql('I received: hello world');
+                    expect(data).toBe('I received: hello world');
                 });
         };
 
@@ -1007,7 +1008,7 @@ const createTestSuite = ({
                     const opts = getRequestOpts(`http://127.0.0.1:${server.address().port}`);
                     return requestPromised(opts)
                         .then((response) => {
-                            expect(response.statusCode).to.eql(599);
+                            expect(response.statusCode).toBe(599);
                             server.close();
                         });
                 });
@@ -1034,14 +1035,14 @@ const createTestSuite = ({
                     req.end();
                 });
 
-                expect(response.statusCode).to.equal(400);
+                expect(response.statusCode).toBe(400);
             });
 
             _it('returns 404 for non-existent hostname', () => {
                 const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
                 return requestPromised(opts)
                     .then((response) => {
-                        expect(response.statusCode).to.eql(404);
+                        expect(response.statusCode).toBe(404);
                     });
             });
 
@@ -1049,7 +1050,7 @@ const createTestSuite = ({
                 const opts = { url: `${mainProxyUrl}` };
                 return requestPromised(opts)
                     .then((response) => {
-                        expect(response.statusCode).to.eql(400);
+                        expect(response.statusCode).toBe(400);
                     });
             });
 
@@ -1059,11 +1060,11 @@ const createTestSuite = ({
                 opts.headers.TE = 'MyTest';
                 return requestPromised(opts)
                     .then((response) => {
-                        expect(response.statusCode).to.eql(200);
-                        expect(response.headers['content-type']).to.eql('application/json');
+                        expect(response.statusCode).toBe(200);
+                        expect(response.headers['content-type']).toBe('application/json');
                         const req = JSON.parse(response.body);
-                        expect(req.headers['x-test-header']).to.eql('my-test-value');
-                        expect(req.headers.te).to.eql(useSsl ? 'MyTest' : undefined);
+                        expect(req.headers['x-test-header']).toBe('my-test-value');
+                        expect(req.headers.te).toBe(useSsl ? 'MyTest' : undefined);
                     });
             });
 
@@ -1105,8 +1106,8 @@ const createTestSuite = ({
                             req.end();
                         });
 
-                        expect(response.statusCode).to.equal(200);
-                        expect(head.length).to.equal(0);
+                        expect(response.statusCode).toBe(200);
+                        expect(head).toHaveLength(0);
                         socket.destroy();
                     } finally {
                         await new Promise((resolve) => server.close(resolve));
@@ -1144,7 +1145,7 @@ const createTestSuite = ({
                         .then((response) => {
                             // Check we received our authRealm
                             if (!useSsl) {
-                                expect(response.headers['proxy-authenticate']).to.eql(`Basic realm="${AUTH_REALM}"`);
+                                expect(response.headers['proxy-authenticate']).toBe(`Basic realm="${AUTH_REALM}"`);
                             }
                         });
                 });
@@ -1185,17 +1186,13 @@ const createTestSuite = ({
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-username`);
 
                     if (useSsl) {
-                        try {
-                            await requestPromised(opts);
-                            expect(false).to.be.eql(true);
-                        } catch (error) {
-                            expect(error.message).to.be.eql('tunneling socket could not be established, statusCode=597');
-                        }
+                        await expect(requestPromised(opts))
+                            .rejects.toThrow('tunneling socket could not be established, statusCode=597');
                     } else {
                         const response = await requestPromised(opts);
 
-                        expect(response.statusCode).to.be.eql(597);
-                        expect(response.body).to.be.eql('Invalid colon in username in upstream proxy credentials');
+                        expect(response.statusCode).toBe(597);
+                        expect(response.body).toBe('Invalid colon in username in upstream proxy credentials');
                     }
                 });
 
@@ -1219,8 +1216,8 @@ const createTestSuite = ({
                         opts.gzip = true;
                         return requestPromised(opts)
                             .then((response) => {
-                                expect(response.statusCode).to.eql(200);
-                                expect(response.body).to.eql('Hello, world!');
+                                expect(response.statusCode).toBe(200);
+                                expect(response.body).toBe('Hello, world!');
                             });
                     });
 
@@ -1228,8 +1225,8 @@ const createTestSuite = ({
                         const opts = getRequestOpts('http://test-custom-response-simple.gov/some/path');
                         return requestPromised(opts)
                             .then((response) => {
-                                expect(response.statusCode).to.eql(200);
-                                expect(response.body).to.eql('TEST CUSTOM RESPONSE SIMPLE');
+                                expect(response.statusCode).toBe(200);
+                                expect(response.body).toBe('TEST CUSTOM RESPONSE SIMPLE');
                             });
                     });
 
@@ -1237,12 +1234,12 @@ const createTestSuite = ({
                         const opts = getRequestOpts('http://test-custom-response-complex.gov:1234/some/path?query=456');
                         return requestPromised(opts)
                             .then((response) => {
-                                expect(response.statusCode).to.eql(201);
-                                expect(response.headers).to.deep.include({
+                                expect(response.statusCode).toBe(201);
+                                expect(response.headers).toMatchObject({
                                     'my-test-header1': 'bla bla bla',
                                     'my-test-header2': 'bla bla bla2',
                                 });
-                                expect(response.body).to.eql('TEST CUSTOM RESPONSE COMPLEX');
+                                expect(response.body).toBe('TEST CUSTOM RESPONSE COMPLEX');
                             });
                     });
 
@@ -1250,10 +1247,10 @@ const createTestSuite = ({
                         const opts = getRequestOpts('http://test-custom-response-long.gov');
                         return requestPromised(opts)
                             .then((response) => {
-                                expect(response.statusCode).to.eql(200);
-                                expect(response.headers['content-length']).to.eql('5000000');
-                                expect(response.body.length).to.eql(5000000);
-                                expect(response.body).to.eql('X'.repeat(5000000));
+                                expect(response.statusCode).toBe(200);
+                                expect(response.headers['content-length']).toBe('5000000');
+                                expect(response.body).toHaveLength(5000000);
+                                expect(response.body).toBe('X'.repeat(5000000));
                             });
                     });
 
@@ -1261,8 +1258,8 @@ const createTestSuite = ({
                         const opts = getRequestOpts('http://test-custom-response-promised.gov/some/path');
                         return requestPromised(opts)
                             .then((response) => {
-                                expect(response.statusCode).to.eql(200);
-                                expect(response.body).to.eql('TEST CUSTOM RESPONSE PROMISED');
+                                expect(response.statusCode).toBe(200);
+                                expect(response.body).toBe('TEST CUSTOM RESPONSE PROMISED');
                             });
                     });
 
@@ -1279,15 +1276,15 @@ const createTestSuite = ({
             }
         }
 
-        after(async function () {
-            this.timeout(3 * 1000);
-            await wait(1000);
-
-            // Ensure all handlers are removed
-            if (mainProxyServer) {
-                expect(mainProxyServer.getConnectionIds()).to.be.deep.eql([]);
-            }
-            expect(mainProxyServerConnectionIds).to.be.deep.eql([]);
+        afterAll(async () => {
+            // Teardown is asynchronous, so poll instead of sleeping a flat second —
+            // this hook runs once per suite variant.
+            await vi.waitFor(() => {
+                if (mainProxyServer) {
+                    expect(mainProxyServer.getConnectionIds()).toStrictEqual([]);
+                }
+                expect(mainProxyServerConnectionIds).toStrictEqual([]);
+            });
 
             const closedSomeConnectionsTwice = mainProxyServerConnectionsClosed
                 .reduce((duplicateConnections, id, index) => {
@@ -1297,7 +1294,7 @@ const createTestSuite = ({
                     return duplicateConnections;
                 }, []);
 
-            expect(closedSomeConnectionsTwice).to.be.deep.eql([]);
+            expect(closedSomeConnectionsTwice).toStrictEqual([]);
             if (mainProxyServerStatisticsInterval) clearInterval(mainProxyServerStatisticsInterval);
 
             if (mainProxyServer) {
@@ -1316,11 +1313,15 @@ const createTestSuite = ({
             if (targetServer) {
                 await targetServer.close();
             }
-        });
+        }, 3_000);
     };
 };
 
-describe('Test 0 port option', async () => {
+// The suite launches Chromium and a proxy chain, so it owns its timeout rather than
+// leaving every call site to remember it.
+const describeTestSuite = (name, config) => describe(name, { timeout: TEST_SUITE_TIMEOUT_MILLIS }, createTestSuite(config));
+
+describe('Test 0 port option', () => {
     it('Port inherits net port', async () => {
         for (let i = 0; i < 10; i++) {
             const server = new Server({
@@ -1328,7 +1329,7 @@ describe('Test 0 port option', async () => {
             });
             /* eslint-disable no-await-in-loop */
             await server.listen();
-            expect(server.port).to.be.eql(server.server.address().port);
+            expect(server.port).toBe(server.server.address().port);
             await server.close(true);
             /* eslint-enable no-await-in-loop */
         }
@@ -1340,34 +1341,27 @@ describe(`Test ${LOCALHOST_TEST} setup`, () => {
         return util.promisify(dns.lookup).bind(dns)(LOCALHOST_TEST, { family: 4 })
             .then(({ address, family }) => {
                 // If this fails, see README.md !!!
-                expect(address).to.eql('127.0.0.1');
-                expect(family).to.eql(4);
+                expect(address).toBe('127.0.0.1');
+                expect(family).toBe(4);
             });
     });
 });
 
 // Test direct connection to target server to ensure our tests are correct
-describe('Server (HTTP -> Target)', createTestSuite({
+describeTestSuite('Server (HTTP -> Target)', {
     useSsl: false,
     useMainProxy: false,
-}));
-describe('Server (HTTPS -> Target)', createTestSuite({
+});
+describeTestSuite('Server (HTTPS -> Target)', {
     useSsl: true,
     useMainProxy: false,
-}));
+});
 
 describe('non-200 upstream connect response', () => {
-    // No assertion planning :(
-    // https://github.com/chaijs/chai/issues/670
-    let success = false;
-
-    after(() => {
-        if (!success) {
-            throw new Error('Failed');
-        }
-    });
-
     it('fails downstream with 590', async () => {
+        // The assertions live in a 'connect' event handler, so plan them to be sure they ran.
+        expect.assertions(3);
+
         const server = http.createServer();
         server.on('connect', (_request, socket) => {
             socket.once('error', () => {});
@@ -1397,10 +1391,9 @@ describe('non-200 upstream connect response', () => {
                 },
             });
             req.once('connect', (response, socket, head) => {
-                expect(response.statusCode).to.equal(590);
-                expect(response.statusMessage).to.equal('UPSTREAM403');
-                expect(head.length).to.equal(0);
-                success = true;
+                expect(response.statusCode).toBe(590);
+                expect(response.statusMessage).toBe('UPSTREAM403');
+                expect(head).toHaveLength(0);
 
                 socket.once('close', async () => {
                     await proxyServer.close();
@@ -1438,7 +1431,7 @@ it('supports localAddress', async () => {
     });
 
     try {
-        expect(response.body).to.be.equal('::ffff:127.0.0.2');
+        expect(response.body).toBe('::ffff:127.0.0.2');
     } finally {
         await server.close();
         await util.promisify(target.close.bind(target))();
@@ -1452,7 +1445,7 @@ it('supports https proxy relay', async () => {
     });
 
     const proxyServer = new Server({
-        port: 6666,
+        port: 0,
         prepareRequestFunction: () => {
             console.log(`https://localhost:${target.address().port}`);
             return {
@@ -1471,14 +1464,14 @@ it('supports https proxy relay', async () => {
     try {
         await requestPromised({
             url: 'https://www.google.com',
-            proxy: 'http://localhost:6666',
+            proxy: `http://localhost:${proxyServer.port}`,
             strictSSL: false,
         });
     } catch (e) {
         // the request will fail with the following error:
         // Error: tunneling socket could not be established, statusCode=599
     }
-    expect(proxyServerError).to.be.equal(false);
+    expect(proxyServerError).toBe(false);
 
     await proxyServer.close();
     await util.promisify(target.close.bind(target))();
@@ -1525,7 +1518,7 @@ it('supports custom CONNECT server handler', async () => {
             }).on('error', reject).end();
         });
 
-        expect(response).to.be.equal('Hello, world!');
+        expect(response).toBe('Hello, world!');
     } finally {
         await server.close();
     }
@@ -1597,7 +1590,7 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
         await util.promisify(target.listen.bind(target))(0);
 
         const proxyServer = new Server({
-            port: 6666,
+            port: 0,
             prepareRequestFunction: () => {
                 return {
                     upstreamProxyUrl: `https://localhost:${target.address().port}`,
@@ -1618,13 +1611,13 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
          * so when the SSL certificate is not trusted (self-signed, expired, invalid), client will reject the connection
          */
         const response = await requestPromised({
-            proxy: 'http://localhost:6666',
+            proxy: `http://localhost:${proxyServer.port}`,
             url: 'http://httpbin.org/ip',
         });
 
-        expect(proxyServerError).to.be.equal(false);
+        expect(proxyServerError).toBe(false);
 
-        expect(response.statusCode).to.be.equal(599);
+        expect(response.statusCode).toBe(599);
 
         await proxyServer.close();
         await util.promisify(target.close.bind(target))();
@@ -1639,7 +1632,7 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
         await util.promisify(target.listen.bind(target))(0);
 
         const proxyServer = new Server({
-            port: 6666,
+            port: 0,
             prepareRequestFunction: () => {
                 return {
                     ignoreUpstreamProxyCertificate: true,
@@ -1661,14 +1654,14 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
          * so when the SSL certificate is not trusted (self-signed, expired, invalid), client won't reject the connection
          */
         const response = await requestPromised({
-            proxy: 'http://localhost:6666',
+            proxy: `http://localhost:${proxyServer.port}`,
             url: 'http://httpbin.org/ip',
         });
 
-        expect(proxyServerError).to.be.equal(false);
+        expect(proxyServerError).toBe(false);
 
-        expect(response.statusCode).to.be.equal(200);
-        expect(response.body).to.be.equal(responseMessage);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toBe(responseMessage);
 
         await proxyServer.close();
         await util.promisify(target.close.bind(target))();
@@ -1710,13 +1703,13 @@ mainProxyServerTypeVariants.forEach((mainProxyServerType) => {
             const baseDesc = `Server (${useSsl ? 'HTTPS' : 'HTTP'} -> ${proxyTypeLabel} Main proxy`;
 
             // Test custom response separately (it doesn't use upstream proxies)
-            describe(`${baseDesc} -> Target + custom responses)`, createTestSuite({
+            describeTestSuite(`${baseDesc} -> Target + custom responses)`, {
                 useMainProxy: true,
                 useSsl,
                 mainProxyAuth,
                 mainProxyServerType,
                 testCustomResponse: true,
-            }));
+            });
 
             useUpstreamProxyVariants.forEach((useUpstreamProxy) => {
                 // If useUpstreamProxy is not used, only try one variant of upstreamProxyAuth
@@ -1741,14 +1734,14 @@ mainProxyServerTypeVariants.forEach((mainProxyServerType) => {
                     }
                     desc += '-> Target)';
 
-                    describe(desc, createTestSuite({
+                    describeTestSuite(desc, {
                         useMainProxy: true,
                         useSsl,
                         useUpstreamProxy,
                         mainProxyAuth,
                         mainProxyServerType,
                         upstreamProxyAuth,
-                    }));
+                    });
                 });
             });
         });
@@ -1760,14 +1753,14 @@ describe('Socket error handler regression test', () => {
     let logs = [];
     const originalLog = console.log;
 
-    before(() => {
+    beforeAll(() => {
         console.log = (...args) => {
             logs.push(args.join(' '));
             originalLog.apply(console, args);
         };
     });
 
-    after(() => {
+    afterAll(() => {
         console.log = originalLog;
     });
 
@@ -1791,37 +1784,24 @@ describe('Socket error handler regression test', () => {
 
         server.on('error', () => {});
 
-        const settled = new Promise((resolve, reject) => {
-            server.server.once('connection', (serverSocket) => {
-                setImmediate(() => {
-                    try {
-                        expect(server.listenerCount('error')).to.equal(1);
-                        expect(serverSocket.listenerCount('error')).to.equal(2);
-
-                        serverSocket.emit('error', new Error('Regression test error'));
-
-                        setTimeout(() => {
-                            try {
-                                const hasLog = logs.some((log) => log.includes('Source socket emitted error') && log.includes('Regression test error'));
-                                expect(hasLog).to.equal(false, 'Should check socket.listenerCount, not this.listenerCount (server)');
-
-                                serverSocket.destroy();
-                                resolve();
-                            } catch (err) {
-                                reject(err);
-                            }
-                        }, 50);
-                    } catch (err) {
-                        reject(err);
-                    }
-                });
-            });
-        });
+        const connected = new Promise((resolve) => server.server.once('connection', resolve));
 
         await server.listen();
         net.connect(server.port, '127.0.0.1');
 
-        await settled;
+        const serverSocket = await connected;
+        await new Promise(setImmediate);
+
+        expect(server.listenerCount('error')).toBe(1);
+        expect(serverSocket.listenerCount('error')).toBe(2);
+
+        serverSocket.emit('error', new Error('Regression test error'));
+        await wait(50);
+
+        const hasLog = logs.some((log) => log.includes('Source socket emitted error') && log.includes('Regression test error'));
+        expect(hasLog, 'Should check socket.listenerCount, not this.listenerCount (server)').toBe(false);
+
+        serverSocket.destroy();
     });
 });
 
@@ -1829,16 +1809,16 @@ describe('Server constructor', () => {
     it('should default to "http" when serverType is not specified', async () => {
         const server = new Server({ port: 0 });
         await server.listen();
-        expect(server.serverType).to.equal('http');
-        expect(server.server).to.be.instanceOf(http.Server);
+        expect(server.serverType).toBe('http');
+        expect(server.server).toBeInstanceOf(http.Server);
         await server.close(true);
     });
 
     it('should use "http" when explicitly specified', async () => {
         const server = new Server({ port: 0, serverType: 'http' });
         await server.listen();
-        expect(server.serverType).to.equal('http');
-        expect(server.server).to.be.instanceOf(http.Server);
+        expect(server.serverType).toBe('http');
+        expect(server.server).toBeInstanceOf(http.Server);
         await server.close(true);
     });
 
@@ -1849,8 +1829,8 @@ describe('Server constructor', () => {
             httpsOptions: { key: sslKey, cert: sslCrt }
         });
         await server.listen();
-        expect(server.serverType).to.equal('https');
-        expect(server.server).to.be.instanceOf(https.Server);
+        expect(server.serverType).toBe('https');
+        expect(server.server).toBeInstanceOf(https.Server);
         await server.close(true);
     });
 
@@ -1860,7 +1840,7 @@ describe('Server constructor', () => {
                 port: 0,
                 serverType: 'https',
             });
-        }).to.throw('httpsOptions is required when serverType is "https"');
+        }).toThrow('httpsOptions is required when serverType is "https"');
     });
 });
 

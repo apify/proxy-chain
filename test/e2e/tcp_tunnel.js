@@ -1,11 +1,11 @@
 import net from 'node:net';
-import { expect, assert } from 'chai';
+import { afterEach, describe, expect, it } from 'vitest';
 import http from 'node:http';
 import proxy from 'proxy';
 import portastic from 'portastic';
 
 import { createTunnel, closeTunnel } from '../../src/index.js';
-import { expectThrowsAsync } from '../utils/throws_async.js';
+import { PORT_RANGES } from '../utils/port_ranges.js';
 
 const destroySocket = (socket) => new Promise((resolve) => {
     if (!socket || socket.destroyed) return resolve();
@@ -39,27 +39,25 @@ const closeServer = async (server, connections) => {
 };
 
 describe('tcp_tunnel.createTunnel', () => {
-    it('throws error if proxyUrl is not in correct format', () => {
-        expectThrowsAsync(async () => { await createTunnel('socks://user:password@whatever.com:123', 'localhost:9000'); }, /must have the "http" protocol/);
-        expectThrowsAsync(async () => { await createTunnel('socks5://user:password@whatever.com', 'localhost:9000'); }, /must have the "http" protocol/);
+    it('throws error if proxyUrl is not in correct format', async () => {
+        await expect(createTunnel('socks://user:password@whatever.com:123', 'localhost:9000')).rejects.toThrow(/must have the "http" or "https" protocol/);
+        await expect(createTunnel('socks5://user:password@whatever.com', 'localhost:9000')).rejects.toThrow(/must have the "http" or "https" protocol/);
     });
-    it('throws error if target is not in correct format', () => {
-        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12'); }, 'Missing target hostname');
-        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', null); }, 'Missing target hostname');
-        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', ''); }, 'Missing target hostname');
-        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', 'whatever'); }, 'Missing target port');
-        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', 'whatever:'); }, 'Missing target port');
-        expectThrowsAsync(async () => { await createTunnel('http://user:password@whatever.com:12', ':whatever'); }, /Invalid URL/);
+    it('throws error if target is not in correct format', async () => {
+        await expect(createTunnel('http://user:password@whatever.com:12')).rejects.toThrow('Missing target hostname');
+        await expect(createTunnel('http://user:password@whatever.com:12', null)).rejects.toThrow('Missing target hostname');
+        await expect(createTunnel('http://user:password@whatever.com:12', '')).rejects.toThrow('Missing target hostname');
+        await expect(createTunnel('http://user:password@whatever.com:12', 'whatever')).rejects.toThrow('Missing target port');
+        await expect(createTunnel('http://user:password@whatever.com:12', 'whatever:')).rejects.toThrow('Missing target port');
+        await expect(createTunnel('http://user:password@whatever.com:12', ':whatever')).rejects.toThrow(/Invalid URL/);
     });
     it('throws error if the port option is not a valid port number', async () => {
         const proxyUrl = 'http://user:password@whatever.com:12';
         const invalidPorts = [-1, 65536, 1.5, '8080'];
 
         for (const port of invalidPorts) {
-            await expectThrowsAsync(
-                async () => { await createTunnel(proxyUrl, 'localhost:9000', { port }); },
-                'The "port" option must be an integer between 0 and 65535',
-            );
+            await expect(createTunnel(proxyUrl, 'localhost:9000', { port }))
+                .rejects.toThrow('The "port" option must be an integer between 0 and 65535');
         }
     });
     // Regression guard for GHSA-5vwf-g8jp-pgj3: createTunnel() used to bind the unspecified address.
@@ -78,12 +76,12 @@ describe('tcp_tunnel.createTunnel', () => {
         it('binds a loopback address by default', async () => {
             tunnel = await createTunnel(PROXY_URL, TARGET);
 
-            expect(tunnel).to.match(/^127\.0\.0\.1:\d+$/);
+            expect(tunnel).toMatch(/^127\.0\.0\.1:\d+$/);
         });
         it('honours an explicit IPv6 hostname and brackets the returned endpoint', async () => {
             tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '::1' });
 
-            expect(tunnel).to.match(/^\[::1\]:\d+$/);
+            expect(tunnel).toMatch(/^\[::1\]:\d+$/);
         });
         it('warns when binding a non-loopback address, but still binds it', async () => {
             const warnings = [];
@@ -98,21 +96,21 @@ describe('tcp_tunnel.createTunnel', () => {
                 process.off('warning', onWarning);
             }
 
-            expect(tunnel).to.match(/^0\.0\.0\.0:\d+$/);
-            expect(warnings.map((warning) => warning.name)).to.include('ProxyChainSecurityWarning');
+            expect(tunnel).toMatch(/^0\.0\.0\.0:\d+$/);
+            expect(warnings.map((warning) => warning.name)).toContain('ProxyChainSecurityWarning');
         });
         it('falls back to loopback when the hostname is blank', async () => {
             tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '' });
 
-            expect(tunnel).to.match(/^127\.0\.0\.1:\d+$/);
+            expect(tunnel).toMatch(/^127\.0\.0\.1:\d+$/);
         });
         it('honours an explicit port', async () => {
-            const [port] = await portastic.find({ min: 50750, max: 51000 });
-            assert.isDefined(port, 'no free port in the test range');
+            const [port] = await portastic.find(PORT_RANGES.tcpTunnelListener);
+            expect(port, 'no free port in the test range').toBeDefined();
 
             tunnel = await createTunnel(PROXY_URL, TARGET, { port });
 
-            expect(tunnel).to.equal(`127.0.0.1:${port}`);
+            expect(tunnel).toBe(`127.0.0.1:${port}`);
         });
     });
     it('correctly tunnels to tcp service and then is able to close the connection', () => {
@@ -159,7 +157,7 @@ describe('tcp_tunnel.createTunnel', () => {
             const targetServicePort = await serverListen(targetService, 0);
             const tunnel = await createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`, {});
             const result = await closeTunnel(tunnel, true);
-            assert.equal(result, true);
+            expect(result).toBe(true);
         } finally {
             await closeServer(proxyServer, proxyServerConnections);
             await closeServer(targetService, targetServiceConnections);
@@ -210,7 +208,7 @@ describe('tcp_tunnel.createTunnel', () => {
                 }, 500));
             })
             .then(() => {
-                expect(response.trim().split('\r\n')).to.be.deep.eql(expected);
+                expect(response.trim().split('\r\n')).toStrictEqual(expected);
                 return closeTunnel(tunnel);
             })
             .finally(() => closeServer(proxyServer, proxyServerConnections))

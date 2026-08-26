@@ -1,13 +1,13 @@
 import net from 'node:net';
 import http from 'node:http';
-import { assert } from 'chai';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as ProxyChain from '../../src/index.js';
 
 describe('ProxyChain server', () => {
     let server;
     let port;
 
-    before(() => {
+    beforeAll(() => {
         server = http.createServer((_request, response) => {
             response.end('Hello, world!');
         }).listen(0);
@@ -15,7 +15,7 @@ describe('ProxyChain server', () => {
         port = server.address().port;
     });
 
-    after(async () => {
+    afterAll(async () => {
         await new Promise((resolve) => server.close(resolve));
     });
 
@@ -53,7 +53,7 @@ describe('ProxyChain server', () => {
                 }
             });
 
-            assert.equal(socket.listenerCount('error'), registeredCount);
+            expect(socket.listenerCount('error')).toBe(registeredCount);
         } finally {
             await proxyServer.close(true);
         }
