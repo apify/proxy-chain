@@ -31,6 +31,7 @@ export const anonymizeProxy = async (
         proxyUrl = options;
     } else {
         proxyUrl = options.url;
+        // Port 0 tells the OS to pick a free ephemeral port, which we read back after `listen()`.
         port = options.port ?? 0;
 
         validateListenPort(port);
