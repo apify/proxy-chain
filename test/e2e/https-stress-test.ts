@@ -2,34 +2,48 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import tls from 'node:tls';
-import util from 'node:util';
+
 import request from 'request';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { ConnectionStats } from '../../src/index.js';
 import { Server } from '../../src/index.js';
 import { TargetServer } from '../utils/target_server.js';
+import { getServerPort, type RequestOpts, wait } from '../utils/test_helpers.js';
 
 // Node.js 20+ enables HTTP keep-alive by default in the global agent,
 // which causes connection tracking issues in tests. Disable it.
-http.globalAgent.keepAlive = false;
+(http.globalAgent as http.Agent & { keepAlive: boolean }).keepAlive = false;
 
 const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
-const requestPromised = util.promisify(request);
+const requestPromised = async (opts: RequestOpts): Promise<request.Response> => {
+    return await new Promise((resolve, reject) => {
+        request(opts, (error: Error | null, response: request.Response) => {
+            if (error) reject(error);
+            else resolve(response);
+        });
+    });
+};
+
+type RequestResult = { status?: number; body?: string; error?: string };
+
+type TunnelResult = { success?: true; error?: string };
 
 const STRESS_TIMEOUT_MILLIS = 60_000;
 
 vi.setConfig({ testTimeout: STRESS_TIMEOUT_MILLIS, hookTimeout: STRESS_TIMEOUT_MILLIS });
 
 describe('HTTPS proxy stress testing', () => {
-    let server;
-    let targetServer;
-    let targetServerPort;
+    let server: Server;
+    let targetServer: TargetServer | undefined;
+    let targetServerPort: number;
 
     beforeAll(async () => {
         targetServer = new TargetServer({ port: 0, useSsl: false });
         await targetServer.listen();
-        targetServerPort = targetServer.httpServer.address().port;
+        targetServerPort = getServerPort(targetServer.httpServer);
     });
 
     afterAll(async () => {
@@ -52,7 +66,7 @@ describe('HTTPS proxy stress testing', () => {
 
     it('handles 100 concurrent HTTP requests with correct responses', async () => {
         const REQUESTS = 100;
-        const results = [];
+        const results: RequestResult[] = [];
 
         const promises = [];
         for (let i = 0; i < REQUESTS; i++) {
@@ -66,9 +80,9 @@ describe('HTTPS proxy stress testing', () => {
                         status: response.statusCode,
                         body: response.body,
                     });
-                }).catch((err) => {
+                }).catch((err: Error) => {
                     results.push({ error: err.message });
-                })
+                }),
             );
         }
 
@@ -81,13 +95,16 @@ describe('HTTPS proxy stress testing', () => {
     // Not specific for https but still worth to have.
     it('handles 100 concurrent CONNECT tunnels with data verification', async () => {
         const TUNNEL_COUNT = 100;
-        const results = [];
+        const results: TunnelResult[] = [];
+
+        const proxyPort = server.port;
+        const targetPort = targetServerPort;
 
         const promises = [];
         for (let i = 0; i < TUNNEL_COUNT; i++) {
-            promises.push(new Promise((resolve) => {
+            promises.push(new Promise<void>((resolve) => {
                 const socket = tls.connect({
-                    port: server.port,
+                    port: proxyPort,
                     host: '127.0.0.1',
                     rejectUnauthorized: false,
                 });
@@ -95,7 +112,7 @@ describe('HTTPS proxy stress testing', () => {
                 let requestSent = false;
 
                 socket.on('secureConnect', () => {
-                    socket.write(`CONNECT 127.0.0.1:${targetServerPort} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n`);
+                    socket.write(`CONNECT 127.0.0.1:${targetPort} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n`);
                 });
 
                 let data = '';
@@ -114,7 +131,7 @@ describe('HTTPS proxy stress testing', () => {
                     }
                 });
 
-                socket.on('error', (err) => {
+                socket.on('error', (err: Error) => {
                     results.push({ error: err.message });
                     resolve();
                 });
@@ -137,9 +154,9 @@ describe('HTTPS proxy stress testing', () => {
 
     it('tracks accurate statistics for 100 concurrent requests', async () => {
         const REQUESTS = 100;
-        const allStats = [];
+        const allStats: ConnectionStats[] = [];
 
-        server.on('connectionClosed', ({ stats }) => {
+        server.on('connectionClosed', ({ stats }: { stats: ConnectionStats }) => {
             allStats.push(stats);
         });
 
@@ -150,12 +167,12 @@ describe('HTTPS proxy stress testing', () => {
                     url: `http://127.0.0.1:${targetServerPort}/hello-world`,
                     proxy: `https://127.0.0.1:${server.port}`,
                     strictSSL: false,
-                })
+                }),
             );
         }
 
         await Promise.all(promises);
-        await new Promise((r) => setTimeout(r, 500));
+        await wait(500);
 
         expect(allStats).toHaveLength(REQUESTS);
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { redactUrl } from '../../src/utils/redact_url.js';
+
 import { isHopByHopHeader } from '../../src/utils/is_hop_by_hop_header.js';
 import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
+import { redactUrl } from '../../src/utils/redact_url.js';
 
 describe('tools.redactUrl()', () => {
     it('works', () => {
@@ -42,7 +43,7 @@ describe('tools.isHopByHopHeader()', () => {
     });
 });
 
-const authStr = (type, usernameAndPassword) => {
+const authStr = (type: string, usernameAndPassword: string) => {
     return `${type} ${Buffer.from(usernameAndPassword).toString('base64')}`;
 };
 
@@ -109,6 +110,7 @@ describe('tools.parseAuthorizationHeader()', () => {
     it('works with invalid input', () => {
         const parse = parseAuthorizationHeader;
 
+        // @ts-expect-error - deliberately passing a non-string; the function must not throw.
         expect(parse(null)).toBe(null);
         expect(parse('')).toBe(null);
         expect(parse('    ')).toBe(null);

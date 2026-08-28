@@ -1,14 +1,15 @@
-import portastic from 'portastic';
-import socksv5 from 'socksv5';
 import { gotScraping } from 'got-scraping';
+import portastic from 'portastic';
+import socksv5, { type SocksServer } from 'socksv5';
 import { afterEach, describe, expect, it } from 'vitest';
+
 import * as ProxyChain from '../../src/index.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
 
 describe('SOCKS protocol', { timeout: 10_000 }, () => {
-    let socksServer;
-    let proxyServer;
-    let anonymizeProxyUrl;
+    let socksServer: SocksServer | undefined;
+    let proxyServer: ProxyChain.Server | undefined;
+    let anonymizeProxyUrl: string | undefined;
 
     afterEach(async () => {
         if (socksServer) socksServer.close();
@@ -19,11 +20,12 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
     it('works without auth', async () => {
         const ports = await portastic.find(PORT_RANGES.socksNoAuth);
         const [socksPort, proxyPort] = ports;
-        socksServer = socksv5.createServer((info, accept) => {
+        const server = socksv5.createServer((_info, accept) => {
             accept();
         });
-        await new Promise((resolve) => socksServer.listen(socksPort, '0.0.0.0', resolve));
-        socksServer.useAuth(socksv5.auth.None());
+        socksServer = server;
+        await new Promise<void>((resolve) => server.listen(socksPort, '0.0.0.0', resolve));
+        server.useAuth(socksv5.auth.None());
 
         proxyServer = new ProxyChain.Server({
             port: proxyPort,
@@ -41,11 +43,12 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
     it('work with auth', async () => {
         const ports = await portastic.find(PORT_RANGES.socksAuth);
         const [socksPort, proxyPort] = ports;
-        socksServer = socksv5.createServer((info, accept) => {
+        const server = socksv5.createServer((_info, accept) => {
             accept();
         });
-        await new Promise((resolve) => socksServer.listen(socksPort, '0.0.0.0', resolve));
-        socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+        socksServer = server;
+        await new Promise<void>((resolve) => server.listen(socksPort, '0.0.0.0', resolve));
+        server.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
             cb(user === 'proxy-ch@in' && password === 'rules!');
         }));
 
@@ -65,11 +68,12 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
     it('works with anonymizeProxy', async () => {
         const ports = await portastic.find(PORT_RANGES.socksAnonymize);
         const [socksPort, proxyPort] = ports;
-        socksServer = socksv5.createServer((info, accept) => {
+        const server = socksv5.createServer((_info, accept) => {
             accept();
         });
-        await new Promise((resolve) => socksServer.listen(socksPort, '0.0.0.0', resolve));
-        socksServer.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
+        socksServer = server;
+        await new Promise<void>((resolve) => server.listen(socksPort, '0.0.0.0', resolve));
+        server.useAuth(socksv5.auth.UserPassword((user, password, cb) => {
             cb(user === 'proxy-ch@in' && password === 'rules!');
         }));
 

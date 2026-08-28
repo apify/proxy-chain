@@ -1,20 +1,21 @@
+import http from 'node:http';
+
+import basicAuthParser from 'basic-auth-parser';
+import express from 'express';
+import portastic from 'portastic';
+import proxy, { type AuthenticatingHttpServer } from 'proxy';
+import request from 'request';
 import _ from 'underscore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import proxy from 'proxy';
-import http from 'node:http';
-import util from 'node:util';
-import portastic from 'portastic';
-import basicAuthParser from 'basic-auth-parser';
-import request from 'request';
-import express from 'express';
 
 import { anonymizeProxy, closeAnonymizedProxy } from '../../src/index.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
+import { closeServer, getServerPort, type RequestUriOpts } from '../utils/test_helpers.js';
 
-let expressServer;
-let proxyServer;
-let proxyPort;
-let testServerPort;
+let expressServer: http.Server | undefined;
+let proxyServer: http.Server | undefined;
+let proxyPort: number;
+let testServerPort: number;
 const proxyAuth = { scheme: 'Basic', username: 'username', password: '' };
 let wasProxyCalled = false;
 
@@ -22,8 +23,8 @@ let wasProxyCalled = false;
 beforeAll(async () => {
     const freePorts = await portastic.find(PORT_RANGES.anonymizeProxyNoPassword);
 
-    await new Promise((resolve, reject) => {
-        const httpServer = http.createServer();
+    await new Promise<void>((resolve, reject) => {
+        const httpServer: AuthenticatingHttpServer = http.createServer();
 
         // Setup proxy authorization
         httpServer.authenticate = function (req, fn) {
@@ -42,32 +43,33 @@ beforeAll(async () => {
 
         httpServer.on('error', reject);
 
-        proxyServer = proxy(httpServer);
-        proxyServer.listen(freePorts[0], () => {
-            proxyPort = proxyServer.address().port;
+        const server = proxy(httpServer);
+        proxyServer = server;
+        server.listen(freePorts[0], () => {
+            proxyPort = getServerPort(server);
             resolve();
         });
     });
 
     const app = express();
-    app.get('/', (req, res) => res.send('Hello World!'));
+    app.get('/', (_req, res) => res.send('Hello World!'));
 
     testServerPort = freePorts[1];
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
         expressServer = app.listen(testServerPort, resolve);
     });
 });
 
 afterAll(async () => {
-    await new Promise((resolve) => expressServer.close(resolve));
+    if (expressServer) await closeServer(expressServer);
 
-    if (proxyServer) await util.promisify(proxyServer.close.bind(proxyServer))();
+    if (proxyServer) await closeServer(proxyServer);
 }, 5_000);
 
-const requestPromised = (opts) => {
+const requestPromised = async (opts: RequestUriOpts): Promise<void> => {
     // console.log('requestPromised');
     // console.dir(opts);
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
         request(opts, (error, response, body) => {
             if (error) return reject(error);
             if (response.statusCode !== 200) {

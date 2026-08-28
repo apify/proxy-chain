@@ -15,13 +15,13 @@ export default defineConfig({
             {
                 test: {
                     name: 'unit',
-                    include: ['test/unit/**/*.js'],
+                    include: ['test/unit/**/*.ts'],
                 },
             },
             {
                 test: {
                     name: 'e2e',
-                    include: ['test/e2e/**/*.js'],
+                    include: ['test/e2e/**/*.ts'],
                     testTimeout: E2E_TIMEOUT_MILLIS,
                     hookTimeout: E2E_TIMEOUT_MILLIS,
                     // Several tests send deliberately malformed headers. Bun ignores

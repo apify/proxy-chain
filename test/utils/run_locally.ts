@@ -10,8 +10,13 @@
  */
 
 import http from 'node:http';
-import proxy from 'proxy'; // eslint-disable-line import/no-extraneous-dependencies
+
+import proxy from 'proxy';
+
 import { Server } from '../../src/index.js';
+import { listenOnPort } from './test_helpers.js';
+
+const portFromEnv = (value: string | undefined, defaultPort: number): number => (value ? Number(value) : defaultPort);
 
 // Set up upstream proxy with no auth
 const upstreamProxyHttpServer = http.createServer();
@@ -21,17 +26,16 @@ upstreamProxyHttpServer.on('error', (err) => {
 });
 
 const upstreamProxyServer = proxy(upstreamProxyHttpServer);
-const upstreamProxyPort = process.env.UPSTREAM_PROXY_PORT || 8081;
-upstreamProxyServer.listen(process.env.UPSTREAM_PROXY_PORT || 8081, (err) => {
-    if (err) {
+const upstreamProxyPort = portFromEnv(process.env.UPSTREAM_PROXY_PORT, 8081);
+listenOnPort(upstreamProxyServer, upstreamProxyPort)
+    .catch((err: Error) => {
         console.error(err.stack || err);
         process.exit(1);
-    }
-});
+    });
 
 // Setup proxy to forward to upstream
 const server = new Server({
-    port: process.env.PORT || 8080,
+    port: portFromEnv(process.env.PORT, 8080),
     // verbose: true,
     prepareRequestFunction: () => {
         return { requestAuthentication: false, upstreamProxyUrl: `http://127.0.0.1:${upstreamProxyPort}` };

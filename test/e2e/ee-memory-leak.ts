@@ -1,37 +1,40 @@
-import net from 'node:net';
 import http from 'node:http';
+import net from 'node:net';
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
 import * as ProxyChain from '../../src/index.js';
+import { closeServer, getServerPort } from '../utils/test_helpers.js';
 
 describe('ProxyChain server', () => {
-    let server;
-    let port;
+    let server: http.Server;
+    let port: number;
 
     beforeAll(() => {
         server = http.createServer((_request, response) => {
             response.end('Hello, world!');
         }).listen(0);
 
-        port = server.address().port;
+        port = getServerPort(server);
     });
 
     afterAll(async () => {
-        await new Promise((resolve) => server.close(resolve));
+        await closeServer(server);
     });
 
     it('does not leak events', async () => {
         const proxyServer = new ProxyChain.Server();
 
         try {
-            let socket;
-            let registeredCount;
-            proxyServer.server.prependOnceListener('request', (request) => {
+            let socket: net.Socket | undefined;
+            let registeredCount: number | undefined;
+            proxyServer.server.prependOnceListener('request', (request: http.IncomingMessage) => {
                 socket = request.socket;
                 registeredCount = socket.listenerCount('error');
             });
 
             await proxyServer.listen();
-            const proxyServerPort = proxyServer.server.address().port;
+            const proxyServerPort = getServerPort(proxyServer.server);
 
             const requestCount = 20;
 
@@ -42,7 +45,7 @@ describe('ProxyChain server', () => {
 
             client.setTimeout(100);
 
-            await new Promise((resolve) => {
+            await new Promise<void>((resolve) => {
                 client.on('timeout', () => {
                     client.destroy();
                     resolve();
@@ -53,6 +56,7 @@ describe('ProxyChain server', () => {
                 }
             });
 
+            if (socket === undefined) throw new Error('The proxy server never received a request.');
             expect(socket.listenerCount('error')).toBe(registeredCount);
         } finally {
             await proxyServer.close(true);
