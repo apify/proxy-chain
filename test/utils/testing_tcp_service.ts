@@ -10,7 +10,7 @@ server.listen(9112, () => {
     console.log('server listening to %j', server.address());
 });
 
-function handleConnection(conn) {
+function handleConnection(conn: net.Socket) {
     const remoteAddress = `${conn.remoteAddress}:${conn.remotePort}`;
     console.log('new client connection from %s', remoteAddress);
 
@@ -20,7 +20,7 @@ function handleConnection(conn) {
     conn.on('close', onConnClose);
     conn.on('error', onConnError);
 
-    function onConnData(d) {
+    function onConnData(d: Buffer) {
         console.log('connection data from %s: %j', remoteAddress, d);
         conn.write(d);
     }
@@ -29,7 +29,7 @@ function handleConnection(conn) {
         console.log('connection from %s closed', remoteAddress);
     }
 
-    function onConnError(err) {
+    function onConnError(err: Error) {
         console.log('Connection %s error: %s', remoteAddress, err.message);
     }
 }

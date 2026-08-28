@@ -13,7 +13,7 @@ Shared helpers live in `test/utils/`.
 Tests run on [Vitest](https://vitest.dev) (`vitest.config.ts`). Each directory is
 its own project, selectable with `--project`. The `e2e` files bind real servers,
 so each one scans for free ports in its own disjoint window - see
-`test/utils/port_ranges.js`.
+`test/utils/port_ranges.ts`.
 
 ## Docker (recommended)
 
@@ -29,13 +29,13 @@ to have a consistent Linux environment for running tests.
 2. Run a specific test file
 
     ```bash
-    pnpm run test:docker test/e2e/server.js
+    pnpm run test:docker test/e2e/server.ts
     ```
 
 3. Run all `direct ipv6` test cases across all tests
 
     ```bash
-    pnpm run test:docker test/e2e/server.js -t "direct ipv6"
+    pnpm run test:docker test/e2e/server.ts -t "direct ipv6"
     ```
 
 4. Run the suite on Bun (the image ships both runtimes)
@@ -55,7 +55,7 @@ to have a consistent Linux environment for running tests.
     All targets take the same trailing arguments as `test:docker`:
 
     ```bash
-    pnpm run test:docker:bun:e2e:full test/e2e/tcp_tunnel.js -t "throws error"
+    pnpm run test:docker:bun:e2e:full test/e2e/tcp_tunnel.ts -t "throws error"
     ```
 
     The container entrypoint is `pnpm run`, so any script from `package.json`
@@ -106,7 +106,7 @@ Note: for test in Docker no changes in `/etc/hosts` needed.
 4. Run a specific test file
 
     ```bash
-    pnpm test test/e2e/anonymize_proxy.js
+    pnpm test test/e2e/anonymize_proxy.ts
     ```
 
 ### Run tests with Bun
@@ -142,7 +142,7 @@ The full Bun e2e suite is opt-in: trigger the **Check** workflow via
 `bun_e2e_mode` input.
 
 The `compatible` subset is intentionally narrow today — it only runs the
-URL-validation tests in `test/e2e/tcp_tunnel.js` (via `-t 'throws
+URL-validation tests in `test/e2e/tcp_tunnel.ts` (via `-t 'throws
 error'`), which exercise `createTunnel`'s error paths without touching
 the network. As individual networked tests are confirmed to pass on
 Bun, widen the `test:bun:e2e:compatible` script in `package.json` (drop

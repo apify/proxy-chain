@@ -1,32 +1,38 @@
 import fs from 'node:fs';
+import http from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 import tls from 'node:tls';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import http from 'node:http';
+
+import type { ConnectionStats } from '../../src/index.js';
 import { Server } from '../../src/index.js';
+import { closeServer, getServerPort, wait } from '../utils/test_helpers.js';
 
 const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
 
-const wait = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout));
+/** Node surfaces the OpenSSL detail the assertions below check for on TLS errors. */
+type TlsError = Error & { library?: string; reason?: string };
 
 vi.setConfig({ testTimeout: 10_000 });
 
 it('handles TLS handshake failures gracefully and continues accepting connections', async () => {
-    const tlsErrors = [];
-    let server;
-    let badSocket;
-    let goodSocket;
-    let targetServer;
+    const tlsErrors: TlsError[] = [];
+    let server: Server | undefined;
+    let badSocket: tls.TLSSocket | undefined;
+    let goodSocket: tls.TLSSocket | undefined;
+    let targetServer: net.Server | undefined;
 
     try {
         // Create a local TCP server as the CONNECT target to avoid external network dependency.
-        targetServer = net.createServer((socket) => {
+        const target = net.createServer((socket) => {
             socket.on('error', () => {});
         });
-        await new Promise((resolve) => targetServer.listen(0, '127.0.0.1', resolve));
-        const targetPort = targetServer.address().port;
+        targetServer = target;
+        await new Promise<void>((resolve) => target.listen(0, '127.0.0.1', resolve));
+        const targetPort = getServerPort(target);
 
         server = new Server({
             port: 0,
@@ -37,7 +43,7 @@ it('handles TLS handshake failures gracefully and continues accepting connection
             },
         });
 
-        server.on('tlsError', ({ error }) => {
+        server.on('tlsError', ({ error }: { error: TlsError }) => {
             tlsErrors.push(error);
         });
 
@@ -45,31 +51,31 @@ it('handles TLS handshake failures gracefully and continues accepting connection
         const serverPort = server.port;
 
         // Make invalid TLS connection.
-        badSocket = tls.connect({
+        const bad = tls.connect({
             port: serverPort,
             host: '127.0.0.1',
             rejectUnauthorized: false,
             minVersion: 'TLSv1',
             maxVersion: 'TLSv1',
         });
+        badSocket = bad;
 
-        const badSocketErrorOccurred = await new Promise((resolve, reject) => {
+        const badSocketErrorOccurred = await new Promise<boolean>((resolve, reject) => {
             let errorOccurred = false;
 
-            badSocket.on('error', () => {
+            bad.on('error', () => {
                 errorOccurred = true;
                 // Expected: TLS handshake will fail due to version mismatch.
             });
 
-            badSocket.on('close', () => {
+            bad.on('close', () => {
                 resolve(errorOccurred);
             });
 
-            badSocket.setTimeout(5000, () => {
-                badSocket.destroy();
+            bad.setTimeout(5000, () => {
+                bad.destroy();
                 reject(new Error('Bad socket timed out before error'));
             });
-
         });
 
         await wait(100);
@@ -77,34 +83,35 @@ it('handles TLS handshake failures gracefully and continues accepting connection
         expect(badSocketErrorOccurred).toBe(true);
 
         // Make a valid TLS connection to prove server still works.
-        goodSocket = tls.connect({
+        const good = tls.connect({
             port: serverPort,
             host: '127.0.0.1',
             rejectUnauthorized: false,
         });
+        goodSocket = good;
 
         // Wait for secure connection.
-        const goodSocketConnected = await new Promise((resolve, reject) => {
+        const goodSocketConnected = await new Promise<boolean>((resolve, reject) => {
             let isConnected = false;
 
             const timeout = setTimeout(() => {
-                goodSocket.destroy();
+                good.destroy();
                 reject(new Error('Good socket connection timed out'));
             }, 5000);
 
-            goodSocket.on('error', (err) => {
+            good.on('error', (err) => {
                 clearTimeout(timeout);
-                goodSocket.destroy();
+                good.destroy();
                 reject(err);
             });
 
-            goodSocket.on('secureConnect', () => {
+            good.on('secureConnect', () => {
                 isConnected = true;
                 clearTimeout(timeout);
                 resolve(isConnected);
             });
 
-            goodSocket.on('close', () => {
+            good.on('close', () => {
                 clearTimeout(timeout);
             });
         });
@@ -112,27 +119,27 @@ it('handles TLS handshake failures gracefully and continues accepting connection
         expect(goodSocketConnected, 'Good socket should have connected').toBe(true);
 
         // Write the CONNECT request to local target server.
-        goodSocket.write(`CONNECT 127.0.0.1:${targetPort} HTTP/1.1\r\nHost: 127.0.0.1:${targetPort}\r\n\r\n`);
+        good.write(`CONNECT 127.0.0.1:${targetPort} HTTP/1.1\r\nHost: 127.0.0.1:${targetPort}\r\n\r\n`);
 
-        const response = await new Promise((resolve, reject) => {
+        const response = await new Promise<string>((resolve, reject) => {
             const goodSocketTimeout = setTimeout(() => {
-                goodSocket.destroy();
+                good.destroy();
                 reject(new Error('Good socket connection timed out'));
             }, 5000);
 
-            goodSocket.on('error', (err) => {
+            good.on('error', (err) => {
                 clearTimeout(goodSocketTimeout);
-                goodSocket.destroy();
+                good.destroy();
                 reject(err);
             });
 
-            goodSocket.on('data', (data) => {
+            good.on('data', (data) => {
                 clearTimeout(goodSocketTimeout);
-                goodSocket.destroy();
+                good.destroy();
                 resolve(data.toString());
             });
 
-            goodSocket.on('close', () => {
+            good.on('close', () => {
                 clearTimeout(goodSocketTimeout);
             });
         });
@@ -156,13 +163,13 @@ it('handles TLS handshake failures gracefully and continues accepting connection
             await server.close(true);
         }
         if (targetServer) {
-            await new Promise((resolve) => targetServer.close(resolve));
+            await closeServer(targetServer);
         }
     }
 });
 
 describe('HTTPS proxy server resource cleanup', () => {
-    let server;
+    let server: Server;
 
     beforeEach(async () => {
         server = new Server({
@@ -179,13 +186,12 @@ describe('HTTPS proxy server resource cleanup', () => {
     afterEach(async () => {
         if (server) {
             await server.close(true);
-            server = null;
         }
     });
 
     it('cleans up connections when client disconnects abruptly', async () => {
-        const closedConnections = [];
-        server.on('connectionClosed', ({ connectionId }) => {
+        const closedConnections: number[] = [];
+        server.on('connectionClosed', ({ connectionId }: { connectionId: number }) => {
             closedConnections.push(connectionId);
         });
 
@@ -195,7 +201,7 @@ describe('HTTPS proxy server resource cleanup', () => {
             rejectUnauthorized: false,
         });
 
-        await new Promise((resolve) => socket.on('secureConnect', resolve));
+        await new Promise<void>((resolve) => socket.on('secureConnect', resolve));
 
         // Small delay to ensure server-side connection registration completes.
         await wait(100);
@@ -205,7 +211,7 @@ describe('HTTPS proxy server resource cleanup', () => {
         // Abruptly destroy the connection (simulating client crash).
         socket.destroy();
 
-        await new Promise((resolve) => socket.on('close', resolve));
+        await new Promise<void>((resolve) => socket.on('close', resolve));
         await wait(100);
 
         expect(server.getConnectionIds()).toHaveLength(0);
@@ -213,8 +219,8 @@ describe('HTTPS proxy server resource cleanup', () => {
     });
 
     it('cleans up when client closes immediately after CONNECT 200', async () => {
-        const closedConnections = [];
-        server.on('connectionClosed', ({ connectionId, stats }) => {
+        const closedConnections: { connectionId: number; stats: ConnectionStats }[] = [];
+        server.on('connectionClosed', ({ connectionId, stats }: { connectionId: number; stats: ConnectionStats }) => {
             closedConnections.push({ connectionId, stats });
         });
 
@@ -224,11 +230,11 @@ describe('HTTPS proxy server resource cleanup', () => {
             rejectUnauthorized: false,
         });
 
-        await new Promise((resolve) => socket.on('secureConnect', resolve));
+        await new Promise<void>((resolve) => socket.on('secureConnect', resolve));
 
         socket.write('CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n');
 
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error('Timeout waiting for CONNECT response')), 3000);
 
             socket.on('data', (data) => {
@@ -242,7 +248,7 @@ describe('HTTPS proxy server resource cleanup', () => {
             socket.on('error', () => {});
         });
 
-        await new Promise((resolve) => socket.on('close', resolve));
+        await new Promise<void>((resolve) => socket.on('close', resolve));
         await wait(500);
 
         expect(server.getConnectionIds()).toHaveLength(0);
@@ -255,8 +261,8 @@ describe('HTTPS proxy server resource cleanup', () => {
             res.end('Hello world!');
         });
 
-        await new Promise((resolve) => targetServer.listen(0, resolve));
-        const targetServerPort = targetServer.address().port;
+        await new Promise<void>((resolve) => targetServer.listen(0, resolve));
+        const targetServerPort = getServerPort(targetServer);
 
         try {
             const socket = tls.connect({
@@ -265,20 +271,20 @@ describe('HTTPS proxy server resource cleanup', () => {
                 rejectUnauthorized: false,
             });
 
-            await new Promise((resolve) => socket.on('secureConnect', resolve));
+            await new Promise<void>((resolve) => socket.on('secureConnect', resolve));
 
-            const responses = [];
+            const responses: string[] = [];
 
             for (let i = 0; i < 3; i++) {
                 socket.write(
-                    `GET http://127.0.0.1:${targetServerPort}/hello-world HTTP/1.1\r\n` +
-                    `Host: 127.0.0.1\r\n` +
-                    `Connection: keep-alive\r\n\r\n`
+                    `GET http://127.0.0.1:${targetServerPort}/hello-world HTTP/1.1\r\n`
+                    + `Host: 127.0.0.1\r\n`
+                    + `Connection: keep-alive\r\n\r\n`,
                 );
 
-                const response = await new Promise((resolve) => {
+                const response = await new Promise<string>((resolve) => {
                     let data = '';
-                    const onData = (chunk) => {
+                    const onData = (chunk: Buffer) => {
                         data += chunk.toString();
                         if (data.includes('Hello world')) {
                             socket.removeListener('data', onData);
@@ -308,13 +314,13 @@ describe('HTTPS proxy server resource cleanup', () => {
                 expect(r).toContain('Hello world');
             });
         } finally {
-            await new Promise((resolve) => targetServer.close(resolve));
+            await closeServer(targetServer);
         }
     });
 
     it('handles multiple sequential TLS failures without leaking connections', async () => {
-        const tlsErrors = [];
-        server.on('tlsError', ({ error }) => tlsErrors.push(error));
+        const tlsErrors: TlsError[] = [];
+        server.on('tlsError', ({ error }: { error: TlsError }) => tlsErrors.push(error));
 
         // 10 sequential failures (sanity check).
         for (let i = 0; i < 10; i++) {
@@ -325,7 +331,7 @@ describe('HTTPS proxy server resource cleanup', () => {
                 maxVersion: 'TLSv1',
             });
 
-            await new Promise((resolve) => {
+            await new Promise<void>((resolve) => {
                 badSocket.on('error', () => {});
                 badSocket.on('close', resolve);
             });
@@ -343,7 +349,7 @@ describe('HTTPS proxy server resource cleanup', () => {
             rejectUnauthorized: false,
         });
 
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
             goodSocket.on('secureConnect', resolve);
             goodSocket.on('error', reject);
         });

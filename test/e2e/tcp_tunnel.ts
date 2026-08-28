@@ -1,39 +1,29 @@
-import net from 'node:net';
-import { afterEach, describe, expect, it } from 'vitest';
 import http from 'node:http';
-import proxy from 'proxy';
+import net from 'node:net';
+
 import portastic from 'portastic';
+import proxy from 'proxy';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { createTunnel, closeTunnel } from '../../src/index.js';
+import { closeTunnel, createTunnel } from '../../src/index.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
+import { getServerPort, listenOnPort } from '../utils/test_helpers.js';
 
-const destroySocket = (socket) => new Promise((resolve) => {
-    if (!socket || socket.destroyed) return resolve();
+const destroySocket = async (socket: net.Socket): Promise<void> => new Promise((resolve) => {
+    if (socket.destroyed) return resolve();
     socket.once('close', () => resolve());
     socket.destroy();
 });
 
-const serverListen = (server, port) => new Promise((resolve, reject) => {
-    server.once('error', reject);
-
-    server.listen(port, () => {
-        server.off('error', reject);
-
-        resolve(server.address().port);
-    });
+const connect = async (host: string, port: number): Promise<net.Socket> => new Promise((resolve, reject) => {
+    const socket = net.connect({ host, port }, () => resolve(socket));
+    socket.once('error', reject);
 });
 
-const connect = (host, port) => new Promise((resolve, reject) => {
-    const socket = net.connect({ host, port }, (err) => {
-        if (err) return reject(err);
-        return resolve(socket);
-    });
-});
-
-const closeServer = async (server, connections) => {
-    if (!server || !server.listening) return;
+const closeServerAndConnections = async (server: net.Server, connections: net.Socket[]): Promise<void> => {
+    if (!server.listening) return;
     await Promise.all(connections.map(destroySocket));
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
     });
 };
@@ -44,7 +34,9 @@ describe('tcp_tunnel.createTunnel', () => {
         await expect(createTunnel('socks5://user:password@whatever.com', 'localhost:9000')).rejects.toThrow(/must have the "http" or "https" protocol/);
     });
     it('throws error if target is not in correct format', async () => {
+        // @ts-expect-error - targetHost is deliberately omitted.
         await expect(createTunnel('http://user:password@whatever.com:12')).rejects.toThrow('Missing target hostname');
+        // @ts-expect-error - targetHost is deliberately null.
         await expect(createTunnel('http://user:password@whatever.com:12', null)).rejects.toThrow('Missing target hostname');
         await expect(createTunnel('http://user:password@whatever.com:12', '')).rejects.toThrow('Missing target hostname');
         await expect(createTunnel('http://user:password@whatever.com:12', 'whatever')).rejects.toThrow('Missing target port');
@@ -56,6 +48,7 @@ describe('tcp_tunnel.createTunnel', () => {
         const invalidPorts = [-1, 65536, 1.5, '8080'];
 
         for (const port of invalidPorts) {
+            // @ts-expect-error - deliberately invalid port values; validation must reject each.
             await expect(createTunnel(proxyUrl, 'localhost:9000', { port }))
                 .rejects.toThrow('The "port" option must be an integer between 0 and 65535');
         }
@@ -66,7 +59,7 @@ describe('tcp_tunnel.createTunnel', () => {
         const PROXY_URL = 'http://owner:s3cr3t@127.0.0.1:1';
         const TARGET = '127.0.0.1:1';
 
-        let tunnel;
+        let tunnel: string | undefined;
 
         afterEach(async () => {
             if (tunnel) await closeTunnel(tunnel, true);
@@ -84,15 +77,15 @@ describe('tcp_tunnel.createTunnel', () => {
             expect(tunnel).toMatch(/^\[::1\]:\d+$/);
         });
         it('warns when binding a non-loopback address, but still binds it', async () => {
-            const warnings = [];
-            const onWarning = (warning) => warnings.push(warning);
+            const warnings: Error[] = [];
+            const onWarning = (warning: Error) => warnings.push(warning);
             process.on('warning', onWarning);
 
             try {
                 tunnel = await createTunnel(PROXY_URL, TARGET, { hostname: '0.0.0.0' });
             } finally {
                 // Warnings are emitted on the next tick.
-                await new Promise((resolve) => setImmediate(resolve));
+                await new Promise<void>((resolve) => setImmediate(resolve));
                 process.off('warning', onWarning);
             }
 
@@ -113,13 +106,13 @@ describe('tcp_tunnel.createTunnel', () => {
             expect(tunnel).toBe(`127.0.0.1:${port}`);
         });
     });
-    it('correctly tunnels to tcp service and then is able to close the connection', () => {
-        const proxyServerConnections = [];
+    it('correctly tunnels to tcp service and then is able to close the connection', async () => {
+        const proxyServerConnections: net.Socket[] = [];
 
         const proxyServer = proxy(http.createServer());
-        proxyServer.on('connection', (conn) => proxyServerConnections.push(conn));
+        proxyServer.on('connection', (conn: net.Socket) => proxyServerConnections.push(conn));
 
-        const targetServiceConnections = [];
+        const targetServiceConnections: net.Socket[] = [];
         const targetService = net.createServer();
         targetService.on('connection', (conn) => {
             targetServiceConnections.push(conn);
@@ -128,22 +121,22 @@ describe('tcp_tunnel.createTunnel', () => {
             conn.on('error', (err) => { throw err; });
         });
 
-        return serverListen(proxyServer, 0)
-            .then(() => serverListen(targetService, 0))
-            .then((targetServicePort) => {
-                return createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`);
+        return listenOnPort(proxyServer, 0)
+            .then(async () => listenOnPort(targetService, 0))
+            .then(async (targetServicePort) => {
+                return createTunnel(`http://localhost:${getServerPort(proxyServer)}`, `localhost:${targetServicePort}`);
             })
-            .then(closeTunnel)
-            .finally(() => closeServer(proxyServer, proxyServerConnections))
-            .finally(() => closeServer(targetService, targetServiceConnections));
+            .then(async (tunnel) => closeTunnel(tunnel))
+            .finally(async () => closeServerAndConnections(proxyServer, proxyServerConnections))
+            .finally(async () => closeServerAndConnections(targetService, targetServiceConnections));
     });
     it('correctly tunnels to tcp service and then is able to close the connection (async/await)', async () => {
-        const proxyServerConnections = [];
+        const proxyServerConnections: net.Socket[] = [];
 
         const proxyServer = proxy(http.createServer());
-        proxyServer.on('connection', (conn) => proxyServerConnections.push(conn));
+        proxyServer.on('connection', (conn: net.Socket) => proxyServerConnections.push(conn));
 
-        const targetServiceConnections = [];
+        const targetServiceConnections: net.Socket[] = [];
         const targetService = net.createServer();
         targetService.on('connection', (conn) => {
             targetServiceConnections.push(conn);
@@ -153,18 +146,18 @@ describe('tcp_tunnel.createTunnel', () => {
         });
 
         try {
-            await serverListen(proxyServer, 0);
-            const targetServicePort = await serverListen(targetService, 0);
-            const tunnel = await createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`, {});
+            await listenOnPort(proxyServer, 0);
+            const targetServicePort = await listenOnPort(targetService, 0);
+            const tunnel = await createTunnel(`http://localhost:${getServerPort(proxyServer)}`, `localhost:${targetServicePort}`, {});
             const result = await closeTunnel(tunnel, true);
             expect(result).toBe(true);
         } finally {
-            await closeServer(proxyServer, proxyServerConnections);
-            await closeServer(targetService, targetServiceConnections);
+            await closeServerAndConnections(proxyServer, proxyServerConnections);
+            await closeServerAndConnections(targetService, targetServiceConnections);
         }
     });
-    it('creates tunnel that is able to transfer data', () => {
-        let tunnel;
+    it('creates tunnel that is able to transfer data', async () => {
+        let tunnel: string;
         let response = '';
         const expected = [
             'testA',
@@ -172,12 +165,12 @@ describe('tcp_tunnel.createTunnel', () => {
             'testC',
         ];
 
-        const proxyServerConnections = [];
+        const proxyServerConnections: net.Socket[] = [];
 
         const proxyServer = proxy(http.createServer());
-        proxyServer.on('connection', (conn) => proxyServerConnections.push(conn));
+        proxyServer.on('connection', (conn: net.Socket) => proxyServerConnections.push(conn));
 
-        const targetServiceConnections = [];
+        const targetServiceConnections: net.Socket[] = [];
         const targetService = net.createServer();
         targetService.on('connection', (conn) => {
             targetServiceConnections.push(conn);
@@ -186,32 +179,32 @@ describe('tcp_tunnel.createTunnel', () => {
             conn.on('error', (err) => conn.write(JSON.stringify(err)));
         });
 
-        return serverListen(proxyServer, 0)
-            .then(() => serverListen(targetService, 0))
-            .then((targetServicePort) => createTunnel(`http://localhost:${proxyServer.address().port}`, `localhost:${targetServicePort}`))
-            .then((newTunnel) => {
+        return listenOnPort(proxyServer, 0)
+            .then(async () => listenOnPort(targetService, 0))
+            .then(async (targetServicePort) => createTunnel(`http://localhost:${getServerPort(proxyServer)}`, `localhost:${targetServicePort}`))
+            .then(async (newTunnel) => {
                 tunnel = newTunnel;
 
                 // Dial the host createTunnel() returned, not `localhost` - that
                 // resolves to whichever family getaddrinfo happens to prefer.
                 const { hostname, port } = new URL(`connect://${newTunnel}`);
 
-                return connect(hostname, port);
+                return connect(hostname, Number(port));
             })
-            .then((connection) => {
+            .then(async (connection) => {
                 connection.setEncoding('utf8');
                 connection.on('data', (d) => { response += d; });
                 expected.forEach((text) => connection.write(`${text}\r\n`));
-                return new Promise((resolve) => setTimeout(() => {
+                return new Promise<void>((resolve) => setTimeout(() => {
                     connection.end();
-                    resolve(tunnel);
+                    resolve();
                 }, 500));
             })
-            .then(() => {
+            .then(async () => {
                 expect(response.trim().split('\r\n')).toStrictEqual(expected);
                 return closeTunnel(tunnel);
             })
-            .finally(() => closeServer(proxyServer, proxyServerConnections))
-            .finally(() => closeServer(targetService, targetServiceConnections));
+            .finally(async () => closeServerAndConnections(proxyServer, proxyServerConnections))
+            .finally(async () => closeServerAndConnections(targetService, targetServiceConnections));
     });
 });

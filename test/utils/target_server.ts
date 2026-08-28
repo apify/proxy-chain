@@ -1,19 +1,39 @@
+import type { Buffer } from 'node:buffer';
 import http from 'node:http';
 import https from 'node:https';
-import util from 'node:util';
-import express from 'express';
-import bodyParser from 'body-parser';
-import { WebSocketServer } from 'ws';
+
 import basicAuth from 'basic-auth';
+import bodyParser from 'body-parser';
+import express from 'express';
 import _ from 'underscore';
+import { type WebSocket, WebSocketServer } from 'ws';
+
+import { closeServer, listenOnPort } from './test_helpers.js';
+
+type TargetServerOptions = {
+    port: number;
+    useSsl?: boolean;
+    sslKey?: Buffer;
+    sslCrt?: Buffer;
+};
 
 /**
  * A HTTP server used for testing. It supports HTTPS and web sockets.
  */
 class TargetServer {
+    port: number;
+
+    useSsl?: boolean;
+
+    app: express.Express;
+
+    httpServer: http.Server;
+
+    wsUpgServer: WebSocketServer;
+
     constructor({
         port, useSsl, sslKey, sslCrt,
-    }) {
+    }: TargetServerOptions) {
         this.port = port;
         this.useSsl = useSsl;
 
@@ -51,38 +71,38 @@ class TargetServer {
         this.wsUpgServer.on('connection', this.onWsConnection.bind(this));
     }
 
-    listen() {
-        return util.promisify(this.httpServer.listen).bind(this.httpServer)(this.port);
+    async listen(): Promise<void> {
+        await listenOnPort(this.httpServer, this.port);
     }
 
-    allHelloWorld(request, response) {
+    allHelloWorld(_request: express.Request, response: express.Response): void {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         response.end('Hello world!');
     }
 
-    allEchoRequestInfo(request, response) {
+    allEchoRequestInfo(request: express.Request, response: express.Response): void {
         response.writeHead(200, { 'Content-Type': 'application/json' });
         const result = _.pick(request, 'headers', 'method');
         response.end(JSON.stringify(result));
     }
 
-    allEchoRawHeaders(request, response) {
+    allEchoRawHeaders(request: express.Request, response: express.Response): void {
         response.writeHead(200, { 'Content-Type': 'application/json' });
         response.end(JSON.stringify(request.rawHeaders));
     }
 
-    allEchoPayload(request, response) {
+    allEchoPayload(request: express.Request, response: express.Response): void {
         response.writeHead(200, { 'Content-Type': request.headers['content-type'] || 'dummy' });
         // console.log('allEchoPayload: ' + request.body.length);
         response.end(request.body);
     }
 
-    get1MACharsTogether(request, response) {
+    get1MACharsTogether(_request: express.Request, response: express.Response): void {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         response.end(''.padStart(1000 * 1000, 'a'));
     }
 
-    get1MACharsStreamed(request, response) {
+    get1MACharsStreamed(_request: express.Request, response: express.Response): void {
         response.writeHead(200, { 'Content-Type': 'text/plain' });
         for (let i = 0; i < 10000; i++) {
             response.write(`${''.padStart(99, 'a')}\n`);
@@ -90,13 +110,13 @@ class TargetServer {
         response.end();
     }
 
-    getRedirectToHelloWorld(request, response) {
+    getRedirectToHelloWorld(_request: express.Request, response: express.Response): void {
         const location = `${this.useSsl ? 'https' : 'http'}://localhost:${this.port}/hello-world`;
         response.writeHead(301, { 'Content-Type': 'text/plain', Location: location });
         response.end();
     }
 
-    getBasicAuth(request, response) {
+    getBasicAuth(request: express.Request, response: express.Response): void {
         const auth = basicAuth(request);
         // Using special char $ to test URI-encoding feature!
         // Beware that this is web server auth, not the proxy auth, so this doesn't really test our proxy server
@@ -110,7 +130,7 @@ class TargetServer {
         }
     }
 
-    handleHttpRequest(request, response) {
+    handleHttpRequest(_request: express.Request, response: express.Response): void {
         console.log('Received request');
 
         // const message = request.body;
@@ -120,8 +140,8 @@ class TargetServer {
         response.end('It works!');
     }
 
-    getNonStandardHeaders(request, response) {
-        const headers = {
+    getNonStandardHeaders(request: express.Request, _response: express.Response): void {
+        const headers: Record<string, string> = {
             'Invalid Header With Space': 'HeaderValue1',
             'X-Normal-Header': 'HeaderValue2',
         };
@@ -149,7 +169,7 @@ class TargetServer {
         });
     }
 
-    getInvalidStatusCode(request, response) {
+    getInvalidStatusCode(request: express.Request, _response: express.Response): void {
         let msg = `HTTP/1.1 55 OK\r\n`;
         msg += `\r\nBad status!`;
 
@@ -164,7 +184,7 @@ class TargetServer {
         });
     }
 
-    getRepeatingHeaders(request, response) {
+    getRepeatingHeaders(_request: express.Request, response: express.Response): void {
         response.writeHead(200, {
             'Content-Type': 'text/plain',
             'Repeating-Header': ['HeaderValue1', 'HeaderValue2'],
@@ -172,7 +192,7 @@ class TargetServer {
         response.end('Hooray!');
     }
 
-    onWsConnection(ws) {
+    onWsConnection(ws: WebSocket): void {
         ws.on('error', (err) => {
             console.log(`Web socket error: ${err.stack || err}`);
             throw err;
@@ -188,8 +208,8 @@ class TargetServer {
         });
     }
 
-    close() {
-        return util.promisify(this.httpServer.close).bind(this.httpServer)();
+    async close(): Promise<void> {
+        return await closeServer(this.httpServer);
     }
 }
 
