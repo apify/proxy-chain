@@ -61,7 +61,7 @@
         "test:docker:bun:e2e:full": "pnpm run docker:build && pnpm run docker:run -- test:bun:e2e:full",
         "test:docker:bun:full": "pnpm run docker:build && pnpm run docker:run -- test:bun:all",
         "test:docker:all": "bash scripts/test-docker-all.sh",
-        "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+        "type-check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix"
     },
