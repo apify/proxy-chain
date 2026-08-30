@@ -10,12 +10,10 @@ import tls from 'node:tls';
 import util from 'node:util';
 import zlib from 'node:zlib';
 
-import WebSocket from 'faye-websocket';
-import { gotScraping } from 'got-scraping';
 import portastic from 'portastic';
 import { createProxy, type ProxyServer } from 'proxy';
 import type { Browser, LaunchOptions, PuppeteerNode } from 'puppeteer';
-import request from 'request';
+import { WebSocket } from 'undici';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -23,10 +21,11 @@ import type {
 } from '../../src/index.js';
 import { RequestError, Server } from '../../src/index.js';
 import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
+import { expectProxyTunnelError } from '../utils/http_assertions.js';
+import { createDispatcher, httpRequest, type HttpRequestOpts, type HttpResponse } from '../utils/http_client.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
 import { TargetServer } from '../utils/target_server.js';
-import { closeServer, getServerPort, listenOnPort, type RequestOpts,
-    takePort, wait } from '../utils/test_helpers.js';
+import { closeServer, getServerPort, listenOnPort, takePort, wait } from '../utils/test_helpers.js';
 
 /*
 TODO - add following tests:
@@ -61,17 +60,6 @@ for (let i = 0; i < 100; i++) {
 }
 
 const AUTH_REALM = 'Test Proxy'; // Test space in realm string
-
-const requestPromised = async (opts: RequestOpts): Promise<request.Response> => {
-    return await new Promise<request.Response>((resolve, reject) => {
-        request(opts, (error: Error | null, response: request.Response) => {
-            if (error) {
-                return reject(error);
-            }
-            resolve(response);
-        });
-    });
-};
 
 // Chromium occasionally fails to spawn under headless Docker (dbus/crashpad noise + ENOENT-ish exits).
 // Retry briefly so a single flaky launch doesn't fail the whole suite.
@@ -223,26 +211,18 @@ const createTestSuite = ({
 
         let baseUrl: string;
         let mainProxyUrl: string | undefined;
-        const getRequestOpts = (pathOrUrl: string): RequestOpts & { url: string; headers: Record<string, string> } => {
-            const opts: RequestOpts & { url: string; headers: Record<string, string> } = {
+        const getRequestOpts = (pathOrUrl: string): HttpRequestOpts & { headers: Record<string, string> } => {
+            return {
                 url: pathOrUrl[0] === '/' ? `${baseUrl}${pathOrUrl}` : pathOrUrl,
-                key: sslKey,
-                proxy: mainProxyUrl,
+                proxyUrl: mainProxyUrl,
                 headers: {
                     // Node.js 20+ enables HTTP keep-alive by default, which causes connection
                     // reuse between tests and breaks connection tracking. Force close.
                     Connection: 'close',
                 },
-                timeout: 30000,
+                timeoutMillis: 30000,
+                ignoreCertificateErrors: true,
             };
-
-            // Accept self-signed certificates when connecting to HTTPS proxy.
-            if (mainProxyServerType === 'https') {
-                opts.strictSSL = false;
-                opts.rejectUnauthorized = false;
-            }
-
-            return opts;
         };
 
         let counter = 0;
@@ -514,9 +494,8 @@ const createTestSuite = ({
         // Helper functions
 
         // Tests for 502 Bad gateway or 407 Proxy Authenticate
-        // Unfortunately the request library throws for HTTPS and sends status code for HTTP
         // Returns the response only over plain HTTP; over HTTPS the request rejects instead.
-        const testForErrorResponse = async (opts: RequestOpts, expectedStatusCode: number): Promise<request.Response | undefined> => {
+        const testForErrorResponse = async (opts: HttpRequestOpts, expectedStatusCode: number): Promise<HttpResponse | undefined> => {
             let requestError: Error | null = null;
             let failedRequest: http.IncomingMessage | null = null;
             const onRequestFailed = ({ error, request: failed }: { error: Error; request: http.IncomingMessage }) => {
@@ -526,17 +505,11 @@ const createTestSuite = ({
 
             mainProxyServer!.on('requestFailed', onRequestFailed);
 
-            const promise = requestPromised(opts);
+            const promise = httpRequest(opts);
 
             if (useSsl) {
-                return promise.then(() => {
-                    expect.unreachable();
-                })
-                    .catch((err: unknown) => {
-                        if (!(err instanceof Error)) throw err;
-                        expect(err.message.slice(-3)).toContain(`${expectedStatusCode}`);
-                        return undefined;
-                    })
+                return expectProxyTunnelError(promise, expectedStatusCode)
+                    .then(() => undefined)
                     .finally(() => {
                         mainProxyServer!.removeListener('requestFailed', onRequestFailed);
                     });
@@ -586,7 +559,7 @@ const createTestSuite = ({
                 const opts = getRequestOpts('/hello-world');
 
                 try {
-                    const response = await requestPromised(opts);
+                    const response = await httpRequest(opts);
 
                     expect(response.body).toBe('Hello world!');
                     expect(response.statusCode).toBe(200);
@@ -597,25 +570,13 @@ const createTestSuite = ({
         } else if (useMainProxy && NODE_MAJOR_VERSION >= 15 && mainProxyServerType !== 'https') {
             // Version check is required because HTTP/2 negotiation
             // is not supported on Node.js < 15.
-            // Note: Skipped for HTTPS proxy - got-scraping has issues with IPv6 + HTTPS proxy combination.
+            // Note: Skipped for HTTPS proxy - that combination is not covered.
 
             _it('direct ipv6', async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.url = opts.url.replace('127.0.0.1', '[::1]');
 
-                // `request` proxy implementation fails to normalize IPv6.
-                // `got-scraping` normalizes IPv6 properly.
-                const response = await gotScraping({
-                    url: opts.url,
-                    headers: opts.headers,
-                    timeout: {
-                        request: opts.timeout,
-                    },
-                    proxyUrl: opts.proxy,
-                    https: {
-                        key: opts.key,
-                    },
-                });
+                const response = await httpRequest(opts);
 
                 expect(response.body).toBe('Hello world!');
                 expect(response.statusCode).toBe(200);
@@ -623,36 +584,24 @@ const createTestSuite = ({
         } else if (!useSsl && NODE_MAJOR_VERSION >= 15 && mainProxyServerType !== 'https') {
             // Version check is required because HTTP/2 negotiation
             // is not supported on Node.js < 15.
-            // Note: Skipped for HTTPS proxy - got-scraping has issues with IPv6 + HTTPS proxy combination.
+            // Note: Skipped for HTTPS proxy - that combination is not covered.
 
             _it('forward ipv6', async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.url = opts.url.replace('127.0.0.1', '[::1]');
 
-                // `request` proxy implementation fails to normalize IPv6.
-                // `got-scraping` normalizes IPv6 properly.
-                const response = await gotScraping({
-                    url: opts.url,
-                    headers: opts.headers,
-                    timeout: {
-                        request: opts.timeout,
-                    },
-                    proxyUrl: opts.proxy,
-                    https: {
-                        key: opts.key,
-                    },
-                });
+                const response = await httpRequest(opts);
 
                 expect(response.body).toBe('Hello world!');
                 expect(response.statusCode).toBe(200);
             });
         }
 
-        ['GET', 'POST', 'PUT', 'DELETE'].forEach((method) => {
+        (['GET', 'POST', 'PUT', 'DELETE'] as const).forEach((method) => {
             _it(`handles simple ${method} request`, async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.method = method;
-                return requestPromised(opts)
+                return httpRequest(opts)
                     .then((response) => {
                         expect(response.body).toBe('Hello world!');
                         expect(response.statusCode).toBe(200);
@@ -660,13 +609,13 @@ const createTestSuite = ({
             });
         });
 
-        ['POST', 'PUT', 'PATCH'].forEach((method) => {
+        (['POST', 'PUT', 'PATCH'] as const).forEach((method) => {
             _it(`handles ${method} request with payload and passes Content-Type`, async () => {
                 const opts = getRequestOpts('/echo-payload');
                 opts.method = method;
                 opts.body = 'SOME BODY LALALALA';
                 opts.headers['Content-Type'] = 'text/my-test';
-                return requestPromised(opts)
+                return httpRequest(opts)
                     .then((response) => {
                         expect(response.body).toBe(opts.body);
                         expect(response.headers['content-type']).toBe(opts.headers['Content-Type']);
@@ -690,7 +639,7 @@ const createTestSuite = ({
 
                 const opts = getRequestOpts(`/get-non-standard-headers?skipInvalidHeaderValue=${skipInvalidHeaderValue ? '1' : '0'}`);
                 opts.method = 'GET';
-                return requestPromised(opts)
+                return httpRequest(opts)
                     .then((response) => {
                         expect(response.body).toBe('Hello sir!');
                         expect(response.statusCode).toBe(200);
@@ -716,7 +665,7 @@ const createTestSuite = ({
                 _it('gracefully fails on invalid HTTP status code', async () => {
                     const opts = getRequestOpts('/get-invalid-status-code');
                     opts.method = 'GET';
-                    return requestPromised(opts)
+                    return httpRequest(opts)
                         .then((response) => {
                             if (useMainProxy) {
                                 expect(response.statusCode).toBe(592);
@@ -733,7 +682,7 @@ const createTestSuite = ({
         _it('save repeating server HTTP headers', async () => {
             const opts = getRequestOpts('/get-repeating-headers');
             opts.method = 'GET';
-            return requestPromised(opts)
+            return httpRequest(opts)
                 .then((response) => {
                     expect(response.body).toBe('Hooray!');
                     expect(response.statusCode).toBe(200);
@@ -810,42 +759,36 @@ const createTestSuite = ({
             opts.method = 'POST';
 
             let chunkIndex = 0;
-            let intervalId: NodeJS.Timeout;
+            const passThrough = new stream.PassThrough();
+            opts.body = passThrough;
 
-            return new Promise<void>((resolve, reject) => {
-                const passThrough = new stream.PassThrough();
-                opts.body = passThrough;
-
-                request(opts, (error, response, body) => {
-                    if (error) return reject(error);
-                    expect(response.statusCode).toBe(200);
-                    expect(body).toBe(DATA_CHUNKS_COMBINED);
-                    resolve();
-                });
-
-                intervalId = setInterval(() => {
-                    if (chunkIndex >= DATA_CHUNKS.length) {
-                        passThrough.end();
-                        clearInterval(intervalId);
-                        return;
-                    }
-                    passThrough.write(DATA_CHUNKS[chunkIndex++], (err) => {
-                        if (err) {
-                            clearInterval(intervalId);
-                            reject(err);
-                        }
-                    });
-                }, 1);
-            })
-                .finally(() => {
+            const intervalId = setInterval(() => {
+                if (chunkIndex >= DATA_CHUNKS.length) {
+                    passThrough.end();
                     clearInterval(intervalId);
+                    return;
+                }
+                passThrough.write(DATA_CHUNKS[chunkIndex++], (err) => {
+                    if (err) {
+                        clearInterval(intervalId);
+                        passThrough.destroy(err);
+                    }
                 });
+            }, 1);
+
+            try {
+                const response = await httpRequest(opts);
+                expect(response.statusCode).toBe(200);
+                expect(response.body).toBe(DATA_CHUNKS_COMBINED);
+            } finally {
+                clearInterval(intervalId);
+            }
         });
 
         const test1MAChars = async () => {
             const opts = getRequestOpts('/get-1m-a-chars-together');
             opts.method = 'GET';
-            return requestPromised(opts)
+            return httpRequest(opts)
                 .then((response) => {
                     expect(response.body).toMatch(/^a{1000000}$/);
                     expect(response.statusCode).toBe(200);
@@ -880,7 +823,7 @@ const createTestSuite = ({
 
         _it('handles 301 redirect', async () => {
             const opts = getRequestOpts('/redirect-to-hello-world');
-            return requestPromised(opts)
+            return httpRequest(opts)
                 .then((response) => {
                     expect(response.body).toBe('Hello world!');
                     expect(response.statusCode).toBe(200);
@@ -893,7 +836,7 @@ const createTestSuite = ({
                     // First test invalid credentials
                     const opts = getRequestOpts('/basic-auth');
                     opts.url = opts.url.replace('://', '://invalid:password@');
-                    return requestPromised(opts);
+                    return httpRequest(opts);
                 })
                 .then((response) => {
                     expect(response.body).toBe('Unauthorized');
@@ -903,7 +846,7 @@ const createTestSuite = ({
                     // Then test valid ones (passed as they are)
                     const opts = getRequestOpts('/basic-auth');
                     opts.url = opts.url.replace('://', '://john.doe$:Passwd$@');
-                    return requestPromised(opts);
+                    return httpRequest(opts);
                 })
                 .then((response) => {
                     expect(response.body).toBe('OK');
@@ -913,7 +856,7 @@ const createTestSuite = ({
                     // Then test URI encoded characters (must also work)
                     const opts = getRequestOpts('/basic-auth');
                     opts.url = opts.url.replace('://', '://john.doe%24:Passwd%24@');
-                    return requestPromised(opts);
+                    return httpRequest(opts);
                 })
                 .then((response) => {
                     expect(response.body).toBe('OK');
@@ -968,30 +911,34 @@ const createTestSuite = ({
         }
 
         const testWsCall = async () => {
-            return await new Promise<string>((resolve, reject) => {
-                const wsUrl = `${useSsl ? 'wss' : 'ws'}://127.0.0.1:${targetServerPort}`;
-                const ws = new WebSocket.Client(wsUrl, [], {
-                    proxy: {
-                        origin: mainProxyUrl,
-                        tls: useSsl ? { cert: sslCrt } : null,
-                    },
+            const wsUrl = `${useSsl ? 'wss' : 'ws'}://127.0.0.1:${targetServerPort}`;
+            const dispatcher = createDispatcher({
+                url: wsUrl,
+                proxyUrl: mainProxyUrl,
+                ignoreCertificateErrors: true,
+            });
+
+            try {
+                const data = await new Promise<string>((resolve, reject) => {
+                    const ws = new WebSocket(wsUrl, { dispatcher });
+
+                    ws.addEventListener('error', (event) => {
+                        ws.close();
+                        reject(new Error(`Web socket connection to ${wsUrl} failed.`, { cause: event.error }));
+                    });
+                    ws.addEventListener('open', () => {
+                        ws.send('hello world');
+                    });
+                    ws.addEventListener('message', (event) => {
+                        ws.close();
+                        resolve(event.data as string);
+                    });
                 });
 
-                ws.on('error', (err) => {
-                    ws.close();
-                    reject(err);
-                });
-                ws.on('open', () => {
-                    ws.send('hello world');
-                });
-                ws.on('message', (event) => {
-                    ws.close();
-                    resolve(event.data);
-                });
-            })
-                .then((data) => {
-                    expect(data).toBe('I received: hello world');
-                });
+                expect(data).toBe('I received: hello world');
+            } finally {
+                await dispatcher.close();
+            }
         };
 
         _it('handles web socket connection', async () => {
@@ -1015,7 +962,7 @@ const createTestSuite = ({
                     });
 
                     const opts = getRequestOpts(`http://127.0.0.1:${getServerPort(server)}`);
-                    return requestPromised(opts)
+                    return httpRequest(opts)
                         .then((response) => {
                             expect(response.statusCode).toBe(599);
                             server.close();
@@ -1049,7 +996,7 @@ const createTestSuite = ({
 
             _it('returns 404 for non-existent hostname', async () => {
                 const opts = getRequestOpts(`http://${NON_EXISTENT_HOSTNAME}`);
-                return requestPromised(opts)
+                return httpRequest(opts)
                     .then((response) => {
                         expect(response.statusCode).toBe(404);
                     });
@@ -1057,7 +1004,7 @@ const createTestSuite = ({
 
             it('returns 400 for direct connection to main proxy', async () => {
                 const opts = { url: mainProxyUrl! };
-                return requestPromised(opts)
+                return httpRequest(opts)
                     .then((response) => {
                         expect(response.statusCode).toBe(400);
                     });
@@ -1067,7 +1014,7 @@ const createTestSuite = ({
                 const opts = getRequestOpts('/echo-request-info');
                 opts.headers['X-Test-Header'] = 'my-test-value';
                 opts.headers.TE = 'MyTest';
-                return requestPromised(opts)
+                return httpRequest(opts)
                     .then((response) => {
                         expect(response.statusCode).toBe(200);
                         expect(response.headers['content-type']).toBe('application/json');
@@ -1133,25 +1080,25 @@ const createTestSuite = ({
                         .then(async () => {
                             // Test no username and password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxySchema}://127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxyUrl = `${proxySchema}://127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(async () => {
                             // Test good username and invalid password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxySchema}://${mainProxyAuth.username}:bad-password@127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxyUrl = `${proxySchema}://${mainProxyAuth.username}:bad-password@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(async () => {
                             // Test invalid username and good password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxySchema}://bad-username:${mainProxyAuth.password}@127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxyUrl = `${proxySchema}://bad-username:${mainProxyAuth.password}@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then(async () => {
                             // Test invalid username and bad password
                             const opts = getRequestOpts('/whatever');
-                            opts.proxy = `${proxySchema}://bad-username:bad-password@127.0.0.1:${mainProxyServerPort}`;
+                            opts.proxyUrl = `${proxySchema}://bad-username:bad-password@127.0.0.1:${mainProxyServerPort}`;
                             return testForErrorResponse(opts, 407);
                         })
                         .then((response) => {
@@ -1199,10 +1146,9 @@ const createTestSuite = ({
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-username`);
 
                     if (useSsl) {
-                        await expect(requestPromised(opts))
-                            .rejects.toThrow('tunneling socket could not be established, statusCode=597');
+                        await expectProxyTunnelError(httpRequest(opts), 597);
                     } else {
-                        const response = await requestPromised(opts);
+                        const response = await httpRequest(opts);
 
                         expect(response.statusCode).toBe(597);
                         expect(response.body).toBe('Invalid colon in username in upstream proxy credentials');
@@ -1226,8 +1172,8 @@ const createTestSuite = ({
                 if (!useSsl) {
                     it('supports custom response - buffer', async () => {
                         const opts = getRequestOpts('http://test-custom-response-buffer.gov');
-                        opts.gzip = true;
-                        return requestPromised(opts)
+                        opts.headers['accept-encoding'] = 'gzip';
+                        return httpRequest(opts)
                             .then((response) => {
                                 expect(response.statusCode).toBe(200);
                                 expect(response.body).toBe('Hello, world!');
@@ -1236,7 +1182,7 @@ const createTestSuite = ({
 
                     it('supports custom response - simple', async () => {
                         const opts = getRequestOpts('http://test-custom-response-simple.gov/some/path');
-                        return requestPromised(opts)
+                        return httpRequest(opts)
                             .then((response) => {
                                 expect(response.statusCode).toBe(200);
                                 expect(response.body).toBe('TEST CUSTOM RESPONSE SIMPLE');
@@ -1245,7 +1191,7 @@ const createTestSuite = ({
 
                     it('supports custom response - complex', async () => {
                         const opts = getRequestOpts('http://test-custom-response-complex.gov:1234/some/path?query=456');
-                        return requestPromised(opts)
+                        return httpRequest(opts)
                             .then((response) => {
                                 expect(response.statusCode).toBe(201);
                                 expect(response.headers).toMatchObject({
@@ -1258,7 +1204,7 @@ const createTestSuite = ({
 
                     it('supports custom response - long', async () => {
                         const opts = getRequestOpts('http://test-custom-response-long.gov');
-                        return requestPromised(opts)
+                        return httpRequest(opts)
                             .then((response) => {
                                 expect(response.statusCode).toBe(200);
                                 expect(response.headers['content-length']).toBe('5000000');
@@ -1269,7 +1215,7 @@ const createTestSuite = ({
 
                     it('supports custom response - promised', async () => {
                         const opts = getRequestOpts('http://test-custom-response-promised.gov/some/path');
-                        return requestPromised(opts)
+                        return httpRequest(opts)
                             .then((response) => {
                                 expect(response.statusCode).toBe(200);
                                 expect(response.body).toBe('TEST CUSTOM RESPONSE PROMISED');
@@ -1312,8 +1258,8 @@ const createTestSuite = ({
 
             if (mainProxyServer) {
                 // NOTE: we need to forcibly close pending connections,
-                // because e.g. on 502 errors in HTTPS mode, the request library
-                // doesn't close the connection and this would timeout
+                // because e.g. on 502 errors in HTTPS mode the client keeps
+                // the connection open and this would time out.
                 await mainProxyServer.close(true);
             }
 
@@ -1437,9 +1383,9 @@ it('supports localAddress', async () => {
 
     await server.listen();
 
-    const response = await requestPromised({
+    const response = await httpRequest({
         url: `http://127.0.0.1:${getServerPort(target)}`,
-        proxy: `http://127.0.0.2:${server.port}`,
+        proxyUrl: `http://127.0.0.2:${server.port}`,
     });
 
     try {
@@ -1474,14 +1420,13 @@ it('supports https proxy relay', async () => {
     await proxyServer.listen();
 
     try {
-        await requestPromised({
+        await httpRequest({
             url: 'https://www.google.com',
-            proxy: `http://localhost:${proxyServer.port}`,
-            strictSSL: false,
+            proxyUrl: `http://localhost:${proxyServer.port}`,
+            ignoreCertificateErrors: true,
         });
     } catch {
-        // the request will fail with the following error:
-        // Error: tunneling socket could not be established, statusCode=599
+        // the request fails with `Proxy response (599) !== 200 when HTTP Tunneling`
     }
     expect(proxyServerError).toBe(false);
 
@@ -1622,8 +1567,8 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
          * request is sent with rejectUnauthorized: true
          * so when the SSL certificate is not trusted (self-signed, expired, invalid), client will reject the connection
          */
-        const response = await requestPromised({
-            proxy: `http://localhost:${proxyServer.port}`,
+        const response = await httpRequest({
+            proxyUrl: `http://localhost:${proxyServer.port}`,
             url: 'http://httpbin.org/ip',
         });
 
@@ -1665,8 +1610,8 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
          * request is sent with rejectUnauthorized: false
          * so when the SSL certificate is not trusted (self-signed, expired, invalid), client won't reject the connection
          */
-        const response = await requestPromised({
-            proxy: `http://localhost:${proxyServer.port}`,
+        const response = await httpRequest({
+            proxyUrl: `http://localhost:${proxyServer.port}`,
             url: 'http://httpbin.org/ip',
         });
 

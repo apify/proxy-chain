@@ -3,13 +3,13 @@ import http from 'node:http';
 import path from 'node:path';
 import tls from 'node:tls';
 
-import request from 'request';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConnectionStats } from '../../src/index.js';
 import { Server } from '../../src/index.js';
+import { httpRequest } from '../utils/http_client.js';
 import { TargetServer } from '../utils/target_server.js';
-import { getServerPort, type RequestOpts, wait } from '../utils/test_helpers.js';
+import { getServerPort, wait } from '../utils/test_helpers.js';
 
 // Node.js 20+ enables HTTP keep-alive by default in the global agent,
 // which causes connection tracking issues in tests. Disable it.
@@ -17,15 +17,6 @@ import { getServerPort, type RequestOpts, wait } from '../utils/test_helpers.js'
 
 const sslKey = fs.readFileSync(path.join(import.meta.dirname, 'ssl.key'));
 const sslCrt = fs.readFileSync(path.join(import.meta.dirname, 'ssl.crt'));
-
-const requestPromised = async (opts: RequestOpts): Promise<request.Response> => {
-    return await new Promise((resolve, reject) => {
-        request(opts, (error: Error | null, response: request.Response) => {
-            if (error) reject(error);
-            else resolve(response);
-        });
-    });
-};
 
 type RequestResult = { status?: number; body?: string; error?: string };
 
@@ -71,10 +62,10 @@ describe('HTTPS proxy stress testing', () => {
         const promises = [];
         for (let i = 0; i < REQUESTS; i++) {
             promises.push(
-                requestPromised({
+                httpRequest({
                     url: `http://127.0.0.1:${targetServerPort}/hello-world`,
-                    proxy: `https://127.0.0.1:${server.port}`,
-                    strictSSL: false,
+                    proxyUrl: `https://127.0.0.1:${server.port}`,
+                    ignoreCertificateErrors: true,
                 }).then((response) => {
                     results.push({
                         status: response.statusCode,
@@ -163,10 +154,12 @@ describe('HTTPS proxy stress testing', () => {
         const promises = [];
         for (let i = 0; i < REQUESTS; i++) {
             promises.push(
-                requestPromised({
+                httpRequest({
                     url: `http://127.0.0.1:${targetServerPort}/hello-world`,
-                    proxy: `https://127.0.0.1:${server.port}`,
-                    strictSSL: false,
+                    proxyUrl: `https://127.0.0.1:${server.port}`,
+                    ignoreCertificateErrors: true,
+                    // Byte counts below are exact, so pin the connection header.
+                    headers: { Connection: 'close' },
                 }),
             );
         }
