@@ -10,7 +10,8 @@ logs
 pids
 .idea
 yarn.lock
-docs
+docs/*
+!docs/agents/
 package-lock.json
 dist
 .vscode
