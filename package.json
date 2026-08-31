@@ -110,7 +110,7 @@
     },
     "dependencies": {
         "socks": "^2.8.3",
-        "socks-proxy-agent": "^8.0.3",
+        "socks-proxy-agent": "^10.1.0",
         "tslib": "^2.3.1"
     }
 }
