@@ -292,16 +292,6 @@ const createTestSuite = ({
                         upstreamProxyPort = takePort(freePorts);
                         upstreamProxyServer = createProxy(upstreamProxyHttpServer);
                         listenOnPort(upstreamProxyServer, upstreamProxyPort).then(() => resolve(), reject);
-
-                        // This is a workaround to a buggy implementation of "proxy" package. On Node 10+,
-                        // the socket sometimes emits ECONNRESET error, which would break the test.
-                        // We just swallow it.
-                        upstreamProxyServer.on('connect', (_req: http.IncomingMessage, socket: net.Socket) => {
-                            socket.on('error', (err: NodeJS.ErrnoException) => {
-                                if (err.code === 'ECONNRESET') return;
-                                throw err;
-                            });
-                        });
                     });
                 }
             }).then(async () => {
