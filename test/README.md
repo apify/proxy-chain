@@ -67,7 +67,7 @@ Note: for test in Docker no changes in `/etc/hosts` needed.
 
 ### Prerequisites
 
-1. Node.js 20+ (see `.nvmrc` for exact version)
+1. Node.js 20+ (see `engines` in `package.json` for the supported range)
 2. For MacOS with ARM CPUs install Rosetta (workaround for puppeteer)
 3. Update `/etc/hosts`
 
