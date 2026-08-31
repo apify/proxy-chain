@@ -13,7 +13,7 @@ import zlib from 'node:zlib';
 import WebSocket from 'faye-websocket';
 import { gotScraping } from 'got-scraping';
 import portastic from 'portastic';
-import proxy, { type AuthenticatingHttpServer } from 'proxy';
+import { createProxy, type ProxyServer } from 'proxy';
 import type { Browser, LaunchOptions, PuppeteerNode } from 'puppeteer';
 import request from 'request';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -261,36 +261,27 @@ const createTestSuite = ({
                 // Setup proxy chain server
                 if (useUpstreamProxy) {
                     return new Promise<void>((resolve, reject) => {
-                        const upstreamProxyHttpServer: AuthenticatingHttpServer = http.createServer();
+                        const upstreamProxyHttpServer: ProxyServer = http.createServer();
 
                         // Node.js 20+ enables HTTP keep-alive by default, which causes connection
                         // tracking issues in tests. Disable keep-alive on the upstream proxy server.
                         upstreamProxyHttpServer.keepAliveTimeout = 0;
 
                         // Setup upstream proxy authorization
-                        upstreamProxyHttpServer.authenticate = function (req, fn) {
+                        upstreamProxyHttpServer.authenticate = function (req) {
                             upstreamProxyRequestCount++;
 
                             // Special case: no authentication required
-                            if (!upstreamProxyAuth) {
-                                return fn(null, true);
-                            }
+                            if (!upstreamProxyAuth) return true;
 
                             // parse the "Proxy-Authorization" header
                             const auth = req.headers['proxy-authorization'];
-                            if (!auth) {
-                                // optimization: don't invoke the child process if no
-                                // "Proxy-Authorization" header was given
-                                // console.log('not Proxy-Authorization');
-                                return fn(null, false);
-                            }
+                            if (!auth) return false;
 
                             const parsed = parseAuthorizationHeader(auth);
                             // A header that parses to null (e.g. whitespace only) simply does not match.
                             const authKeys = ['type', 'username', 'password'] as const;
-                            const isEqual = parsed !== null && authKeys.every((name) => parsed[name] === upstreamProxyAuth[name]);
-                            // console.log('Parsed "Proxy-Authorization": parsed: %j expected: %j : %s', parsed, upstreamProxyAuth, isEqual);
-                            fn(null, isEqual);
+                            return parsed !== null && authKeys.every((name) => parsed[name] === upstreamProxyAuth[name]);
                         };
 
                         upstreamProxyHttpServer.on('error', (err) => {
@@ -299,7 +290,7 @@ const createTestSuite = ({
                         });
 
                         upstreamProxyPort = takePort(freePorts);
-                        upstreamProxyServer = proxy(upstreamProxyHttpServer);
+                        upstreamProxyServer = createProxy(upstreamProxyHttpServer);
                         listenOnPort(upstreamProxyServer, upstreamProxyPort).then(() => resolve(), reject);
 
                         // This is a workaround to a buggy implementation of "proxy" package. On Node 10+,

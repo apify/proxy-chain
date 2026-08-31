@@ -3,7 +3,7 @@ import http from 'node:http';
 import basicAuthParser from 'basic-auth-parser';
 import express from 'express';
 import portastic from 'portastic';
-import proxy, { type AuthenticatingHttpServer } from 'proxy';
+import { createProxy, type ProxyServer } from 'proxy';
 import request from 'request';
 import _ from 'underscore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -24,26 +24,23 @@ beforeAll(async () => {
     const freePorts = await portastic.find(PORT_RANGES.anonymizeProxyNoPassword);
 
     await new Promise<void>((resolve, reject) => {
-        const httpServer: AuthenticatingHttpServer = http.createServer();
+        const httpServer: ProxyServer = http.createServer();
 
         // Setup proxy authorization
-        httpServer.authenticate = function (req, fn) {
+        httpServer.authenticate = function (req) {
             // parse the "Proxy-Authorization" header
             const auth = req.headers['proxy-authorization'];
-            if (!auth) {
-                // optimization: don't invoke the child process if no
-                // "Proxy-Authorization" header was given
-                return fn(null, false);
-            }
+            if (!auth) return false;
+
             const parsed = basicAuthParser(auth);
             const isEqual = _.isEqual(parsed, proxyAuth);
             if (isEqual) wasProxyCalled = true;
-            fn(null, isEqual);
+            return isEqual;
         };
 
         httpServer.on('error', reject);
 
-        const server = proxy(httpServer);
+        const server = createProxy(httpServer);
         proxyServer = server;
         server.listen(freePorts[0], () => {
             proxyPort = getServerPort(server);

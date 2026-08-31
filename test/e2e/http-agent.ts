@@ -4,7 +4,7 @@ import https from 'node:https';
 import path from 'node:path';
 
 import portastic from 'portastic';
-import proxy from 'proxy';
+import { createProxy } from 'proxy';
 import request from 'request';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -38,7 +38,7 @@ describe('HTTP Agent Support', () => {
 
         // Setup upstream proxy server
         upstreamProxyPort = takePort(freePorts);
-        upstreamProxyServer = proxy(http.createServer());
+        upstreamProxyServer = createProxy(http.createServer());
         await listenOnPort(upstreamProxyServer, upstreamProxyPort);
     });
 
@@ -241,7 +241,7 @@ describe('HTTP Agent Support', () => {
             httpUpstreamConnectionCount++;
         });
 
-        upstreamProxyServer = proxy(httpServer);
+        upstreamProxyServer = createProxy(httpServer);
         await listenOnPort(upstreamProxyServer, upstreamProxyPort);
 
         const httpAgent = new http.Agent({

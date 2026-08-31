@@ -7,26 +7,6 @@ declare module 'portastic' {
     export function find(options: { min: number; max: number }): Promise<number[]>;
 }
 
-declare module 'proxy' {
-    import type http from 'node:http';
-
-    /**
-     * `proxy@1` reads an `authenticate` hook off the server it wraps. The hook is not
-     * part of `http.Server`, so tests attach it to this widened type.
-     */
-    export type AuthenticatingHttpServer = http.Server & {
-        authenticate?: (
-            req: http.IncomingMessage,
-            fn: (error: Error | null, isAuthenticated: boolean) => void,
-        ) => void;
-    };
-
-    function setup(server: http.Server): http.Server;
-
-    // eslint-disable-next-line import/no-default-export -- mirrors the package's `module.exports = setup`.
-    export default setup;
-}
-
 declare module 'basic-auth-parser' {
     function parse(header: string): {
         scheme: string;

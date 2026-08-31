@@ -11,7 +11,7 @@
 
 import http from 'node:http';
 
-import proxy from 'proxy';
+import { createProxy } from 'proxy';
 
 import { Server } from '../../src/index.js';
 import { listenOnPort } from './test_helpers.js';
@@ -25,7 +25,7 @@ upstreamProxyHttpServer.on('error', (err) => {
     console.error(err.stack || err);
 });
 
-const upstreamProxyServer = proxy(upstreamProxyHttpServer);
+const upstreamProxyServer = createProxy(upstreamProxyHttpServer);
 const upstreamProxyPort = portFromEnv(process.env.UPSTREAM_PROXY_PORT, 8081);
 listenOnPort(upstreamProxyServer, upstreamProxyPort)
     .catch((err: Error) => {
