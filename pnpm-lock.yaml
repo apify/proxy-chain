@@ -79,8 +79,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       proxy:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^4.1.0
+        version: 4.1.0
       puppeteer:
         specifier: ^25.1.0
         version: 25.9.0
@@ -728,8 +728,8 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
-  args@5.0.1:
-    resolution: {integrity: sha512-1kqmFCFsPffavQFGt8OxJdIcETti99kySRUPMpOhaGjL6mRJn8HFU1OxKY5bMqfZKUwTQc1mZkAjmGYaVOHFtQ==}
+  args@5.0.3:
+    resolution: {integrity: sha512-h6k/zfFgusnv3i5TU08KQkVKuCPBtL/PWQbWkHUxvJrZ2nAyeaUupneemcrgn1xmqxPQsPIzwkUhOpoqPDRZuA==}
     engines: {node: '>= 6.0.0'}
 
   array-buffer-byte-length@1.0.2:
@@ -2004,8 +2004,9 @@ packages:
     resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
     engines: {node: '>= 0.10'}
 
-  proxy@1.0.2:
-    resolution: {integrity: sha512-KNac2ueWRpjbUh77OAFPZuNdfEqNynm9DD4xHT14CccGpW8wKZwEkN0yjlb7X9G9Z9F55N0Q+1z+WfgAhwYdzQ==}
+  proxy@4.1.0:
+    resolution: {integrity: sha512-X3gqRNkp5dLWQolWksIfFSltI0ls8oQ01+tckxnPoz3bQ5+OUsdE7bwX/i/Q3TDEG4gx2PQjc3D07dIx90CQdg==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   psl@1.15.0:
@@ -3098,7 +3099,7 @@ snapshots:
 
   argparse@2.0.1: {}
 
-  args@5.0.1:
+  args@5.0.3:
     dependencies:
       camelcase: 5.0.0
       chalk: 2.4.2
@@ -4481,10 +4482,9 @@ snapshots:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
 
-  proxy@1.0.2:
+  proxy@4.1.0:
     dependencies:
-      args: 5.0.1
-      basic-auth-parser: 0.0.2
+      args: 5.0.3
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
