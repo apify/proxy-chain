@@ -2,7 +2,7 @@ import http from 'node:http';
 import net from 'node:net';
 
 import portastic from 'portastic';
-import proxy from 'proxy';
+import { createProxy } from 'proxy';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { closeTunnel, createTunnel } from '../../src/index.js';
@@ -109,7 +109,7 @@ describe('tcp_tunnel.createTunnel', () => {
     it('correctly tunnels to tcp service and then is able to close the connection', async () => {
         const proxyServerConnections: net.Socket[] = [];
 
-        const proxyServer = proxy(http.createServer());
+        const proxyServer = createProxy(http.createServer());
         proxyServer.on('connection', (conn: net.Socket) => proxyServerConnections.push(conn));
 
         const targetServiceConnections: net.Socket[] = [];
@@ -133,7 +133,7 @@ describe('tcp_tunnel.createTunnel', () => {
     it('correctly tunnels to tcp service and then is able to close the connection (async/await)', async () => {
         const proxyServerConnections: net.Socket[] = [];
 
-        const proxyServer = proxy(http.createServer());
+        const proxyServer = createProxy(http.createServer());
         proxyServer.on('connection', (conn: net.Socket) => proxyServerConnections.push(conn));
 
         const targetServiceConnections: net.Socket[] = [];
@@ -167,7 +167,7 @@ describe('tcp_tunnel.createTunnel', () => {
 
         const proxyServerConnections: net.Socket[] = [];
 
-        const proxyServer = proxy(http.createServer());
+        const proxyServer = createProxy(http.createServer());
         proxyServer.on('connection', (conn: net.Socket) => proxyServerConnections.push(conn));
 
         const targetServiceConnections: net.Socket[] = [];
