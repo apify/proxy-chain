@@ -53,7 +53,7 @@ beforeAll(async () => {
 
     testServerPort = freePorts[1];
     await new Promise<void>((resolve) => {
-        expressServer = app.listen(testServerPort, resolve);
+        expressServer = app.listen(testServerPort, () => resolve());
     });
 });
 
