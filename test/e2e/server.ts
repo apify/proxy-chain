@@ -567,11 +567,7 @@ const createTestSuite = ({
                     upstreamProxyHostname = '127.0.0.1';
                 }
             });
-        } else if (useMainProxy && NODE_MAJOR_VERSION >= 15 && mainProxyServerType !== 'https') {
-            // Version check is required because HTTP/2 negotiation
-            // is not supported on Node.js < 15.
-            // Note: Skipped for HTTPS proxy - that combination is not covered.
-
+        } else if (useMainProxy) {
             _it('direct ipv6', async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.url = opts.url.replace('127.0.0.1', '[::1]');
@@ -581,11 +577,7 @@ const createTestSuite = ({
                 expect(response.body).toBe('Hello world!');
                 expect(response.statusCode).toBe(200);
             });
-        } else if (!useSsl && NODE_MAJOR_VERSION >= 15 && mainProxyServerType !== 'https') {
-            // Version check is required because HTTP/2 negotiation
-            // is not supported on Node.js < 15.
-            // Note: Skipped for HTTPS proxy - that combination is not covered.
-
+        } else if (!useSsl) {
             _it('forward ipv6', async () => {
                 const opts = getRequestOpts('/hello-world');
                 opts.url = opts.url.replace('127.0.0.1', '[::1]');
