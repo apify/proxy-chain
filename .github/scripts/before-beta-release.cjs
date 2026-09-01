@@ -4,7 +4,7 @@ const path = require('node:path');
 
 const PKG_JSON_PATH = path.join(__dirname, '..', '..', 'package.json');
 
-// eslint-disable-next-line import/no-dynamic-require
+// eslint-disable-next-line import-x/no-dynamic-require
 const pkgJson = require(PKG_JSON_PATH);
 
 const PACKAGE_NAME = pkgJson.name;
