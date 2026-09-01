@@ -54,7 +54,7 @@ class TargetServer {
         this.app.get('/get-invalid-status-code', this.getInvalidStatusCode.bind(this));
         this.app.get('/get-repeating-headers', this.getRepeatingHeaders.bind(this));
 
-        this.app.all('*', this.handleHttpRequest.bind(this));
+        this.app.all('/{*splat}', this.handleHttpRequest.bind(this));
 
         if (useSsl) {
             this.httpServer = https.createServer({ key: sslKey, cert: sslCrt }, this.app);
