@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config';
 // The handful of genuinely slow cases carry their own timeout at the test or hook.
 const E2E_TIMEOUT_MILLIS = 2_000;
 
-// eslint-disable-next-line import/no-default-export
+// eslint-disable-next-line import-x/no-default-export
 export default defineConfig({
     test: {
         coverage: {

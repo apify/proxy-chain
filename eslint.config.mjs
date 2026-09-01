@@ -1,6 +1,6 @@
 import apifyTypescriptConfig from '@apify/eslint-config/ts.js';
 
-// eslint-disable-next-line import/no-default-export
+// eslint-disable-next-line import-x/no-default-export
 export default [
     { ignores: ['**/dist'] }, // Ignores need to happen first
     ...apifyTypescriptConfig,
@@ -14,7 +14,13 @@ export default [
         },
         rules: {
             'no-param-reassign': 'off',
-            'import/extensions': 'off',
+            'import-x/extensions': 'off',
+        },
+    },
+    {
+        files: ['vitest.config.ts'],
+        rules: {
+            'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
         },
     },
     {

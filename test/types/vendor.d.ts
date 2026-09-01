@@ -14,7 +14,7 @@ declare module 'basic-auth-parser' {
         password: string;
     };
 
-    // eslint-disable-next-line import/no-default-export -- mirrors the package's `module.exports = parse`.
+    // eslint-disable-next-line import-x/no-default-export -- mirrors the package's `module.exports = parse`.
     export default parse;
 }
 
@@ -65,7 +65,7 @@ declare module 'socksv5' {
         };
     };
 
-    // eslint-disable-next-line import/no-default-export -- see the note above.
+    // eslint-disable-next-line import-x/no-default-export -- see the note above.
     export default socksv5;
 }
 
