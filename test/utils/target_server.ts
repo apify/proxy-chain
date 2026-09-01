@@ -2,7 +2,7 @@ import type { Buffer } from 'node:buffer';
 import http from 'node:http';
 import https from 'node:https';
 
-import basicAuth from 'basic-auth';
+import { parse as parseBasicAuth } from 'basic-auth';
 import bodyParser from 'body-parser';
 import express from 'express';
 import _ from 'underscore';
@@ -117,7 +117,8 @@ class TargetServer {
     }
 
     getBasicAuth(request: express.Request, response: express.Response): void {
-        const auth = basicAuth(request);
+        const authHeader = request.headers.authorization;
+        const auth = authHeader ? parseBasicAuth(authHeader) : undefined;
         // Using special char $ to test URI-encoding feature!
         // Beware that this is web server auth, not the proxy auth, so this doesn't really test our proxy server
         // But it should work anyway
