@@ -87,7 +87,7 @@
         "@types/underscore": "^1.13.0",
         "@types/ws": "^8.18.1",
         "@vitest/coverage-v8": "^4.1.11",
-        "basic-auth": "^2.0.1",
+        "basic-auth": "^3.0.0",
         "basic-auth-parser": "^0.0.2",
         "body-parser": "^2.3.0",
         "cross-env": "^7.0.3",
