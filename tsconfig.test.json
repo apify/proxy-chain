@@ -2,6 +2,7 @@
     "extends": "./tsconfig.json",
     "compilerOptions": {
         "noEmit": true,
+        "rootDir": ".",
         // Inherited `incremental` would drop a .tsbuildinfo into the build output dir.
         "incremental": false,
         // got-scraping's own types pull in got-cjs, which imports the untyped

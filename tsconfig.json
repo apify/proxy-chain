@@ -2,6 +2,8 @@
     "extends": "@apify/tsconfig",
     "compilerOptions": {
         "outDir": "dist",
+        "rootDir": "src",
+        "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "target": "ES2022",
