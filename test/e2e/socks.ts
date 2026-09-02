@@ -1,9 +1,9 @@
-import { gotScraping } from 'got-scraping';
 import portastic from 'portastic';
 import socksv5, { type SocksServer } from 'socksv5';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import * as ProxyChain from '../../src/index.js';
+import { httpRequest } from '../utils/http_client.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
 
 describe('SOCKS protocol', { timeout: 10_000 }, () => {
@@ -36,7 +36,7 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
             },
         });
         await proxyServer.listen();
-        const response = await gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
+        const response = await httpRequest({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
         expect(response.body).toContain('Example Domain');
     });
 
@@ -61,7 +61,7 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
             },
         });
         await proxyServer.listen();
-        const response = await gotScraping.get({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
+        const response = await httpRequest({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
         expect(response.body).toContain('Example Domain');
     });
 
@@ -81,7 +81,7 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
             port: proxyPort,
             url: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}`,
         });
-        const response = await gotScraping.get({ url: 'https://example.com', proxyUrl: anonymizeProxyUrl });
+        const response = await httpRequest({ url: 'https://example.com', proxyUrl: anonymizeProxyUrl });
         expect(response.body).toContain('Example Domain');
     });
 });

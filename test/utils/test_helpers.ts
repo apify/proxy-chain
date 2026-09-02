@@ -1,7 +1,5 @@
 import type net from 'node:net';
 
-import type request from 'request';
-
 /**
  * `server.address()` is typed as `AddressInfo | string | null`, so every caller that
  * just wants the bound TCP port needs this narrowing.
@@ -55,12 +53,3 @@ export const wait = async (timeoutMillis: number): Promise<void> => {
         setTimeout(resolve, timeoutMillis);
     });
 };
-
-/** For call sites that pass `url`. */
-export type RequestOpts = request.CoreOptions & request.UrlOptions;
-
-/**
- * For call sites that pass `uri`. `expectBodyContainsText` is not a `request` option -
- * those tests pass it through the same object and read it back when asserting.
- */
-export type RequestUriOpts = request.CoreOptions & request.UriOptions & { expectBodyContainsText?: string };

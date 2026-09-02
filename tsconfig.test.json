@@ -5,8 +5,8 @@
         "rootDir": ".",
         // Inherited `incremental` would drop a .tsbuildinfo into the build output dir.
         "incremental": false,
-        // got-scraping's own types pull in got-cjs, which imports the untyped
-        // form-data-encoder. We only want errors from our own test code here.
+        // puppeteer's types reference DOM globals, which this config does not pull in.
+        // We only want errors from our own test code here.
         // src is still checked without this in tsconfig.json.
         "skipLibCheck": true
     },

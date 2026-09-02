@@ -4,13 +4,14 @@ import basicAuthParser from 'basic-auth-parser';
 import express from 'express';
 import portastic from 'portastic';
 import { createProxy, type ProxyServer } from 'proxy';
-import request from 'request';
 import _ from 'underscore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { anonymizeProxy, closeAnonymizedProxy } from '../../src/index.js';
+import { expectSuccessfulRequest } from '../utils/http_assertions.js';
+import { httpRequest } from '../utils/http_client.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
-import { closeServer, getServerPort, type RequestUriOpts } from '../utils/test_helpers.js';
+import { closeServer, getServerPort } from '../utils/test_helpers.js';
 
 let expressServer: http.Server | undefined;
 let proxyServer: http.Server | undefined;
@@ -63,21 +64,6 @@ afterAll(async () => {
     if (proxyServer) await closeServer(proxyServer);
 }, 5_000);
 
-const requestPromised = async (opts: RequestUriOpts): Promise<void> => {
-    // console.log('requestPromised');
-    // console.dir(opts);
-    return await new Promise((resolve, reject) => {
-        request(opts, (error, response, body) => {
-            if (error) return reject(error);
-            if (response.statusCode !== 200) {
-                return reject(new Error(`Received invalid response code: ${response.statusCode}`));
-            }
-            if (opts.expectBodyContainsText) expect(body).toContain(opts.expectBodyContainsText);
-            resolve();
-        });
-    });
-};
-
 describe('utils.anonymizeProxyNoPassword', { timeout: 5_000 }, () => {
     it('anonymizes authenticated with no password upstream proxy', async () => {
         const [proxyUrl1, proxyUrl2] = await Promise.all([
@@ -91,27 +77,27 @@ describe('utils.anonymizeProxyNoPassword', { timeout: 5_000 }, () => {
 
         // Test call through proxy 1
         wasProxyCalled = false;
-        await requestPromised({
-            uri: `http://localhost:${testServerPort}`,
-            proxy: proxyUrl1,
+        await expectSuccessfulRequest({
+            url: `http://localhost:${testServerPort}`,
+            proxyUrl: proxyUrl1,
             expectBodyContainsText: 'Hello World!',
         });
         expect(wasProxyCalled).toBe(true);
 
         // Test call through proxy 2
         wasProxyCalled = false;
-        await requestPromised({
-            uri: `http://localhost:${testServerPort}`,
-            proxy: proxyUrl2,
+        await expectSuccessfulRequest({
+            url: `http://localhost:${testServerPort}`,
+            proxyUrl: proxyUrl2,
             expectBodyContainsText: 'Hello World!',
         });
         expect(wasProxyCalled).toBe(true);
 
         // Test again call through proxy 1
         wasProxyCalled = false;
-        await requestPromised({
-            uri: `http://localhost:${testServerPort}`,
-            proxy: proxyUrl1,
+        await expectSuccessfulRequest({
+            url: `http://localhost:${testServerPort}`,
+            proxyUrl: proxyUrl1,
             expectBodyContainsText: 'Hello World!',
         });
         expect(wasProxyCalled).toBe(true);
@@ -121,7 +107,7 @@ describe('utils.anonymizeProxyNoPassword', { timeout: 5_000 }, () => {
 
         // Test proxy is really closed. Node.js 20+ may report 'socket hang up'
         // instead of 'ECONNREFUSED'.
-        await expect(requestPromised({ uri: proxyUrl1 })).rejects.toThrow(/ECONNREFUSED|socket hang up/);
+        await expect(httpRequest({ url: proxyUrl1 })).rejects.toThrow(/ECONNREFUSED|socket hang up/);
 
         const closed2 = await closeAnonymizedProxy(proxyUrl2, true);
         expect(closed2).toBe(true);

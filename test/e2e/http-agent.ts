@@ -5,10 +5,10 @@ import path from 'node:path';
 
 import portastic from 'portastic';
 import { createProxy } from 'proxy';
-import request from 'request';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { Server } from '../../src/index.js';
+import { createDispatcher, httpRequest } from '../utils/http_client.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
 import { TargetServer } from '../utils/target_server.js';
 import { closeServer, listenOnPort, takePort } from '../utils/test_helpers.js';
@@ -71,16 +71,11 @@ describe('HTTP Agent Support', () => {
         const mainProxyPort = mainProxyServer.port;
 
         // Make HTTP request through the proxy
-        await new Promise<void>((resolve, reject) => {
-            request({
-                url: `${targetServerUrl}/hello-world`,
-                proxy: `http://localhost:${mainProxyPort}`,
-            }, (error, response) => {
-                if (error) return reject(error);
-                expect(response.statusCode).toBe(200);
-                resolve();
-            });
+        const response = await httpRequest({
+            url: `${targetServerUrl}/hello-world`,
+            proxyUrl: `http://localhost:${mainProxyPort}`,
         });
+        expect(response.statusCode).toBe(200);
 
         // Cleanup agents
         httpAgent.destroy();
@@ -102,16 +97,11 @@ describe('HTTP Agent Support', () => {
         const mainProxyPort = mainProxyServer.port;
 
         // Make HTTP request through the proxy
-        await new Promise<void>((resolve, reject) => {
-            request({
-                url: `${targetServerUrl}/hello-world`,
-                proxy: `http://localhost:${mainProxyPort}`,
-            }, (error, response) => {
-                if (error) return reject(error);
-                expect(response.statusCode).toBe(200);
-                resolve();
-            });
+        const response = await httpRequest({
+            url: `${targetServerUrl}/hello-world`,
+            proxyUrl: `http://localhost:${mainProxyPort}`,
         });
+        expect(response.statusCode).toBe(200);
     });
 
     it('preserves getConnectionStats with agents', async () => {
@@ -132,33 +122,31 @@ describe('HTTP Agent Support', () => {
         await mainProxyServer.listen();
         const mainProxyPort = mainProxyServer.port;
 
-        // Make HTTP request
-        await new Promise<void>((resolve, reject) => {
-            request({
-                url: `${targetServerUrl}/hello-world`,
-                proxy: `http://localhost:${mainProxyPort}`,
-                forever: true, // Keep socket alive
-            }, (error, response) => {
-                if (error) return reject(error);
-                expect(response.statusCode).toBe(200);
+        // Keep the dispatcher open so the socket outlives the request.
+        const requestOpts = {
+            url: `${targetServerUrl}/hello-world`,
+            proxyUrl: `http://localhost:${mainProxyPort}`,
+        };
+        const dispatcher = createDispatcher(requestOpts);
 
-                // Keep the connection alive briefly to check stats
-                setImmediate(() => resolve());
-            });
-        });
+        try {
+            const response = await httpRequest({ ...requestOpts, dispatcher });
+            expect(response.statusCode).toBe(200);
 
-        // Verify getConnectionStats works while connection may still be open
-        expect(connectionId).toBeTypeOf('number');
-        if (connectionId === undefined) throw new Error('prepareRequestFunction was never called.');
-        const stats = mainProxyServer.getConnectionStats(connectionId);
-        expect(stats).toBeTypeOf('object');
-        if (stats === undefined) throw new Error(`No stats recorded for connection ${connectionId}.`);
-        expect(stats.srcTxBytes).toBeGreaterThan(0);
-        expect(stats.srcRxBytes).toBeGreaterThan(0);
-        expect(stats.trgTxBytes).toBeGreaterThan(0);
-        expect(stats.trgRxBytes).toBeGreaterThan(0);
-
-        httpAgent.destroy();
+            // Verify getConnectionStats works while connection may still be open
+            expect(connectionId).toBeTypeOf('number');
+            if (connectionId === undefined) throw new Error('prepareRequestFunction was never called.');
+            const stats = mainProxyServer.getConnectionStats(connectionId);
+            expect(stats).toBeTypeOf('object');
+            if (stats === undefined) throw new Error(`No stats recorded for connection ${connectionId}.`);
+            expect(stats.srcTxBytes).toBeGreaterThan(0);
+            expect(stats.srcRxBytes).toBeGreaterThan(0);
+            expect(stats.trgTxBytes).toBeGreaterThan(0);
+            expect(stats.trgRxBytes).toBeGreaterThan(0);
+        } finally {
+            await dispatcher.close();
+            httpAgent.destroy();
+        }
     });
 
     it('works with HTTPS targets using CONNECT tunneling', async () => {
@@ -205,17 +193,12 @@ describe('HTTP Agent Support', () => {
 
         // Make multiple HTTPS requests through CONNECT tunnel
         for (let i = 0; i < 2; i++) {
-            await new Promise<void>((resolve, reject) => {
-                request({
-                    url: `${httpsTargetUrl}/hello-world`,
-                    proxy: `http://localhost:${mainProxyPort}`,
-                    strictSSL: false, // Allow self-signed cert
-                }, (error, response) => {
-                    if (error) return reject(error);
-                    expect(response.statusCode).toBe(200);
-                    resolve();
-                });
+            const response = await httpRequest({
+                url: `${httpsTargetUrl}/hello-world`,
+                proxyUrl: `http://localhost:${mainProxyPort}`,
+                ignoreCertificateErrors: true, // Allow self-signed cert
             });
+            expect(response.statusCode).toBe(200);
         }
 
         // Verify both requests were handled
@@ -266,16 +249,11 @@ describe('HTTP Agent Support', () => {
 
         // Make multiple HTTP requests through HTTP upstream proxy
         for (let i = 0; i < 3; i++) {
-            await new Promise<void>((resolve, reject) => {
-                request({
-                    url: `${targetUrl}/hello-world`,
-                    proxy: `http://localhost:${mainProxyPort}`,
-                }, (error, response) => {
-                    if (error) return reject(error);
-                    expect(response.statusCode).toBe(200);
-                    resolve();
-                });
+            const response = await httpRequest({
+                url: `${targetUrl}/hello-world`,
+                proxyUrl: `http://localhost:${mainProxyPort}`,
             });
+            expect(response.statusCode).toBe(200);
         }
 
         // Verify httpAgent pools connections to HTTP upstream (1 connection for 3 requests)
@@ -307,27 +285,21 @@ describe('HTTP Agent Support', () => {
 
         // Make request - will fail to connect to non-existent HTTPS upstream
         let errorOccurred = false;
-        await new Promise<void>((resolve) => {
-            request({
+        try {
+            const response = await httpRequest({
                 url: `${targetServerUrl}/hello-world`,
-                proxy: `http://localhost:${mainProxyPort}`,
-                timeout: 2000,
-            }, (error, response) => {
-                if (error) {
-                    errorOccurred = true;
-                } else if (response && response.statusCode >= 500) {
-                    // 5xx error from proxy indicates upstream connection issue
-                    errorOccurred = true;
-                }
-                resolve();
+                proxyUrl: `http://localhost:${mainProxyPort}`,
+                timeoutMillis: 2000,
             });
-        });
+            // 5xx error from proxy indicates upstream connection issue
+            if (response.statusCode >= 500) errorOccurred = true;
+        } catch {
+            errorOccurred = true;
+        }
 
         // Verify prepareRequestFunction was called with HTTPS upstream
         expect(httpsUpstreamRequests).toBe(1);
         // Request should fail or return 5xx due to non-existent HTTPS upstream
         expect(errorOccurred).toBe(true);
-
-        httpsAgent.destroy();
     });
 });
