@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import net from 'node:net';
 import type { Readable } from 'node:stream';
 import util from 'node:util';
 import zlib from 'node:zlib';
@@ -80,7 +81,18 @@ export const createDispatcher = (opts: ConnectionOpts): Dispatcher => {
     if (new URL(opts.url).protocol === 'http:') {
         return new Client(proxy.origin, { connect: tls, connectTimeout }).compose(forwardToProxy(token));
     }
-    return new ProxyAgent({ uri: proxy.origin, token, connectTimeout, requestTls: tls, proxyTls: tls });
+
+    // `undici`'s WebSocket support rewrites ws(s): to http(s): before dispatching, so a `ws:`
+    // target looks like plain HTTP to `ProxyAgent` here. Since undici 8, `ProxyAgent` only
+    // tunnels plain-HTTP requests through CONNECT when `proxyTunnel` is set - otherwise it
+    // forwards them (no CONNECT), which breaks the Upgrade handshake through this proxy.
+    const proxyTunnel = true;
+    // undici passes the proxy's literal hostname as the TLS `servername` for the proxy
+    // connection; Node's TLS layer rejects an IP address there. Certificate validation is
+    // already disabled above when needed, so any non-IP placeholder is fine.
+    const proxyTls = net.isIP(proxy.hostname) ? { ...tls, servername: 'localhost-test' } : tls;
+
+    return new ProxyAgent({ uri: proxy.origin, token, connectTimeout, requestTls: tls, proxyTls, proxyTunnel });
 };
 
 /** Splits credentials out of the URL into a Basic header. */
