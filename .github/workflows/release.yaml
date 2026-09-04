@@ -1,32 +1,151 @@
-name: Check & Release
+# Everything that runs `pnpm publish` lives in this file on purpose. npm's trusted publisher
+# configuration for `proxy-chain` matches on the workflow filename, so moving a publish step
+# into another workflow breaks the OIDC handshake until that configuration is updated too.
+
+name: Release
 
 on:
-    # Push to master will deploy a beta version
+    # Every push to master publishes a `beta` prerelease.
     push:
         branches:
             - master
-    # A release via GitHub releases will deploy a latest version
-    release:
-        types: [published]
+    # Stable releases are dispatched by hand - see RELEASING.md.
+    workflow_dispatch:
+        inputs:
+            release_type:
+                description: How to derive the version. `auto` reads the conventional commits since the last stable tag.
+                required: true
+                default: auto
+                type: choice
+                options:
+                    - auto
+                    - patch
+                    - minor
+                    - major
+                    - custom
+            custom_version:
+                description: The exact version to release, e.g. `3.2.0`. Only used with the `custom` type.
+                required: false
+                type: string
+                default: ''
 
-# Necessary permissions for publishing to NPM with OIDC
+concurrency:
+    # A release must not be cancelled halfway through, so a second run queues instead.
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: false
+
 permissions:
     contents: write
-    id-token: write
+    id-token: write # Necessary for publishing to npm with OIDC
 
 jobs:
     lint_and_test:
         name: Lint and test
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
         uses: ./.github/workflows/check.yaml
 
-    deploy:
-        name: Publish to NPM
-        needs: [lint_and_test]
+    release_metadata:
+        name: Prepare release metadata
+        if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+        runs-on: ubuntu-24.04
+        outputs:
+            version_number: ${{ steps.metadata.outputs.version_number }}
+            tag_name: ${{ steps.metadata.outputs.tag_name }}
+            release_notes: ${{ steps.metadata.outputs.release_notes }}
+            changelog_artifact_name: ${{ steps.metadata.outputs.changelog_artifact_name }}
+            # The version to publish - `X.Y.Z-beta.N` for a master push, the stable one otherwise.
+            npm_version: ${{ steps.metadata.outputs.prerelease_version || steps.metadata.outputs.version_number }}
+            dist_tag: ${{ github.event_name == 'workflow_dispatch' && 'latest' || 'beta' }}
+
+        steps:
+            - name: Require a version for the custom release type
+              if: ${{ inputs.release_type == 'custom' && inputs.custom_version == '' }}
+              run: |
+                  echo "::error::The custom release type requires custom_version to be set."
+                  exit 1
+
+            # Derives the version, the changelog and the release notes from the conventional commits
+            # since the last stable tag. It deletes prerelease tags in its own clone first, so the
+            # `vX.Y.Z-beta.N` tags this repo used to push do not shift the computed version.
+            #
+            # For a prerelease it asks the npm registry for the highest `-beta.N` already published
+            # under the next patch version and hands out the next number, so the beta version never
+            # has to be committed to `package.json`.
+            - name: Prepare release metadata
+              id: metadata
+              uses: apify/actions/git-cliff-release@v1.5.0
+              with:
+                  release_type: ${{ github.event_name == 'workflow_dispatch' && inputs.release_type || 'prerelease' }}
+                  custom_version: ${{ inputs.custom_version }}
+                  prerelease_id: beta
+                  prerelease_registry: npm
+                  prerelease_package: proxy-chain
+                  existing_changelog_path: ${{ github.event_name == 'workflow_dispatch' && 'CHANGELOG.md' || '' }}
+
+    release_commit:
+        name: Commit version and changelog
+        needs: [lint_and_test, release_metadata]
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        runs-on: ubuntu-24.04
+        outputs:
+            commitish: ${{ steps.commit.outputs.commit_long_sha }}
+
+        steps:
+            - name: Refuse to release from another branch
+              if: ${{ github.ref_name != github.event.repository.default_branch }}
+              run: |
+                  echo "::error::Stable releases must be dispatched from ${{ github.event.repository.default_branch }}, not ${{ github.ref_name }}."
+                  exit 1
+
+            - name: Checkout repository
+              uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+              with:
+                  token: ${{ secrets.APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+                  fetch-depth: 0
+
+            - name: Use Node.js 24
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+              with:
+                  node-version: 24
+
+            - name: Install pnpm and dependencies
+              uses: apify/actions/pnpm-install@v1.5.0
+
+            - name: Set the version in package.json
+              run: pnpm version --no-git-tag-version --allow-same-version ${{ needs.release_metadata.outputs.version_number }}
+
+            # The generated changelog is taken from the artifact rather than from the action's
+            # `changelog` output, which is capped at the 128 KiB limit on action inputs.
+            - name: Update CHANGELOG.md
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: ${{ needs.release_metadata.outputs.changelog_artifact_name }}
+                  path: .
+
+            # Commits through the GitHub API, so the commit ends up signed. The `[skip ci]` marker
+            # stops the beta publish from firing on the release commit.
+            - name: Create the release commit
+              id: commit
+              uses: apify/actions/signed-commit@v1.5.0
+              with:
+                  message: 'chore(release): v${{ needs.release_metadata.outputs.version_number }} [skip ci]'
+                  add: package.json CHANGELOG.md
+                  pull: '--rebase --autostash'
+                  github-token: ${{ secrets.APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+
+    publish:
+        name: Publish ${{ needs.release_metadata.outputs.dist_tag }} to npm
+        needs: [lint_and_test, release_metadata, release_commit]
+        # `release_commit` is skipped for beta publishes, and a skipped dependency would otherwise
+        # skip this job as well - hence the explicit result checks.
+        if: ${{ !cancelled() && needs.lint_and_test.result == 'success' && needs.release_metadata.result == 'success' && needs.release_commit.result != 'failure' }}
         runs-on: ubuntu-24.04
 
         steps:
             - name: Checkout repository
               uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+              with:
+                  ref: ${{ needs.release_commit.outputs.commitish || github.sha }}
 
             - name: Use Node.js 24
               uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -35,29 +154,32 @@ jobs:
                   registry-url: 'https://registry.npmjs.org'
 
             - name: Install pnpm and dependencies
-              uses: apify/actions/pnpm-install@v1.1.2
+              uses: apify/actions/pnpm-install@v1.5.0
 
-            # Determine if this is a beta or latest release
-            - name: Get release tag
-              id: get_release_tag
-              run: echo "release_tag=$(if [ ${{ github.event_name }} = release ]; then echo latest; else echo beta; fi)" >> $GITHUB_OUTPUT
+            # A no-op for a stable release, where the release commit already carries this version.
+            - name: Set the version to publish
+              run: pnpm version --no-git-tag-version --allow-same-version ${{ needs.release_metadata.outputs.npm_version }}
 
-            # Check version consistency and increment pre-release version number for beta only.
-            - name: Bump pre-release version
-              if: steps.get_release_tag.outputs.release_tag == 'beta'
-              run: node ./.github/scripts/before-beta-release.cjs
+            # `--no-git-checks` is required because we check out a commit SHA, and pnpm refuses to
+            # publish from a detached HEAD without it.
+            - name: Publish to npm
+              run: pnpm publish --tag ${{ needs.release_metadata.outputs.dist_tag }} --no-git-checks
 
-            # `pnpm publish` honours the dist-tag flag and keeps the workflow on a
-            # single package manager. `--no-git-checks` is required because the
-            # `release` event checks out a tag in detached HEAD, which trips pnpm's
-            # default "publish only from a tracked branch" guard.
-            - name: Publish to NPM
-              run: pnpm publish --tag ${{ steps.get_release_tag.outputs.release_tag }} --no-git-checks
+    github_release:
+        name: Create GitHub release
+        # Deliberately after the npm publish: a failed publish then leaves the release commit
+        # untagged, so re-dispatching computes the same version and retries cleanly.
+        needs: [release_metadata, release_commit, publish]
+        runs-on: ubuntu-24.04
 
-            # Latest version is tagged by the release process so we only tag beta here.
-            - name: Tag version
-              if: steps.get_release_tag.outputs.release_tag == 'beta'
-              run: |
-                  git_tag=v`node -p "require('./package.json').version"`
-                  git tag $git_tag
-                  git push origin $git_tag
+        steps:
+            # Creates the `vX.Y.Z` tag on the release commit as a side effect.
+            - name: Create the GitHub release
+              uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+              env:
+                  GITHUB_TOKEN: ${{ secrets.APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+              with:
+                  tag_name: ${{ needs.release_metadata.outputs.tag_name }}
+                  name: ${{ needs.release_metadata.outputs.tag_name }}
+                  target_commitish: ${{ needs.release_commit.outputs.commitish }}
+                  body: ${{ needs.release_metadata.outputs.release_notes }}
