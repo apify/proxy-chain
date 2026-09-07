@@ -5,7 +5,7 @@
 name: Release
 
 on:
-    # Every push to master publishes a `beta` prerelease.
+    # Every push to master publishes a `beta` pre-release.
     push:
         branches:
             - master
