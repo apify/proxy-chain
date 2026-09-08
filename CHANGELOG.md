@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.1](https://github.com/apify/proxy-chain/releases/tag/v3.0.1) (2026-09-08)
+
+### 🚀 Features
+
+- Add AGENTS.md ([#683](https://github.com/apify/proxy-chain/pull/683)) ([6e9a54f](https://github.com/apify/proxy-chain/commit/6e9a54f78512734eb1bc94f4c097b3cb7e12c3ad)) by [@VojtaM39](https://github.com/VojtaM39)
+
+### 🐛 Bug Fixes
+
+- **pkg:** Soften devEngines onFail to warn under pnpm 10 ([#662](https://github.com/apify/proxy-chain/pull/662)) ([ee6b38d](https://github.com/apify/proxy-chain/commit/ee6b38dc24b7249fa9b9891f4efc826e5b94f26f)) by [@B4nan](https://github.com/B4nan)
+- **forward:** Destroy outbound socket when client disconnects early ([#671](https://github.com/apify/proxy-chain/pull/671)) ([eb3a6a9](https://github.com/apify/proxy-chain/commit/eb3a6a996350dae200bb62d01b377b00af6bde68)) by [@bliuchak](https://github.com/bliuchak), closes [#670](https://github.com/apify/proxy-chain/issues/670)
+- Don&#x27;t listen on every interface in createTunnel ([#675](https://github.com/apify/proxy-chain/pull/675)) ([1c74b5e](https://github.com/apify/proxy-chain/commit/1c74b5ea38f77c697c04cbc10c29a9d9541edb70)) by [@VojtaM39](https://github.com/VojtaM39)
+- Remove outdated proxy package workaround ([#695](https://github.com/apify/proxy-chain/pull/695)) ([be19d76](https://github.com/apify/proxy-chain/commit/be19d760289529e5bc0d6a7c76e94ef18d1a96d6)) by [@VojtaM39](https://github.com/VojtaM39)
+- Set explicit rootDir for TS ([#696](https://github.com/apify/proxy-chain/pull/696)) ([e6e94e2](https://github.com/apify/proxy-chain/commit/e6e94e2586f9774bcd32c3e845699b244174bfac)) by [@VojtaM39](https://github.com/VojtaM39)
+
+
 ## 3.0.0 / 2026-05-19
 
 This is a major release that modernizes the codebase. The runtime behavior of the
