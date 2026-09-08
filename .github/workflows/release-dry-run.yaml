@@ -1,0 +1,86 @@
+# Shows what the next stable release would look like without writing anything, and checks that
+# generating the changelog still only prepends to the existing one. The header in CHANGELOG.md is
+# load-bearing - git-cliff strips exactly that string before prepending, so an edit to it silently
+# duplicates the header on every release from then on.
+
+name: Release dry run
+
+on:
+    pull_request:
+        paths:
+            - '.github/workflows/**'
+            - 'CHANGELOG.md'
+    workflow_dispatch:
+        inputs:
+            release_type:
+                description: How to derive the version.
+                required: true
+                default: auto
+                type: choice
+                options:
+                    - auto
+                    - patch
+                    - minor
+                    - major
+
+permissions:
+    contents: read
+
+jobs:
+    dry_run:
+        name: Compute the next release
+        runs-on: ubuntu-24.04
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+            - name: Prepare release metadata
+              id: metadata
+              # `auto` fails when no commit since the last stable tag warrants a release, which is a
+              # normal state for a pull request and must not turn into a red check.
+              continue-on-error: true
+              uses: apify/actions/git-cliff-release@v1.5.0
+              with:
+                  release_type: ${{ inputs.release_type || 'auto' }}
+                  existing_changelog_path: CHANGELOG.md
+
+            - name: Check that the changelog is only prepended to
+              if: ${{ steps.metadata.outcome == 'success' }}
+              env:
+                  GENERATED_CHANGELOG: ${{ steps.metadata.outputs.changelog }}
+              run: |
+                  set -euo pipefail
+                  printf '%s\n' "$GENERATED_CHANGELOG" > generated-changelog.md
+
+                  headers=$(grep -c '^# Changelog$' generated-changelog.md || true)
+                  if [ "$headers" -ne 1 ]; then
+                      echo "::error file=CHANGELOG.md::The generated changelog has $headers '# Changelog' headings, expected 1. The header of CHANGELOG.md no longer matches the one git-cliff strips before prepending."
+                      exit 1
+                  fi
+
+                  existing_entries=$(grep -c '^## ' CHANGELOG.md || true)
+                  generated_entries=$(grep -c '^## ' generated-changelog.md || true)
+                  if [ "$generated_entries" -ne "$((existing_entries + 1))" ]; then
+                      echo "::error file=CHANGELOG.md::The generated changelog holds $generated_entries entries, expected $((existing_entries + 1)). Generating it no longer just prepends the new release to the existing ones."
+                      exit 1
+                  fi
+
+            - name: Report what would be released
+              if: ${{ steps.metadata.outcome == 'success' }}
+              env:
+                  TAG_NAME: ${{ steps.metadata.outputs.tag_name }}
+                  RELEASE_NOTES: ${{ steps.metadata.outputs.release_notes }}
+                  ARTIFACT_NAME: ${{ steps.metadata.outputs.changelog_artifact_name }}
+              run: |
+                  {
+                      echo "## Next stable release: \`$TAG_NAME\`"
+                      echo
+                      echo "$RELEASE_NOTES"
+                      echo
+                      echo "The complete generated \`CHANGELOG.md\` is attached to this run as the \`$ARTIFACT_NAME\` artifact."
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Report that there is nothing to release
+              if: ${{ steps.metadata.outcome != 'success' }}
+              run: echo "No commit since the last stable tag warrants a release." >> "$GITHUB_STEP_SUMMARY"
