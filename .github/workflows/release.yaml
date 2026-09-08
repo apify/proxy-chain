@@ -58,6 +58,12 @@ jobs:
             dist_tag: ${{ github.event_name == 'workflow_dispatch' && 'latest' || 'beta' }}
 
         steps:
+            - name: Refuse to release from another branch
+              if: ${{ github.event_name == 'workflow_dispatch' && github.ref_name != github.event.repository.default_branch }}
+              run: |
+                  echo "::error::Stable releases must be dispatched from ${{ github.event.repository.default_branch }}, not ${{ github.ref_name }}."
+                  exit 1
+
             - name: Require a version for the custom release type
               if: ${{ inputs.release_type == 'custom' && inputs.custom_version == '' }}
               run: |
@@ -91,12 +97,6 @@ jobs:
             commitish: ${{ steps.commit.outputs.commit_long_sha }}
 
         steps:
-            - name: Refuse to release from another branch
-              if: ${{ github.ref_name != github.event.repository.default_branch }}
-              run: |
-                  echo "::error::Stable releases must be dispatched from ${{ github.event.repository.default_branch }}, not ${{ github.ref_name }}."
-                  exit 1
-
             - name: Checkout repository
               uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
               with:
