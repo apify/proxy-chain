@@ -4,10 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [3.0.1](https://github.com/apify/proxy-chain/releases/tag/v3.0.1) (2026-09-08)
 
-### 🚀 Features
-
-- Add AGENTS.md ([#683](https://github.com/apify/proxy-chain/pull/683)) ([6e9a54f](https://github.com/apify/proxy-chain/commit/6e9a54f78512734eb1bc94f4c097b3cb7e12c3ad)) by [@VojtaM39](https://github.com/VojtaM39)
-
 ### 🐛 Bug Fixes
 
 - **pkg:** Soften devEngines onFail to warn under pnpm 10 ([#662](https://github.com/apify/proxy-chain/pull/662)) ([ee6b38d](https://github.com/apify/proxy-chain/commit/ee6b38dc24b7249fa9b9891f4efc826e5b94f26f)) by [@B4nan](https://github.com/B4nan)
