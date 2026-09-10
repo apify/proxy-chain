@@ -361,6 +361,15 @@ export class Server extends EventEmitter {
      * Handles normal HTTP request by forwarding it to target host or the upstream proxy.
      */
     async onRequest(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+        // Some runtimes (Bun 1.3) deliver HTTP CONNECT requests through the
+        // generic 'request' event rather than the dedicated 'connect' event.
+        // Route them through onConnect explicitly so CONNECT tunnelling keeps
+        // working on those runtimes.
+        if (request.method === 'CONNECT') {
+            await this.onConnect(request, request.socket as Socket, Buffer.alloc(0));
+            return;
+        }
+
         try {
             const handlerOpts = await this.prepareRequestHandling(request);
             handlerOpts.srcResponse = response;
@@ -698,8 +707,15 @@ export class Server extends EventEmitter {
 
     /**
      * Gets data transfer statistics of a specific proxy connection.
+     *
+     * Returns `undefined` when the connection does not exist, and also when
+     * running under Bun: Bun (as of 1.3) does not populate
+     * `socket.bytesRead` / `socket.bytesWritten` on http sockets, so the
+     * numbers would silently read as zero. Better no stats than wrong stats.
      */
     getConnectionStats(connectionId: number): ConnectionStats | undefined {
+        if (process.versions.bun) return undefined;
+
         const socket = this.connections.get(connectionId);
         if (!socket) return undefined;
 
