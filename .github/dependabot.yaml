@@ -9,3 +9,7 @@ updates:
   - dependency-name: eslint-plugin-promise
     versions:
     - 5.1.0
+  # undici 8.x needs Node >=22.19; remove once we drop support for Node <22
+  - dependency-name: undici
+    versions:
+    - ">=8.0.0"
