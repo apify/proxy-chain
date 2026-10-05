@@ -23,6 +23,3 @@ allowBuilds:
 # benefit (only allowlisted scripts run) without making installs flaky on every
 # dependency bump.
 strictDepBuilds: false
-
-overrides:
-  "form-data": "2.5.4"
