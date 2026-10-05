@@ -1,0 +1,36 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:recommended", ":semanticCommitTypeAll(chore)"],
+    "rangeStrategy": "replace",
+    "separateMajorMinor": false,
+    "dependencyDashboard": false,
+    "semanticCommits": "enabled",
+    "minimumReleaseAge": "1 day",
+    "internalChecksFilter": "strict",
+    "lockFileMaintenance": {
+        "enabled": true,
+        "schedule": ["before 2am"],
+        "automerge": true,
+        "automergeType": "pr"
+    },
+    "packageRules": [
+        {
+            "matchUpdateTypes": ["patch", "minor"],
+            "matchCurrentVersion": "!/^0/",
+            "groupName": "patch/minor dependencies",
+            "groupSlug": "all-non-major",
+            "automerge": true,
+            "automergeType": "pr"
+        },
+        {
+            "matchPackageNames": ["@apify/*", "@crawlee/*", "apify-client", "apify", "crawlee", "got-scraping"],
+            "minimumReleaseAge": "0 days"
+        },
+        {
+            "description": "undici 8.x needs Node >=22.19; remove once Node <22 support is dropped",
+            "matchPackageNames": ["undici"],
+            "allowedVersions": "<8"
+        }
+    ],
+    "schedule": ["every weekday"]
+}
