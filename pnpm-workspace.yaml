@@ -1,7 +1,7 @@
-# 24-hour quarantine on newly published versions to blunt supply-chain attacks
+# 7-day quarantine on newly published versions to blunt supply-chain attacks
 # (compromised packages typically get yanked within hours of discovery).
 # Excludes are scopes we publish ourselves and trust on the same release cadence.
-minimumReleaseAge: 1440
+minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - "@apify/*"
 
