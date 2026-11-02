@@ -51,8 +51,7 @@ export const forward = async (
     request: http.IncomingMessage,
     response: http.ServerResponse,
     handlerOpts: HandlerOpts,
-    // eslint-disable-next-line no-async-promise-executor
-): Promise<void> => new Promise(async (resolve, reject) => {
+): Promise<void> => new Promise((resolve, reject) => {
     const proxy = handlerOpts.upstreamProxyUrlParsed;
     const origin = proxy ? proxy.origin : request.url;
 

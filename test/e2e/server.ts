@@ -1388,6 +1388,44 @@ it('supports localAddress', async () => {
     }
 });
 
+it('returns 500 when forward() throws synchronously', async () => {
+    const target = http.createServer((_serverRequest, serverResponse) => {
+        serverResponse.end('ok');
+    });
+
+    await listenOnPort(target);
+
+    const server = new Server({
+        port: 0,
+        prepareRequestFunction: () => {
+            return {
+                localAddress: 'not-an-ip',
+            };
+        },
+    });
+
+    const failedErrors: NodeJS.ErrnoException[] = [];
+    server.on('requestFailed', ({ error }) => {
+        failedErrors.push(error);
+    });
+
+    await server.listen();
+
+    try {
+        const response = await httpRequest({
+            url: `http://127.0.0.1:${getServerPort(target)}`,
+            proxyUrl: `http://127.0.0.1:${server.port}`,
+        });
+
+        expect(response.statusCode).toBe(500);
+        expect(failedErrors).toHaveLength(1);
+        expect(failedErrors[0].code).toBe('ERR_INVALID_IP_ADDRESS');
+    } finally {
+        await server.close();
+        await util.promisify(target.close.bind(target))();
+    }
+});
+
 it('supports https proxy relay', async () => {
     const target = https.createServer(() => {
     });
