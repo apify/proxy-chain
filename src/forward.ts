@@ -7,6 +7,7 @@ import type { URL } from 'node:url';
 import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
+import { forwardedRequestHeaders } from './utils/forwarded_request_headers.js';
 import { getBasicAuthorizationHeader } from './utils/get_basic.js';
 import { validHeadersOnly } from './utils/valid_headers_only.js';
 
@@ -58,7 +59,7 @@ export const forward = async (
 
     const options: Options = {
         method: request.method!,
-        headers: validHeadersOnly(request.rawHeaders),
+        headers: forwardedRequestHeaders(request),
         insecureHTTPParser: true,
         localAddress: handlerOpts.localAddress,
         family: handlerOpts.ipFamily,

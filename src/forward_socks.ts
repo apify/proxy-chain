@@ -6,6 +6,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 
 import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
+import { forwardedRequestHeaders } from './utils/forwarded_request_headers.js';
 import { validHeadersOnly } from './utils/valid_headers_only.js';
 
 interface Options {
@@ -44,7 +45,7 @@ export const forwardSocks = async (
 
     const options: Options = {
         method: request.method!,
-        headers: validHeadersOnly(request.rawHeaders),
+        headers: forwardedRequestHeaders(request),
         insecureHTTPParser: true,
         localAddress: handlerOpts.localAddress,
         agent,
