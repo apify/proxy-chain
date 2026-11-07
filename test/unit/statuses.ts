@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { badGatewayStatusCodes } from '../../src/index.js';
+import { upstreamErrorStatusCodes } from '../../src/index.js';
 
-describe('badGatewayStatusCodes', () => {
+describe('upstreamErrorStatusCodes', () => {
     it('is exported from the package entry point', () => {
-        expect(badGatewayStatusCodes).toEqual({
+        expect(upstreamErrorStatusCodes).toEqual({
             TIMEOUT: 504,
             NON_200: 590,
             STATUS_CODE_OUT_OF_RANGE: 592,
@@ -18,6 +18,6 @@ describe('badGatewayStatusCodes', () => {
     });
 
     it('cannot be mutated by consumers', () => {
-        expect(Object.isFrozen(badGatewayStatusCodes)).toBe(true);
+        expect(Object.isFrozen(upstreamErrorStatusCodes)).toBe(true);
     });
 });

@@ -6,7 +6,7 @@ type HttpStatusCode = number;
  * Custom status codes the server responds with instead of the generic `502 Bad Gateway`.
  * See the "Error status codes" section of the README.
  */
-export const badGatewayStatusCodes = Object.freeze({
+export const upstreamErrorStatusCodes = Object.freeze({
     /**
      * Upstream has timed out.
      */
@@ -67,20 +67,20 @@ export const createCustomStatusHttpResponse = (statusCode: number, statusMessage
 
 // https://nodejs.org/api/errors.html#common-system-errors
 export const errorCodeToStatusCode: {[errorCode: string]: HttpStatusCode | undefined} = {
-    ENOTFOUND: badGatewayStatusCodes.NOT_FOUND,
-    ECONNREFUSED: badGatewayStatusCodes.CONNECTION_REFUSED,
-    ECONNRESET: badGatewayStatusCodes.CONNECTION_RESET,
-    EPIPE: badGatewayStatusCodes.BROKEN_PIPE,
-    ETIMEDOUT: badGatewayStatusCodes.TIMEOUT,
+    ENOTFOUND: upstreamErrorStatusCodes.NOT_FOUND,
+    ECONNREFUSED: upstreamErrorStatusCodes.CONNECTION_REFUSED,
+    ECONNRESET: upstreamErrorStatusCodes.CONNECTION_RESET,
+    EPIPE: upstreamErrorStatusCodes.BROKEN_PIPE,
+    ETIMEDOUT: upstreamErrorStatusCodes.TIMEOUT,
 } as const;
 
-export const socksErrorMessageToStatusCode = (socksErrorMessage: string): typeof badGatewayStatusCodes[keyof typeof badGatewayStatusCodes] => {
+export const socksErrorMessageToStatusCode = (socksErrorMessage: string): typeof upstreamErrorStatusCodes[keyof typeof upstreamErrorStatusCodes] => {
     switch (socksErrorMessage) {
         case 'Proxy connection timed out':
-            return badGatewayStatusCodes.TIMEOUT;
+            return upstreamErrorStatusCodes.TIMEOUT;
         case 'Socks5 Authentication failed':
-            return badGatewayStatusCodes.AUTH_FAILED;
+            return upstreamErrorStatusCodes.AUTH_FAILED;
         default:
-            return badGatewayStatusCodes.GENERIC_ERROR;
+            return upstreamErrorStatusCodes.GENERIC_ERROR;
     }
 };
