@@ -36,8 +36,8 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
             },
         });
         await proxyServer.listen();
-        const response = await httpRequest({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
-        expect(response.body).toContain('Example Domain');
+        const response = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', proxyUrl: `http://127.0.0.1:${proxyPort}` });
+        expect(response.body).toContain('clientIp');
     });
 
     it('work with auth', async () => {
@@ -61,8 +61,8 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
             },
         });
         await proxyServer.listen();
-        const response = await httpRequest({ url: 'https://example.com', proxyUrl: `http://127.0.0.1:${proxyPort}` });
-        expect(response.body).toContain('Example Domain');
+        const response = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', proxyUrl: `http://127.0.0.1:${proxyPort}` });
+        expect(response.body).toContain('clientIp');
     });
 
     it('works with anonymizeProxy', async () => {
@@ -81,7 +81,7 @@ describe('SOCKS protocol', { timeout: 10_000 }, () => {
             port: proxyPort,
             url: `socks://proxy-ch@in:rules!@127.0.0.1:${socksPort}`,
         });
-        const response = await httpRequest({ url: 'https://example.com', proxyUrl: anonymizeProxyUrl });
-        expect(response.body).toContain('Example Domain');
+        const response = await httpRequest({ url: 'https://api.apify.com/v2/browser-info', proxyUrl: anonymizeProxyUrl });
+        expect(response.body).toContain('clientIp');
     });
 });
