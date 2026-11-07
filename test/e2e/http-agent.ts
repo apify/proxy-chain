@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import portastic from 'portastic';
 import { createProxy } from 'proxy';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { Server } from '../../src/index.js';
 import { createDispatcher, httpRequest } from '../utils/http_client.js';
@@ -262,44 +262,123 @@ describe('HTTP Agent Support', () => {
         httpAgent.destroy();
     });
 
-    it('works with HTTPS upstream proxy', async () => {
-        const httpsAgent = new https.Agent({ keepAlive: true });
+    describe('with HTTPS upstream proxy', () => {
+        // A real HTTPS upstream proxy: proxy-chain itself running with `serverType: 'https'`.
+        let httpsUpstreamProxy: Server | undefined;
+        let upstreamConnectionIds: Set<number>;
+        let upstreamRequestCount: number;
 
-        let httpsUpstreamRequests = 0;
+        const startHttpsUpstreamProxy = async (): Promise<string> => {
+            upstreamConnectionIds = new Set();
+            upstreamRequestCount = 0;
 
-        mainProxyServer = new Server({
-            port: 0,
-            prepareRequestFunction: () => {
-                httpsUpstreamRequests++;
-                return {
-                    // Use non-existent HTTPS upstream - request will fail but proves code path works
-                    upstreamProxyUrl: `https://non-existent-https-proxy.example.com:8080`,
+            httpsUpstreamProxy = new Server({
+                port: 0,
+                serverType: 'https',
+                httpsOptions: { key: sslKey, cert: sslCrt },
+                prepareRequestFunction: ({ connectionId }) => {
+                    upstreamConnectionIds.add(connectionId);
+                    upstreamRequestCount++;
+                    return {};
+                },
+            });
+            await httpsUpstreamProxy.listen();
+
+            return `https://localhost:${httpsUpstreamProxy.port}`;
+        };
+
+        const startMainProxy = async (upstreamProxyUrl: string, httpsAgent: https.Agent): Promise<string> => {
+            mainProxyServer = new Server({
+                port: 0,
+                prepareRequestFunction: () => ({
+                    upstreamProxyUrl,
+                    // The upstream uses a self-signed certificate.
                     ignoreUpstreamProxyCertificate: true,
                     httpsAgent,
-                };
-            },
+                }),
+            });
+            await mainProxyServer.listen();
+
+            return `http://localhost:${mainProxyServer.port}`;
+        };
+
+        afterEach(async () => {
+            if (httpsUpstreamProxy) await httpsUpstreamProxy.close(true);
+            httpsUpstreamProxy = undefined;
         });
 
-        await mainProxyServer.listen();
-        const mainProxyPort = mainProxyServer.port;
+        it('pools connections to the upstream in forward mode', async () => {
+            const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 1 });
+            const createConnection = vi.spyOn(httpsAgent, 'createConnection');
 
-        // Make request - will fail to connect to non-existent HTTPS upstream
-        let errorOccurred = false;
-        try {
-            const response = await httpRequest({
-                url: `${targetServerUrl}/hello-world`,
-                proxyUrl: `http://localhost:${mainProxyPort}`,
-                timeoutMillis: 2000,
-            });
-            // 5xx error from proxy indicates upstream connection issue
-            if (response.statusCode >= 500) errorOccurred = true;
-        } catch {
-            errorOccurred = true;
-        }
+            try {
+                const proxyUrl = await startMainProxy(await startHttpsUpstreamProxy(), httpsAgent);
 
-        // Verify prepareRequestFunction was called with HTTPS upstream
-        expect(httpsUpstreamRequests).toBe(1);
-        // Request should fail or return 5xx due to non-existent HTTPS upstream
-        expect(errorOccurred).toBe(true);
+                for (let i = 0; i < 3; i++) {
+                    const response = await httpRequest({ url: `${targetServerUrl}/hello-world`, proxyUrl });
+                    expect(response.statusCode).toBe(200);
+                    expect(response.body).toBe('Hello world!');
+                }
+
+                expect(upstreamRequestCount).toBe(3);
+                expect(upstreamConnectionIds.size, 'httpsAgent should reuse one TLS connection to the upstream').toBe(1);
+                expect(createConnection).toHaveBeenCalledTimes(1);
+            } finally {
+                httpsAgent.destroy();
+            }
+        });
+
+        it('opens a new upstream connection per request when keepAlive is off', async () => {
+            const httpsAgent = new https.Agent({ keepAlive: false });
+            const createConnection = vi.spyOn(httpsAgent, 'createConnection');
+
+            try {
+                const proxyUrl = await startMainProxy(await startHttpsUpstreamProxy(), httpsAgent);
+
+                for (let i = 0; i < 3; i++) {
+                    const response = await httpRequest({ url: `${targetServerUrl}/hello-world`, proxyUrl });
+                    expect(response.statusCode).toBe(200);
+                }
+
+                // Proves the server uses the agent from `prepareRequestFunction`, not https.globalAgent.
+                expect(upstreamConnectionIds.size).toBe(3);
+                expect(createConnection).toHaveBeenCalledTimes(3);
+            } finally {
+                httpsAgent.destroy();
+            }
+        });
+
+        it('tunnels HTTPS targets through the upstream in chain mode', async () => {
+            const httpsTargetPort = takePort(await portastic.find(PORT_RANGES.httpAgentHttps));
+            const httpsTarget = new TargetServer({ port: httpsTargetPort, useSsl: true, sslKey, sslCrt });
+            await httpsTarget.listen();
+
+            const httpsAgent = new https.Agent({ keepAlive: true });
+            const createConnection = vi.spyOn(httpsAgent, 'createConnection');
+
+            try {
+                const proxyUrl = await startMainProxy(await startHttpsUpstreamProxy(), httpsAgent);
+
+                for (let i = 0; i < 2; i++) {
+                    const response = await httpRequest({
+                        url: `https://localhost:${httpsTargetPort}/hello-world`,
+                        proxyUrl,
+                        ignoreCertificateErrors: true,
+                    });
+                    expect(response.statusCode).toBe(200);
+                    expect(response.body).toBe('Hello world!');
+                }
+
+                expect(upstreamRequestCount).toBe(2);
+                // Node.js removes a socket from the agent once it carries a CONNECT tunnel,
+                // so every tunnel gets its own upstream connection even with keepAlive on.
+                expect(upstreamConnectionIds.size).toBe(2);
+                expect(createConnection).toHaveBeenCalledTimes(2);
+                expect(Object.keys(httpsAgent.freeSockets)).toHaveLength(0);
+            } finally {
+                httpsAgent.destroy();
+                await httpsTarget.close();
+            }
+        });
     });
 });
