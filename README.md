@@ -241,7 +241,7 @@ console.log(`Proxy server is listening on port ${server.port}`);
 
 **Note:** Custom agents are only supported for HTTP and HTTPS upstream proxies. SOCKS upstream proxies use direct socket connections and do not support custom agents.
 
-**Note:** Connections are reused only for plain HTTP requests forwarded to the upstream proxy. An HTTPS request reaches the upstream as a `CONNECT` tunnel, and a connection that has carried a tunnel is never returned to the agent's pool, so every tunnel ends up on a connection of its own, even with `keepAlive: true`. Sticky IP addresses through connection reuse therefore apply to plain HTTP targets only.
+**Note:** Pooling applies to requests for `http://` URLs, whether the upstream proxy is HTTP or HTTPS. Requests for `https://` URLs reach the upstream as a `CONNECT` tunnel. A connection that has carried a tunnel is never returned to the agent's pool, so each tunnel gets its own upstream connection, even with `keepAlive: true`. Requests sent inside one tunnel share its connection, but separate tunnels don't share connections.
 
 ## SOCKS support
 SOCKS protocol is supported for versions 4 and 5, specifically: `['socks', 'socks4', 'socks4a', 'socks5', 'socks5h']`, where `socks` will default to version 5.
