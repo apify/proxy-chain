@@ -298,6 +298,16 @@ Generic upstream error.
 `597` indicates incorrect upstream credentials.\
 `599` is a generic error, where the above is not applicable.
 
+These codes are exported as the `upstreamErrorStatusCodes` constant, so you don't have to hard-code them:
+
+```javascript
+import { upstreamErrorStatusCodes } from 'proxy-chain';
+
+if (response.status === upstreamErrorStatusCodes.AUTH_FAILED) {
+    // Incorrect upstream proxy credentials
+}
+```
+
 ## Custom error responses
 
 To return a custom HTTP response to indicate an error to the client,

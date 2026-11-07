@@ -4,7 +4,7 @@ import https from 'node:https';
 import { pipeline } from 'node:stream/promises';
 import type { URL } from 'node:url';
 
-import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
+import { errorCodeToStatusCode, upstreamErrorStatusCodes } from './statuses.js';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { getBasicAuthorizationHeader } from './utils/get_basic.js';
@@ -83,7 +83,7 @@ export const forward = async (
             // This is necessary to prevent Node.js throwing an error
             let statusCode = clientResponse.statusCode!;
             if (statusCode < 100 || statusCode > 999) {
-                statusCode = badGatewayStatusCodes.STATUS_CODE_OUT_OF_RANGE;
+                statusCode = upstreamErrorStatusCodes.STATUS_CODE_OUT_OF_RANGE;
             }
 
             // 407 is handled separately
@@ -152,7 +152,7 @@ export const forward = async (
             return;
         }
 
-        const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
+        const statusCode = errorCodeToStatusCode[error.code!] ?? upstreamErrorStatusCodes.GENERIC_ERROR;
 
         response.statusCode = !proxy && error.code === 'ENOTFOUND' ? 404 : statusCode;
         response.setHeader('content-type', 'text/plain; charset=utf-8');

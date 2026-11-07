@@ -6,7 +6,7 @@ import https from 'node:https';
 import type { URL } from 'node:url';
 
 import type { Socket } from './socket.js';
-import { badGatewayStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses.js';
+import { createCustomStatusHttpResponse, errorCodeToStatusCode, upstreamErrorStatusCodes } from './statuses.js';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { getBasicAuthorizationHeader } from './utils/get_basic.js';
@@ -131,8 +131,8 @@ export const chain = (
             } else {
                 const { statusCode } = response;
                 const status = statusCode === 401 || statusCode === 407
-                    ? badGatewayStatusCodes.AUTH_FAILED
-                    : badGatewayStatusCodes.NON_200;
+                    ? upstreamErrorStatusCodes.AUTH_FAILED
+                    : upstreamErrorStatusCodes.NON_200;
 
                 sourceSocket.end(createCustomStatusHttpResponse(status, `UPSTREAM${statusCode}`));
             }
@@ -197,7 +197,7 @@ export const chain = (
             if (isPlain) {
                 sourceSocket.end();
             } else {
-                const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
+                const statusCode = errorCodeToStatusCode[error.code!] ?? upstreamErrorStatusCodes.GENERIC_ERROR;
                 const response = createCustomStatusHttpResponse(statusCode, error.code ?? 'Upstream Closed Early');
                 sourceSocket.end(response);
             }
