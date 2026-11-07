@@ -4,7 +4,7 @@ import type { URL } from 'node:url';
 
 import { SocksProxyAgent } from 'socks-proxy-agent';
 
-import { upstreamErrorStatusCodes, errorCodeToStatusCode } from './statuses.js';
+import { errorCodeToStatusCode, upstreamErrorStatusCodes } from './statuses.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { validHeadersOnly } from './utils/valid_headers_only.js';
 

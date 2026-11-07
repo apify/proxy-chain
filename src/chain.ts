@@ -6,7 +6,7 @@ import https from 'node:https';
 import type { URL } from 'node:url';
 
 import type { Socket } from './socket.js';
-import { upstreamErrorStatusCodes, createCustomStatusHttpResponse, errorCodeToStatusCode } from './statuses.js';
+import { createCustomStatusHttpResponse, errorCodeToStatusCode, upstreamErrorStatusCodes } from './statuses.js';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { getBasicAuthorizationHeader } from './utils/get_basic.js';

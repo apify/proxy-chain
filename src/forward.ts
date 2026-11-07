@@ -4,7 +4,7 @@ import https from 'node:https';
 import { pipeline } from 'node:stream/promises';
 import type { URL } from 'node:url';
 
-import { upstreamErrorStatusCodes, errorCodeToStatusCode } from './statuses.js';
+import { errorCodeToStatusCode, upstreamErrorStatusCodes } from './statuses.js';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { getBasicAuthorizationHeader } from './utils/get_basic.js';
