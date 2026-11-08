@@ -962,13 +962,20 @@ const createTestSuite = ({
                 });
             }
 
-            it('handles invalid CONNECT path', async () => {
+            // Regression for https://github.com/apify/apify-proxy/issues/372, where `CONNECT :443` crashed the server.
+            it.each([
+                ':443',
+                'example.com',
+                'example.com:',
+                'example.com:99999',
+                '[::1',
+            ])('handles invalid CONNECT path "%s"', async (target) => {
                 const requestModule = mainProxyServerType === 'https' ? https : http;
                 const req = requestModule.request(mainProxyUrl!, {
                     method: 'CONNECT',
-                    path: ':443',
+                    path: target,
                     headers: {
-                        host: ':443',
+                        host: target,
                     },
                     // Accept self-signed certificates for HTTPS proxy.
                     rejectUnauthorized: false,
