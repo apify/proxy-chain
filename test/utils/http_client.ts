@@ -59,6 +59,9 @@ const forwardToProxy = (proxyAuthorization?: string): Dispatcher.DispatcherCompo
     };
 };
 
+/** The server name comes from the proxy URL's hostname, so an IPv6 address still has its brackets. */
+const isIpServername = (servername: string): boolean => isIP(servername.replace(/^\[(.*)\]$/, '$1')) !== 0;
+
 /**
  * `undici`'s `ProxyAgent` sends the proxy hostname as the TLS server name even when it is an
  * IP address, which Node.js 26 rejects. Drop it there, so Node.js verifies the IP instead.
@@ -70,7 +73,7 @@ const proxyClientWithoutIpServername = (origin: URL, opts: object): Dispatcher =
         ...opts,
         connect: (connectOpts, callback) => connect({
             ...connectOpts,
-            servername: connectOpts.servername && isIP(connectOpts.servername) ? undefined : connectOpts.servername,
+            servername: connectOpts.servername && isIpServername(connectOpts.servername) ? undefined : connectOpts.servername,
         }, callback),
     });
 };
