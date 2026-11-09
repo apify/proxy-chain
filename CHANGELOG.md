@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.2](https://github.com/apify/proxy-chain/releases/tag/v3.0.2) (2026-11-09)
+
+### 🐛 Bug Fixes
+
+- Prevent process crash from sync throw in forward() ([#737](https://github.com/apify/proxy-chain/pull/737)) ([99534e2](https://github.com/apify/proxy-chain/commit/99534e2a8b64f9c981b1831538ced56a301bbde2)) by [@VojtaM39](https://github.com/VojtaM39)
+- Prevent request smuggling in HTTP forwarding ([#738](https://github.com/apify/proxy-chain/pull/738)) ([1847f20](https://github.com/apify/proxy-chain/commit/1847f205823f262af2667b7406c3f283198735fe)) by [@VojtaM39](https://github.com/VojtaM39)
+
+
 ## [3.0.1](https://github.com/apify/proxy-chain/releases/tag/v3.0.1) (2026-09-08)
 
 ### 🐛 Bug Fixes
