@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { upstreamErrorStatusCodes } from '../../src/index.js';
+import { UPSTREAM_ERROR_STATUS_CODE } from '../../src/index.js';
 
-describe('upstreamErrorStatusCodes', () => {
+describe('UPSTREAM_ERROR_STATUS_CODE', () => {
     it('matches the documented status codes', () => {
-        expect(upstreamErrorStatusCodes).toEqual({
-            TIMEOUT: 504,
+        expect(UPSTREAM_ERROR_STATUS_CODE).toEqual({
             NON_200: 590,
             STATUS_CODE_OUT_OF_RANGE: 592,
             NOT_FOUND: 593,
@@ -18,6 +17,6 @@ describe('upstreamErrorStatusCodes', () => {
     });
 
     it('is frozen so consumers cannot change the codes the server sends', () => {
-        expect(Object.isFrozen(upstreamErrorStatusCodes)).toBe(true);
+        expect(Object.isFrozen(UPSTREAM_ERROR_STATUS_CODE)).toBe(true);
     });
 });
