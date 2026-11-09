@@ -4,7 +4,7 @@ import type { URL } from 'node:url';
 
 import { SocksProxyAgent } from 'socks-proxy-agent';
 
-import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
+import { errorCodeToStatusCode, UPSTREAM_ERROR_STATUS_CODE } from './statuses.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { forwardedRequestHeaders } from './utils/forwarded_request_headers.js';
 import { validHeadersOnly } from './utils/valid_headers_only.js';
@@ -57,7 +57,7 @@ export const forwardSocks = async (
             // This is necessary to prevent Node.js throwing an error
             let statusCode = clientResponse.statusCode!;
             if (statusCode < 100 || statusCode > 999) {
-                statusCode = badGatewayStatusCodes.STATUS_CODE_OUT_OF_RANGE;
+                statusCode = UPSTREAM_ERROR_STATUS_CODE.STATUS_CODE_OUT_OF_RANGE;
             }
 
             // 407 is handled separately
@@ -106,7 +106,7 @@ export const forwardSocks = async (
             return;
         }
 
-        const statusCode = errorCodeToStatusCode[error.code!] ?? badGatewayStatusCodes.GENERIC_ERROR;
+        const statusCode = errorCodeToStatusCode[error.code!] ?? UPSTREAM_ERROR_STATUS_CODE.GENERIC_ERROR;
 
         response.statusCode = statusCode;
         response.setHeader('content-type', 'text/plain; charset=utf-8');
