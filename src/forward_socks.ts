@@ -7,7 +7,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { forwardedRequestHeaders } from './utils/forwarded_request_headers.js';
-import { validHeadersOnly } from './utils/valid_headers_only.js';
+import { forwardedResponseHeaders } from './utils/forwarded_response_headers.js';
 
 interface Options {
     method: string;
@@ -69,7 +69,7 @@ export const forwardSocks = async (
             response.writeHead(
                 statusCode,
                 clientResponse.statusMessage,
-                validHeadersOnly(clientResponse.rawHeaders),
+                forwardedResponseHeaders(clientResponse),
             );
 
             // `pipeline` automatically handles all the events and data
