@@ -1,9 +1,10 @@
 import { Buffer } from 'node:buffer';
+import { isIP } from 'node:net';
 import type { Readable } from 'node:stream';
 import util from 'node:util';
 import zlib from 'node:zlib';
 
-import { Agent, Client, type Dispatcher, interceptors, ProxyAgent, request } from 'undici';
+import { Agent, type buildConnector, Client, type Dispatcher, interceptors, Pool, ProxyAgent, request } from 'undici';
 
 // Stateless, so it is shared by every request.
 const REDIRECT_INTERCEPTOR = interceptors.redirect({ maxRedirections: 10 });
@@ -58,6 +59,25 @@ const forwardToProxy = (proxyAuthorization?: string): Dispatcher.DispatcherCompo
     };
 };
 
+/** The server name comes from the proxy URL's hostname, so an IPv6 address still has its brackets. */
+const isIpServername = (servername: string): boolean => isIP(servername.replace(/^\[(.*)\]$/, '$1')) !== 0;
+
+/**
+ * `undici`'s `ProxyAgent` sends the proxy hostname as the TLS server name even when it is an
+ * IP address, which Node.js 26 rejects. Drop it there, so Node.js verifies the IP instead.
+ */
+const proxyClientWithoutIpServername = (origin: URL, opts: object): Dispatcher => {
+    const { connect } = opts as { connect: buildConnector.connector };
+
+    return new Pool(origin, {
+        ...opts,
+        connect: (connectOpts, callback) => connect({
+            ...connectOpts,
+            servername: connectOpts.servername && isIpServername(connectOpts.servername) ? undefined : connectOpts.servername,
+        }, callback),
+    });
+};
+
 /**
  * `undici` pools sockets, but the proxy tests count connections, so every call gets its
  * own dispatcher by default.
@@ -80,7 +100,14 @@ export const createDispatcher = (opts: ConnectionOpts): Dispatcher => {
     if (new URL(opts.url).protocol === 'http:') {
         return new Client(proxy.origin, { connect: tls, connectTimeout }).compose(forwardToProxy(token));
     }
-    return new ProxyAgent({ uri: proxy.origin, token, connectTimeout, requestTls: tls, proxyTls: tls });
+    return new ProxyAgent({
+        uri: proxy.origin,
+        token,
+        connectTimeout,
+        requestTls: tls,
+        proxyTls: tls,
+        clientFactory: proxyClientWithoutIpServername,
+    });
 };
 
 /** Splits credentials out of the URL into a Basic header. */
