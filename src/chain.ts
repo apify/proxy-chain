@@ -3,6 +3,7 @@ import type dns from 'node:dns';
 import type { EventEmitter } from 'node:events';
 import http from 'node:http';
 import https from 'node:https';
+import { isIP } from 'node:net';
 import type { URL } from 'node:url';
 
 import type { Socket } from './socket.js';
@@ -88,6 +89,8 @@ export const chain = (
     const client = proxy.protocol === 'https:'
         ? https.request(proxy.origin, {
             ...options,
+            // CONNECT's Host identifies the target, not the TLS peer.
+            servername: isIP(proxy.hostname.replace(/^\[|\]$/g, '')) ? '' : proxy.hostname,
             rejectUnauthorized: !handlerOpts.ignoreUpstreamProxyCertificate,
             agent: handlerOpts.httpsAgent,
         })
