@@ -2,7 +2,7 @@
 
 ## Core conventions
 
-- The entry point is [`src/index.ts`](../../src/index.ts). It re-exports `server.ts`, `request_error.ts`, `anonymize_proxy.ts`, `tcp_tunnel_tools.ts`, `utils/redact_url.ts` and the `CustomResponse` type. Nothing else is public, so internal modules can be changed freely.
+- The entry point is [`src/index.ts`](../../src/index.ts). It re-exports `server.ts`, `request_error.ts`, `anonymize_proxy.ts`, `tcp_tunnel_tools.ts`, `utils/redact_url.ts`, the `CustomResponse` type, and only `upstreamErrorStatusCodes` with its `UpstreamErrorStatusCode` type from `statuses.ts`. Nothing else is public, so internal modules can be changed freely.
 - [`src/server.ts`](../../src/server.ts) is the hot path. `Server extends EventEmitter`, owns the underlying `http` or `https` server, routes both plain requests and CONNECTs, and holds the `connections: Map<number, Socket>` registry.
 - `prepareRequestFunction` is the per-request hook users configure. It decides authentication, the upstream proxy, and the optional `customResponseFunction` and `customConnectServer` overrides.
 - Every socket is stamped with `proxyChainId` in `Server.registerConnection()`. That id is the correlation key for logs, the `connectionClosed` event, `closeConnection(id)` and `getConnectionStats(id)`.

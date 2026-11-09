@@ -298,7 +298,21 @@ Generic upstream error.
 `597` indicates incorrect upstream credentials.\
 `599` is a generic error, where the above is not applicable.
 
-These codes are exported as the `upstreamErrorStatusCodes` constant, so you don't have to hard-code them:
+These codes are exported by name as the `upstreamErrorStatusCodes` constant, together with `504` for upstream timeouts:
+
+| Key | Code |
+|---|---|
+| `TIMEOUT` | `504` |
+| `NON_200` | `590` |
+| `STATUS_CODE_OUT_OF_RANGE` | `592` |
+| `NOT_FOUND` | `593` |
+| `CONNECTION_REFUSED` | `594` |
+| `CONNECTION_RESET` | `595` |
+| `BROKEN_PIPE` | `596` |
+| `AUTH_FAILED` | `597` |
+| `GENERIC_ERROR` | `599` |
+
+The `UpstreamErrorStatusCode` type is the union of these values.
 
 ```javascript
 import { upstreamErrorStatusCodes } from 'proxy-chain';

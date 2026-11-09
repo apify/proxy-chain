@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { upstreamErrorStatusCodes } from '../../src/index.js';
 
 describe('upstreamErrorStatusCodes', () => {
-    it('is exported from the package entry point', () => {
+    it('matches the documented status codes', () => {
         expect(upstreamErrorStatusCodes).toEqual({
             TIMEOUT: 504,
             NON_200: 590,
@@ -17,7 +17,7 @@ describe('upstreamErrorStatusCodes', () => {
         });
     });
 
-    it('cannot be mutated by consumers', () => {
+    it('is frozen so consumers cannot change the codes the server sends', () => {
         expect(Object.isFrozen(upstreamErrorStatusCodes)).toBe(true);
     });
 });

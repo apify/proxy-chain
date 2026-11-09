@@ -6,3 +6,4 @@ export * from './tcp_tunnel_tools.js';
 export { upstreamErrorStatusCodes } from './statuses.js';
 
 export type { CustomResponse } from './custom_response.js';
+export type { UpstreamErrorStatusCode } from './statuses.js';
