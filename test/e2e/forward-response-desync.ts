@@ -6,10 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Server } from '../../src/index.js';
 import { closeServer, getServerPort, listenOnPort } from '../utils/test_helpers.js';
 
-// Regression guard: an upstream response that carries both Content-Length and Transfer-Encoding must not be
-// forwarded with the upstream Content-Length. The lenient parser frames the body by the chunked encoding, so the
-// forwarded length would not match the body and the client would read the excess as the next response.
-// See src/utils/forwarded_response_headers.ts.
+// An upstream response with both Content-Length and Transfer-Encoding must reach the client chunked, without the Content-Length.
 describe('forward() response desync', () => {
     const FORGED = 'HTTP/1.1 200 OK\r\nContent-Length: 6\r\nX-Forged: yes\r\n\r\nPWNED\n';
     const BODY = `AAAAA${FORGED}`;
