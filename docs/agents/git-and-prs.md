@@ -26,7 +26,7 @@
 
 ## CI
 
-- [`.github/workflows/check.yaml`](../../.github/workflows/check.yaml) runs lint and type-check on Node 24, unit tests on Node 20, 22, 24 and 26, e2e on Node 24, and the Bun jobs.
+- [`.github/workflows/check.yaml`](../../.github/workflows/check.yaml) runs lint and type-check on Node 24, unit tests on Node 20, 22, 24 and 26, e2e on Node 20, 24 and 26, and the Bun jobs.
 - `[skip ci]` in the head commit message skips every job.
 
 ## Reviews
