@@ -16,6 +16,7 @@ export const forwardedResponseHeaders = (clientResponse: http.IncomingMessage): 
 
     const withoutContentLength = [];
 
+    // `headers` is a flat [name, value, name, value, ...] array, so step by 2 and drop the content-length pair.
     for (let index = 0; index < headers.length; index += 2) {
         if (headers[index].toLowerCase() !== 'content-length') {
             withoutContentLength.push(headers[index], headers[index + 1]);
