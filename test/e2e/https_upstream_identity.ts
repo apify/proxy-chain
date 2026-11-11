@@ -33,6 +33,7 @@ describe('HTTPS upstream certificate identity', () => {
     it.each([
         ['localhost', 'localhost', false],
         ['127.0.0.1', false, false],
+        ['[::1]', false, false],
         // Also cover the explicit certificate opt-out with an IPv6 upstream.
         ['[::1]', false, true],
     ] as const)('uses upstream %s (SNI %s; ignore certificate errors %s)', async (hostname, expectedServername, ignoreCertificateErrors) => {
