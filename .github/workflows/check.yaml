@@ -80,7 +80,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                node-version: [20, 24]
+                # 20 is the minimum supported version (engines.node), 26 the newest release.
+                node-version: [20, 24, 26]
 
         steps:
             - name: Checkout repository

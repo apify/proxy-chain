@@ -8,8 +8,8 @@ import { badGatewayStatusCodes, errorCodeToStatusCode } from './statuses.js';
 import type { SocketWithPreviousStats } from './utils/count_target_bytes.js';
 import { countTargetBytes } from './utils/count_target_bytes.js';
 import { forwardedRequestHeaders } from './utils/forwarded_request_headers.js';
+import { forwardedResponseHeaders } from './utils/forwarded_response_headers.js';
 import { getBasicAuthorizationHeader } from './utils/get_basic.js';
-import { validHeadersOnly } from './utils/valid_headers_only.js';
 
 interface Options {
     method: string;
@@ -96,7 +96,7 @@ export const forward = async (
             response.writeHead(
                 statusCode,
                 clientResponse.statusMessage,
-                validHeadersOnly(clientResponse.rawHeaders),
+                forwardedResponseHeaders(clientResponse),
             );
 
             // `pipeline` automatically handles all the events and data

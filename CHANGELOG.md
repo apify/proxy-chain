@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.3](https://github.com/apify/proxy-chain/releases/tag/v3.0.3) (2026-11-09)
+
+### 🐛 Bug Fixes
+
+- Re-frame forwarded responses to prevent client-side desync ([#744](https://github.com/apify/proxy-chain/pull/744)) ([30ee127](https://github.com/apify/proxy-chain/commit/30ee12730fe38219fb7922d5d871aea5a907c324)) by [@VojtaM39](https://github.com/VojtaM39)
+
+
 ## [3.0.2](https://github.com/apify/proxy-chain/releases/tag/v3.0.2) (2026-11-09)
 
 ### 🐛 Bug Fixes
