@@ -1,12 +1,12 @@
 import { STATUS_CODES } from 'node:http';
 
-type HttpStatusCode = number;
+type ValueOf<T> = T[keyof T];
 
-export const badGatewayStatusCodes = {
-    /**
-     * Upstream has timed out.
-     */
-    TIMEOUT: 504,
+/**
+ * Custom status codes the server responds with instead of the generic `502 Bad Gateway`.
+ * See the "Error status codes" section of the README.
+ */
+export const UPSTREAM_ERROR_STATUS_CODE = Object.freeze({
     /**
      * Upstream responded with non-200 status code.
      */
@@ -39,16 +39,23 @@ export const badGatewayStatusCodes = {
      * Generic upstream error.
      */
     GENERIC_ERROR: 599,
-} as const;
+});
 
-STATUS_CODES['590'] = 'Non Successful';
-STATUS_CODES['592'] = 'Status Code Out Of Range';
-STATUS_CODES['593'] = 'Not Found';
-STATUS_CODES['594'] = 'Connection Refused';
-STATUS_CODES['595'] = 'Connection Reset';
-STATUS_CODES['596'] = 'Broken Pipe';
-STATUS_CODES['597'] = 'Auth Failed';
-STATUS_CODES['599'] = 'Upstream Error';
+export type UpstreamErrorStatusCode = ValueOf<typeof UPSTREAM_ERROR_STATUS_CODE>;
+
+// Not exported: a target can return its own 504, so clients cannot tell the two apart.
+const UPSTREAM_TIMEOUT_STATUS_CODE = 504;
+
+type InternalUpstreamErrorStatusCode = UpstreamErrorStatusCode | typeof UPSTREAM_TIMEOUT_STATUS_CODE;
+
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.NON_200] = 'Non Successful';
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.STATUS_CODE_OUT_OF_RANGE] = 'Status Code Out Of Range';
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.NOT_FOUND] = 'Not Found';
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.CONNECTION_REFUSED] = 'Connection Refused';
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.CONNECTION_RESET] = 'Connection Reset';
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.BROKEN_PIPE] = 'Broken Pipe';
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED] = 'Auth Failed';
+STATUS_CODES[UPSTREAM_ERROR_STATUS_CODE.GENERIC_ERROR] = 'Upstream Error';
 
 export const createCustomStatusHttpResponse = (statusCode: number, statusMessage: string, message = '') => {
     return [
@@ -62,21 +69,21 @@ export const createCustomStatusHttpResponse = (statusCode: number, statusMessage
 };
 
 // https://nodejs.org/api/errors.html#common-system-errors
-export const errorCodeToStatusCode: {[errorCode: string]: HttpStatusCode | undefined} = {
-    ENOTFOUND: badGatewayStatusCodes.NOT_FOUND,
-    ECONNREFUSED: badGatewayStatusCodes.CONNECTION_REFUSED,
-    ECONNRESET: badGatewayStatusCodes.CONNECTION_RESET,
-    EPIPE: badGatewayStatusCodes.BROKEN_PIPE,
-    ETIMEDOUT: badGatewayStatusCodes.TIMEOUT,
-} as const;
+export const errorCodeToStatusCode: Partial<Record<string, InternalUpstreamErrorStatusCode>> = {
+    ENOTFOUND: UPSTREAM_ERROR_STATUS_CODE.NOT_FOUND,
+    ECONNREFUSED: UPSTREAM_ERROR_STATUS_CODE.CONNECTION_REFUSED,
+    ECONNRESET: UPSTREAM_ERROR_STATUS_CODE.CONNECTION_RESET,
+    EPIPE: UPSTREAM_ERROR_STATUS_CODE.BROKEN_PIPE,
+    ETIMEDOUT: UPSTREAM_TIMEOUT_STATUS_CODE,
+};
 
-export const socksErrorMessageToStatusCode = (socksErrorMessage: string): typeof badGatewayStatusCodes[keyof typeof badGatewayStatusCodes] => {
+export const socksErrorMessageToStatusCode = (socksErrorMessage: string): InternalUpstreamErrorStatusCode => {
     switch (socksErrorMessage) {
         case 'Proxy connection timed out':
-            return badGatewayStatusCodes.TIMEOUT;
+            return UPSTREAM_TIMEOUT_STATUS_CODE;
         case 'Socks5 Authentication failed':
-            return badGatewayStatusCodes.AUTH_FAILED;
+            return UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED;
         default:
-            return badGatewayStatusCodes.GENERIC_ERROR;
+            return UPSTREAM_ERROR_STATUS_CODE.GENERIC_ERROR;
     }
 };
