@@ -80,7 +80,17 @@ export const forwardSocks = async (
 
             resolve();
         } catch {
-            // Client error, pipeline already destroys the streams, ignore.
+            // `writeHead` throws when Node.js rejects a response header value, for example
+            // a non-ASCII `content-disposition` together with `content-length`.
+            // Fail the request instead of leaving the client waiting forever.
+            if (!response.headersSent) {
+                response.statusCode = badGatewayStatusCodes.GENERIC_ERROR;
+                response.statusMessage = http.STATUS_CODES[response.statusCode]!;
+                response.setHeader('content-type', 'text/plain; charset=utf-8');
+                response.end(http.STATUS_CODES[response.statusCode]);
+            }
+
+            // Otherwise it is a client error, pipeline already destroys the streams, ignore.
             resolve();
         }
     });
