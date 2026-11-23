@@ -93,6 +93,7 @@ jobs:
         needs: [lint_and_test, release_metadata]
         if: ${{ github.event_name == 'workflow_dispatch' }}
         runs-on: ubuntu-24.04
+        environment: npm
         outputs:
             commitish: ${{ steps.commit.outputs.commit_long_sha }}
 
@@ -171,6 +172,7 @@ jobs:
         # untagged, so re-dispatching computes the same version and retries cleanly.
         needs: [release_metadata, release_commit, publish]
         runs-on: ubuntu-24.04
+        environment: npm
 
         steps:
             # Creates the `vX.Y.Z` tag on the release commit as a side effect.
