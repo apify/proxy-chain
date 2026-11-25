@@ -40,7 +40,7 @@ jobs:
               # `auto` fails when no commit since the last stable tag warrants a release, which is a
               # normal state for a pull request and must not turn into a red check.
               continue-on-error: true
-              uses: apify/actions/git-cliff-release@v1.5.0
+              uses: apify/actions/git-cliff-release@v1.9.0
               with:
                   release_type: ${{ inputs.release_type || 'auto' }}
                   existing_changelog_path: CHANGELOG.md

@@ -38,7 +38,7 @@ jobs:
                   node-version: 24
 
             - name: Install pnpm and dependencies
-              uses: apify/actions/pnpm-install@v1.1.2
+              uses: apify/actions/pnpm-install@v1.9.0
 
             - name: Lint code
               run: pnpm run lint
@@ -67,7 +67,7 @@ jobs:
                   node-version: ${{ matrix.node-version }}
 
             - name: Install pnpm and dependencies
-              uses: apify/actions/pnpm-install@v1.1.2
+              uses: apify/actions/pnpm-install@v1.9.0
 
             - name: Run unit tests
               run: pnpm run test:unit
@@ -93,7 +93,7 @@ jobs:
                   node-version: ${{ matrix.node-version }}
 
             - name: Install pnpm and dependencies
-              uses: apify/actions/pnpm-install@v1.1.2
+              uses: apify/actions/pnpm-install@v1.9.0
 
             # pnpm caches the package store but not puppeteer's browser cache
             # (`~/.cache/puppeteer/`). On warm-cache CI runs, pnpm just symlinks
@@ -129,7 +129,7 @@ jobs:
                   bun-version: latest
 
             - name: Install pnpm and dependencies
-              uses: apify/actions/pnpm-install@v1.1.2
+              uses: apify/actions/pnpm-install@v1.9.0
 
             - name: Run unit tests with Bun
               run: pnpm run test:bun
@@ -155,7 +155,7 @@ jobs:
                   bun-version: latest
 
             - name: Install pnpm and dependencies
-              uses: apify/actions/pnpm-install@v1.1.2
+              uses: apify/actions/pnpm-install@v1.9.0
 
             # See note on the Node E2E job — same fix needed here.
             - name: Ensure puppeteer Chromium is downloaded
