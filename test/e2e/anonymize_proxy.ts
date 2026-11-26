@@ -8,7 +8,7 @@ import { createProxy, type ProxyServer } from 'proxy';
 import _ from 'underscore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy } from '../../src/index.js';
+import { anonymizeProxy, closeAnonymizedProxy, listenConnectAnonymizedProxy, UPSTREAM_ERROR_STATUS_CODE } from '../../src/index.js';
 import { expectSuccessfulRequest } from '../utils/http_assertions.js';
 import { httpRequest } from '../utils/http_client.js';
 import { PORT_RANGES } from '../utils/port_ranges.js';
@@ -304,7 +304,7 @@ describe('utils.anonymizeProxy', { timeout: 5_000 }, () => {
                 });
             })
             .then((response) => {
-                expect(response.statusCode).toBe(597); // Gateway error
+                expect(response.statusCode).toBe(UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED);
                 expect(wasProxyCalled).toBe(false);
             })
             .then(async () => closeAnonymizedProxy(anonymousProxyUrl, true))

@@ -19,7 +19,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type {
     ConnectionStats, HttpServerOptions, PrepareRequestFunction, PrepareRequestFunctionResult, ServerOptions,
 } from '../../src/index.js';
-import { RequestError, Server } from '../../src/index.js';
+import { RequestError, Server, UPSTREAM_ERROR_STATUS_CODE } from '../../src/index.js';
 import { parseAuthorizationHeader } from '../../src/utils/parse_authorization_header.js';
 import { expectProxyTunnelError } from '../utils/http_assertions.js';
 import { createDispatcher, httpRequest, type HttpRequestOpts, type HttpResponse } from '../utils/http_client.js';
@@ -660,7 +660,7 @@ const createTestSuite = ({
                     return httpRequest(opts)
                         .then((response) => {
                             if (useMainProxy) {
-                                expect(response.statusCode).toBe(592);
+                                expect(response.statusCode).toBe(UPSTREAM_ERROR_STATUS_CODE.STATUS_CODE_OUT_OF_RANGE);
                                 expect(response.body).toBe('Bad status!');
                             } else {
                                 expect(response.statusCode).toBe(55);
@@ -956,7 +956,7 @@ const createTestSuite = ({
                     const opts = getRequestOpts(`http://127.0.0.1:${getServerPort(server)}`);
                     return httpRequest(opts)
                         .then((response) => {
-                            expect(response.statusCode).toBe(599);
+                            expect(response.statusCode).toBe(UPSTREAM_ERROR_STATUS_CODE.GENERIC_ERROR);
                             server.close();
                         });
                 });
@@ -1138,24 +1138,24 @@ const createTestSuite = ({
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-invalid-upstream-proxy-username`);
 
                     if (useSsl) {
-                        await expectProxyTunnelError(httpRequest(opts), 597);
+                        await expectProxyTunnelError(httpRequest(opts), UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED);
                     } else {
                         const response = await httpRequest(opts);
 
-                        expect(response.statusCode).toBe(597);
+                        expect(response.statusCode).toBe(UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED);
                         expect(response.body).toBe('Invalid colon in username in upstream proxy credentials');
                     }
                 });
 
                 it('fails gracefully on non-existent upstream proxy host', async () => {
                     const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-unknown-upstream-proxy-host.gov`);
-                    return testForErrorResponse(opts, 593);
+                    return testForErrorResponse(opts, UPSTREAM_ERROR_STATUS_CODE.NOT_FOUND);
                 });
 
                 if (upstreamProxyAuth) {
                     _it('fails gracefully on bad upstream proxy credentials', async () => {
                         const opts = getRequestOpts(`${useSsl ? 'https' : 'http'}://activate-bad-upstream-proxy-credentials.gov`);
-                        return testForErrorResponse(opts, 597);
+                        return testForErrorResponse(opts, UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED);
                     });
                 }
             }
@@ -1341,7 +1341,7 @@ describe('non-200 upstream connect response', () => {
                 },
             });
             req.once('connect', (response, socket, head) => {
-                expect(response.statusCode).toBe(590);
+                expect(response.statusCode).toBe(UPSTREAM_ERROR_STATUS_CODE.NON_200);
                 expect(response.statusMessage).toBe('UPSTREAM403');
                 expect(head).toHaveLength(0);
 
@@ -1604,7 +1604,7 @@ describe('supports ignoreUpstreamProxyCertificate', () => {
 
         expect(proxyServerError).toBe(false);
 
-        expect(response.statusCode).toBe(599);
+        expect(response.statusCode).toBe(UPSTREAM_ERROR_STATUS_CODE.GENERIC_ERROR);
 
         await proxyServer.close();
         await util.promisify(target.close.bind(target))();

@@ -20,7 +20,7 @@ import { forward } from './forward.js';
 import { forwardSocks } from './forward_socks.js';
 import { RequestError } from './request_error.js';
 import type { Socket, TLSSocket } from './socket.js';
-import { badGatewayStatusCodes } from './statuses.js';
+import { UPSTREAM_ERROR_STATUS_CODE } from './statuses.js';
 import { getTargetStats } from './utils/count_target_bytes.js';
 import { normalizeUrlPort } from './utils/normalize_url_port.js';
 import { parseAuthorizationHeader } from './utils/parse_authorization_header.js';
@@ -347,11 +347,11 @@ export class Server extends EventEmitter {
      */
     normalizeHandlerError(error: NodeJS.ErrnoException): NodeJS.ErrnoException {
         if (error.message === 'Username contains an invalid colon') {
-            return new RequestError('Invalid colon in username in upstream proxy credentials', badGatewayStatusCodes.AUTH_FAILED);
+            return new RequestError('Invalid colon in username in upstream proxy credentials', UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED);
         }
 
         if (error.message === '407 Proxy Authentication Required') {
-            return new RequestError('Invalid upstream proxy credentials', badGatewayStatusCodes.AUTH_FAILED);
+            return new RequestError('Invalid upstream proxy credentials', UPSTREAM_ERROR_STATUS_CODE.AUTH_FAILED);
         }
 
         return error;
