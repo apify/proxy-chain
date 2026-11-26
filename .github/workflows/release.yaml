@@ -47,7 +47,7 @@ jobs:
     release_metadata:
         name: Prepare release metadata
         if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-        runs-on: ubuntu-24.04
+        runs-on: ubuntu-26.04
         outputs:
             version_number: ${{ steps.metadata.outputs.version_number }}
             tag_name: ${{ steps.metadata.outputs.tag_name }}
@@ -92,7 +92,7 @@ jobs:
         name: Commit version and changelog
         needs: [lint_and_test, release_metadata]
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        runs-on: ubuntu-24.04
+        runs-on: ubuntu-26.04
         environment:
             name: npm
             deployment: false
@@ -142,7 +142,7 @@ jobs:
         # `release_commit` is skipped for beta publishes, and a skipped dependency would otherwise
         # skip this job as well - hence the explicit result checks.
         if: ${{ !cancelled() && needs.lint_and_test.result == 'success' && needs.release_metadata.result == 'success' && needs.release_commit.result != 'failure' }}
-        runs-on: ubuntu-24.04
+        runs-on: ubuntu-26.04
 
         steps:
             - name: Checkout repository
@@ -173,7 +173,7 @@ jobs:
         # Deliberately after the npm publish: a failed publish then leaves the release commit
         # untagged, so re-dispatching computes the same version and retries cleanly.
         needs: [release_metadata, release_commit, publish]
-        runs-on: ubuntu-24.04
+        runs-on: ubuntu-26.04
         environment:
             name: npm
             deployment: false

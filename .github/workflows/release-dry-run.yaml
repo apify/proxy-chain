@@ -29,7 +29,7 @@ permissions:
 jobs:
     dry_run:
         name: Compute the next release
-        runs-on: ubuntu-24.04
+        runs-on: ubuntu-26.04
 
         steps:
             - name: Checkout repository
