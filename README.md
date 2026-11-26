@@ -77,6 +77,7 @@ const server = new Server({
 
             // Applies to HTTPS upstream proxy. If set to true, requests made to the proxy will
             // ignore certificate errors. Useful when upstream proxy uses self-signed certificate. By default "false".
+            // Otherwise its certificate is verified against the upstream proxy hostname, also for CONNECT tunnels.
             ignoreUpstreamProxyCertificate: true
 
             // If "requestAuthentication" is true, you can use the following property
