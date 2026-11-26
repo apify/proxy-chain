@@ -98,7 +98,7 @@
         "rimraf": "^6.1.4",
         "socksv5": "^0.0.6",
         "tsx": "^4.23.15",
-        "typescript": "^6.0.3",
+        "typescript": "^7.0.0",
         "typescript-eslint": "^8.72.1",
         "underscore": "^1.13.8",
         "undici": "^7.30.1",
